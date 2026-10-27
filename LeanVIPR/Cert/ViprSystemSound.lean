@@ -160,18 +160,22 @@ def LinAbsurd (cs : List (ℚ × SLe)) : Prop :=
   (SuitableLe cs ∧ FormZeroReal (scomb cs).form ∧ (scomb cs).rhs < 0) ∨
   (SuitableGe cs ∧ FormZeroReal (scomb cs).form ∧ 0 < (scomb cs).rhs)
 
-/-- Declarative validity of a VIPR `lin` step. -/
+/-- Declarative validity of a VIPR `lin` step. A combination whose multipliers all
+lie on equality rows (`λⱼ·s(Cⱼ) = 0`, i.e. suitable in both directions) derives an
+equality, which dominates an equality with the same right-hand side. -/
 def LinValid (stated : SLe) (cs : List (ℚ × SLe)) : Prop :=
   LinAbsurd cs ∨
   (FormEqReal (scomb cs).form stated.form ∧
     ((stated.sense = 'L' ∧ SuitableLe cs ∧ (scomb cs).rhs ≤ stated.rhs) ∨
-     (stated.sense = 'G' ∧ SuitableGe cs ∧ stated.rhs ≤ (scomb cs).rhs)))
+     (stated.sense = 'G' ∧ SuitableGe cs ∧ stated.rhs ≤ (scomb cs).rhs) ∨
+     (stated.sense = 'E' ∧ SuitableLe cs ∧ SuitableGe cs ∧
+       (scomb cs).rhs = stated.rhs)))
 
 theorem linValid_sound {stated : SLe} {cs : List (ℚ × SLe)}
     (h : LinValid stated cs) {a : RealValuation}
     (hsat : ∀ p ∈ cs, satReal p.2 a) : satReal stated a := by
   rcases h with (⟨hsuit, hzero, hneg⟩ | ⟨hsuit, hzero, hpos⟩) |
-      ⟨hform, ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩⟩
+      ⟨hform, ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩ | ⟨hE, hle, hge, hrhs⟩⟩
   · have hle := scomb_le_real cs a hsuit hsat
     rw [hzero a] at hle
     have hnegR : ((scomb cs).rhs : ℝ) < 0 := by exact_mod_cast hneg
@@ -188,6 +192,14 @@ theorem linValid_sound {stated : SLe} {cs : List (ℚ × SLe)}
     rw [hform a] at hge
     have hrhsR : (stated.rhs : ℝ) ≤ ((scomb cs).rhs : ℝ) := by exact_mod_cast hrhs
     simpa [satReal, hG] using le_trans hrhsR hge
+  · have hup := scomb_le_real cs a hle hsat
+    have hdown := scomb_ge_real cs a hge hsat
+    rw [hform a] at hup hdown
+    have hrhsR : ((scomb cs).rhs : ℝ) = (stated.rhs : ℝ) := by exact_mod_cast hrhs
+    have hL : stated.sense ≠ 'L' := by rw [hE]; decide
+    have hG : stated.sense ≠ 'G' := by rw [hE]; decide
+    simp only [satReal, if_neg hL, if_neg hG, if_pos hE]
+    linarith
 
 /-! ## The `rnd` rule -/
 

@@ -20,12 +20,19 @@ def splitOnChar (sep : Char) : List Char → List (List Char)
         | [] => [[c]]
         | r :: rs => (c :: r) :: rs
 
-/-- Parse a digit list into a natural number. -/
+/-- Parse a nonempty digit list into a natural number. An empty list is rejected so
+that a lone sign, `.`, or `/` is never read as zero. -/
 def natOfDigits? (l : List Char) : Option Nat :=
+  if l.isEmpty then none else
   l.foldl (fun acc c =>
     match acc with
     | some n => if c.isDigit then some (n * 10 + (c.toNat - '0'.toNat)) else none
     | none => none) (some 0)
+
+/-- Parse a possibly empty digit list, reading the empty list as zero. Used only for
+one side of a decimal point. -/
+def natOfDigitsOrZero? (l : List Char) : Option Nat :=
+  if l.isEmpty then some 0 else natOfDigits? l
 
 /-- Parse a signed finite decimal as the exact rational it denotes. -/
 def parseRat? (s0 : String) : Option ℚ :=
@@ -37,7 +44,8 @@ def parseRat? (s0 : String) : Option ℚ :=
   match splitOnChar '.' cs with
   | [i] => (natOfDigits? i).map (fun n => if neg then -(n : ℚ) else (n : ℚ))
   | [i, f] =>
-      match natOfDigits? i, natOfDigits? f with
+      if i.isEmpty && f.isEmpty then none else
+      match natOfDigitsOrZero? i, natOfDigitsOrZero? f with
       | some ni, some nf =>
           let q : ℚ := (ni : ℚ) + (nf : ℚ) / (10 : ℚ) ^ f.length
           some (if neg then -q else q)

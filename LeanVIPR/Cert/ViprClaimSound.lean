@@ -89,22 +89,33 @@ def SolReasonValid (v : Vipr) (stated : SLe) : Prop :=
       Dominates ⟨'G', objectiveForm v, objectiveQ v s⟩ stated
   else False
 
+/-- The objective at `a` is at least as good as at every listed solution.  Every
+`{ sol }` row holds at such a valuation. -/
+def SolBounded (v : Vipr) (a : RealValuation) : Prop :=
+  if v.objSense = "min" then
+    ∀ s ∈ v.sols.toList, objectiveReal v a ≤ (objectiveQ v s : ℝ)
+  else if v.objSense = "max" then
+    ∀ s ∈ v.sols.toList, (objectiveQ v s : ℝ) ≤ objectiveReal v a
+  else False
+
+/-- Valuations at which every derived row is guaranteed: feasible valuations for
+infeasibility results; for range results, feasible valuations that are no worse
+than every listed solution (in particular, every optimal valuation). -/
 def Candidate (v : Vipr) (a : RealValuation) : Prop :=
   match v.rtp with
   | .infeas => Feasible v a
-  | .range _ _ => IsOptimal v a
+  | .range _ _ => Feasible v a ∧ SolBounded v a
 
 theorem candidate_feasible {v : Vipr} {a : RealValuation} (h : Candidate v a) :
     Feasible v a := by
   cases hr : v.rtp with
   | infeas => simpa [Candidate, hr] using h
   | range lb ub =>
-      exact (show IsOptimal v a from by simpa [Candidate, hr] using h).1
+      exact (show Feasible v a ∧ SolBounded v a from by simpa [Candidate, hr] using h).1
 
 /-- Soundness of a `{ sol }` derivation row.  For infeasibility certificates the
 solution set is empty, so this rule cannot be valid.  For range certificates it
-holds at every optimal valuation by comparison with the referenced feasible
-solution. -/
+holds at every valuation that is no worse than the referenced solution. -/
 theorem solReason_sound {v : Vipr} {stated : SLe} {a : RealValuation}
     (hsols : SolSectionValid v) (hcand : Candidate v a)
     (hreason : SolReasonValid v stated) : satReal stated a := by
@@ -124,22 +135,23 @@ theorem solReason_sound {v : Vipr} {stated : SLe} {a : RealValuation}
       have hall : AllSolutionsValid v :=
         (show AllSolutionsValid v ∧ _ from by
           simpa [SolSectionValid, hr] using hsols).1
-      have hopt : IsOptimal v a := by
-        simpa [Candidate, hr] using hcand
+      have hbounded : SolBounded v a :=
+        (show Feasible v a ∧ SolBounded v a from by
+          simpa [Candidate, hr] using hcand).2
       simp only [SolReasonValid] at hreason
       split_ifs at hreason with hmin hmax
       · obtain ⟨s, hs, hdom⟩ := hreason
-        have ho := hopt
-        simp [IsOptimal, hmin] at ho
-        have hle := ho.2 (solutionValuation s) (hall s hs)
+        have hall' : ∀ t ∈ v.sols.toList, objectiveReal v a ≤ (objectiveQ v t : ℝ) := by
+          simpa [SolBounded, hmin] using hbounded
+        have hle := hall' s hs
         exact dominates_sound hdom (by
-          simpa [satReal, objectiveReal, objectiveQ] using hle)
+          simpa [satReal, objectiveReal] using hle)
       · obtain ⟨s, hs, hdom⟩ := hreason
-        have ho := hopt
-        simp [IsOptimal, hmax] at ho
-        have hge := ho.2 (solutionValuation s) (hall s hs)
+        have hall' : ∀ t ∈ v.sols.toList, (objectiveQ v t : ℝ) ≤ objectiveReal v a := by
+          simpa [SolBounded, hmin, hmax] using hbounded
+        have hge := hall' s hs
         exact dominates_sound hdom (by
-          simpa [satReal, objectiveReal, objectiveQ] using hge)
+          simpa [satReal, objectiveReal] using hge)
 
 /-! ## Declarative VIPR proof system -/
 
@@ -209,16 +221,30 @@ def WithinRange (lb ub : Option ℚ) (q : ℝ) : Prop :=
    | none => True
    | some upper => q ≤ (upper : ℝ))
 
-/-- Semantic validity of the result claimed by a VIPR certificate. For `RTP infeas`, no feasible
-mixed-integer valuation exists.  For `RTP range`, every listed solution is valid,
-the required primal witness exists, and every optimal valuation lies in the
-reported interval. -/
+/-- The derived objective bound of a range claim holds at **every feasible
+valuation**, not only at optimal ones: for minimization the lower bound, for
+maximization the upper bound.  This also bounds the infimum (supremum) when no
+optimum is attained. -/
+def RangeBoundValid (v : Vipr) (lb ub : Option ℚ) : Prop :=
+  if v.objSense = "min" then
+    match lb with
+    | none => True
+    | some lower => ∀ a, Feasible v a → (lower : ℝ) ≤ objectiveReal v a
+  else if v.objSense = "max" then
+    match ub with
+    | none => True
+    | some upper => ∀ a, Feasible v a → objectiveReal v a ≤ (upper : ℝ)
+  else False
+
+/-- Semantic validity of the result claimed by a VIPR certificate. For `RTP infeas`,
+no feasible mixed-integer valuation exists.  For `RTP range`, every listed solution is
+feasible, the required primal witness exists, and the derived objective bound holds at
+every feasible valuation.  `ClaimValid.optimal_within` recovers the statement that
+every optimal valuation lies in the reported interval. -/
 def ClaimValid (v : Vipr) : Prop :=
   match v.rtp with
   | .infeas => ∀ a, Feasible v a → False
-  | .range lb ub =>
-      SolSectionValid v ∧
-      ∀ a, IsOptimal v a → WithinRange lb ub (objectiveReal v a)
+  | .range lb ub => SolSectionValid v ∧ RangeBoundValid v lb ub
 
 /-- Every entry produced by a declaratively valid full-result replay is sound at
 the relevant candidate valuations: feasible valuations for infeasibility results,
@@ -306,8 +332,38 @@ private theorem closedFinal_holds {v : Vipr} {a : RealValuation}
   have he : EntryHolds (conSLes v) a e := hall e (List.mem_of_getLast? hlast)
   exact he (candidate_feasible hcand).2 (by simp [hclosed])
 
+private theorem list_exists_min {α : Type} (f : α → ℚ) :
+    ∀ l : List α, l ≠ [] → ∃ x ∈ l, ∀ y ∈ l, f x ≤ f y
+  | [], h => absurd rfl h
+  | x :: rest, _ => by
+      by_cases hrest : rest = []
+      · subst hrest
+        exact ⟨x, by simp, by simp⟩
+      · obtain ⟨m, hm, hmin⟩ := list_exists_min f rest hrest
+        by_cases hx : f x ≤ f m
+        · refine ⟨x, by simp, ?_⟩
+          intro y hy
+          rcases List.mem_cons.mp hy with rfl | hy
+          · exact le_rfl
+          · exact hx.trans (hmin y hy)
+        · refine ⟨m, List.mem_cons_of_mem _ hm, ?_⟩
+          intro y hy
+          rcases List.mem_cons.mp hy with rfl | hy
+          · exact (lt_of_not_ge hx).le
+          · exact hmin y hy
+
+/-- A finite nonempty solution list has a solution of least objective value. -/
+private theorem exists_min_solution (v : Vipr) (hne : v.sols.toList ≠ []) :
+    ∃ s ∈ v.sols.toList, ∀ t ∈ v.sols.toList, objectiveQ v s ≤ objectiveQ v t :=
+  list_exists_min (objectiveQ v) _ hne
+
+private theorem exists_max_solution (v : Vipr) (hne : v.sols.toList ≠ []) :
+    ∃ s ∈ v.sols.toList, ∀ t ∈ v.sols.toList, objectiveQ v t ≤ objectiveQ v s := by
+  obtain ⟨s, hs, hmin⟩ := list_exists_min (fun s => -objectiveQ v s) _ hne
+  exact ⟨s, hs, fun t ht => neg_le_neg_iff.mp (hmin t ht)⟩
+
 /-- Soundness of the full declarative VIPR proof system, including `SOL`,
-`{ sol }`, infeasibility results, and finite objective ranges. -/
+`{ sol }`, infeasibility results, and objective ranges. -/
 theorem proofSystem_sound (v : Vipr)
     (hvalid : ProofValid v) : ClaimValid v := by
   obtain ⟨hsols, hder, hfinal⟩ := hvalid
@@ -324,66 +380,125 @@ theorem proofSystem_sound (v : Vipr)
   | range lb ub =>
       rw [ClaimValid, hr]
       refine ⟨hsols, ?_⟩
-      intro a hopt
-      have hcand : Candidate v a := by
-        simpa [Candidate, hr] using hopt
+      have hall : AllSolutionsValid v :=
+        (show AllSolutionsValid v ∧ _ from by
+          simpa [SolSectionValid, hr] using hsols).1
+      have hcandOf : ∀ a, Feasible v a → SolBounded v a → Candidate v a := by
+        intro a hfeas hb
+        simpa [Candidate, hr] using And.intro hfeas hb
+      unfold RangeBoundValid
       by_cases hmin : v.objSense = "min"
-      · have hsolData := hsols
-        simp only [SolSectionValid, hr, if_pos hmin] at hsolData
-        have hfinalData := hfinal
-        simp only [FinalValid, hr, if_pos hmin] at hfinalData
-        have hoptData :
-            Feasible v a ∧
-            ∀ b, Feasible v b → objectiveReal v a ≤ objectiveReal v b := by
-          simpa [IsOptimal, hmin] using hopt
-        constructor
-        · cases lb with
-          | none => trivial
-          | some lower =>
-              obtain ⟨e, hlast, hclosed, hdom⟩ := by
-                simpa only using hfinalData
+      · rw [if_pos hmin]
+        cases lb with
+        | none => trivial
+        | some lower =>
+            have hfinalData := hfinal
+            simp only [FinalValid, hr, if_pos hmin] at hfinalData
+            obtain ⟨e, hlast, hclosed, hdom⟩ := hfinalData
+            -- the closed final row holds at every candidate valuation
+            have hat : ∀ a, Candidate v a → (lower : ℝ) ≤ objectiveReal v a := by
+              intro a hcand
               have hgoal := ViprSystem.dominates_sound hdom
                 (closedFinal_holds hsols hcand hder hlast hclosed)
               simpa [objectiveLowerRow, satReal, objectiveReal] using hgoal
-        · cases ub with
+            intro a hfeas
+            by_cases hb : SolBounded v a
+            · exact hat a (hcandOf a hfeas hb)
+            · -- some listed solution is strictly better than `a`; the best one is a
+              -- candidate, and it bounds `a` from below
+              simp only [SolBounded, if_pos hmin, not_forall, not_le] at hb
+              obtain ⟨t, ht, hlt⟩ := hb
+              have hne : v.sols.toList ≠ [] := List.ne_nil_of_mem ht
+              obtain ⟨s, hs, hsmin⟩ := exists_min_solution v hne
+              have hsCand : Candidate v (solutionValuation s) := by
+                refine hcandOf _ (hall s hs) ?_
+                simp only [SolBounded, if_pos hmin, objectiveReal_solution]
+                exact fun u hu => by exact_mod_cast hsmin u hu
+              have hs_le := hat _ hsCand
+              rw [objectiveReal_solution] at hs_le
+              have hst : (objectiveQ v s : ℝ) ≤ objectiveQ v t := by
+                exact_mod_cast hsmin t ht
+              linarith
+      · rw [if_neg hmin]
+        by_cases hmax : v.objSense = "max"
+        · rw [if_pos hmax]
+          cases ub with
           | none => trivial
           | some upper =>
-              obtain ⟨s, hs, hupper⟩ := hsolData.2
-              have hle := hoptData.2 (solutionValuation s) (hsolData.1 s hs)
-              have hupperReal :
-                  objectiveReal v (solutionValuation s) ≤ (upper : ℝ) := by
-                rw [objectiveReal_solution]
-                exact_mod_cast hupper
-              exact hle.trans hupperReal
-      · by_cases hmax : v.objSense = "max"
-        · have hsolData := hsols
-          simp only [SolSectionValid, hr, if_neg hmin, if_pos hmax] at hsolData
-          have hfinalData := hfinal
-          simp only [FinalValid, hr, if_neg hmin, if_pos hmax] at hfinalData
-          have hoptData :
-              Feasible v a ∧
-              ∀ b, Feasible v b → objectiveReal v b ≤ objectiveReal v a := by
-            simpa [IsOptimal, hmin, hmax] using hopt
-          constructor
-          · cases lb with
-            | none => trivial
-            | some lower =>
-                obtain ⟨s, hs, hlower⟩ := hsolData.2
-                have hle := hoptData.2 (solutionValuation s) (hsolData.1 s hs)
-                have hlowerReal :
-                    (lower : ℝ) ≤ objectiveReal v (solutionValuation s) := by
-                  rw [objectiveReal_solution]
-                  exact_mod_cast hlower
-                exact hlowerReal.trans hle
-          · cases ub with
-            | none => trivial
-            | some upper =>
-                obtain ⟨e, hlast, hclosed, hdom⟩ := by
-                  simpa only using hfinalData
+              have hfinalData := hfinal
+              simp only [FinalValid, hr, if_neg hmin, if_pos hmax] at hfinalData
+              obtain ⟨e, hlast, hclosed, hdom⟩ := hfinalData
+              have hat : ∀ a, Candidate v a → objectiveReal v a ≤ (upper : ℝ) := by
+                intro a hcand
                 have hgoal := ViprSystem.dominates_sound hdom
                   (closedFinal_holds hsols hcand hder hlast hclosed)
                 simpa [objectiveUpperRow, satReal, objectiveReal] using hgoal
+              intro a hfeas
+              by_cases hb : SolBounded v a
+              · exact hat a (hcandOf a hfeas hb)
+              · simp only [SolBounded, if_neg hmin, if_pos hmax, not_forall,
+                  not_le] at hb
+                obtain ⟨t, ht, hlt⟩ := hb
+                have hne : v.sols.toList ≠ [] := List.ne_nil_of_mem ht
+                obtain ⟨s, hs, hsmax⟩ := exists_max_solution v hne
+                have hsCand : Candidate v (solutionValuation s) := by
+                  refine hcandOf _ (hall s hs) ?_
+                  simp only [SolBounded, if_neg hmin, if_pos hmax,
+                    objectiveReal_solution]
+                  exact fun u hu => by exact_mod_cast hsmax u hu
+                have hs_le := hat _ hsCand
+                rw [objectiveReal_solution] at hs_le
+                have hts : (objectiveQ v t : ℝ) ≤ objectiveQ v s := by
+                  exact_mod_cast hsmax t ht
+                linarith
         · simp [SolSectionValid, hr, hmin, hmax] at hsols
+
+/-- The strengthened range claim implies the classical one: every optimal valuation
+lies in the reported interval. -/
+theorem ClaimValid.optimal_within {v : Vipr} {lb ub : Option ℚ}
+    (h : ClaimValid v) (hr : v.rtp = .range lb ub) :
+    ∀ a, IsOptimal v a → WithinRange lb ub (objectiveReal v a) := by
+  rw [ClaimValid, hr] at h
+  obtain ⟨hsols, hbound⟩ := h
+  have hsolData := hsols
+  simp only [SolSectionValid, hr] at hsolData
+  obtain ⟨hall, hwitness⟩ := hsolData
+  intro a hopt
+  by_cases hmin : v.objSense = "min"
+  · have hoptData :
+        Feasible v a ∧ ∀ b, Feasible v b → objectiveReal v a ≤ objectiveReal v b := by
+      simpa [IsOptimal, hmin] using hopt
+    simp only [RangeBoundValid, if_pos hmin] at hbound
+    simp only [if_pos hmin] at hwitness
+    constructor
+    · cases lb with
+      | none => trivial
+      | some lower => exact hbound a hoptData.1
+    · cases ub with
+      | none => trivial
+      | some upper =>
+          obtain ⟨s, hs, hupper⟩ := hwitness
+          have hle := hoptData.2 (solutionValuation s) (hall s hs)
+          rw [objectiveReal_solution] at hle
+          exact hle.trans (by exact_mod_cast hupper)
+  · by_cases hmax : v.objSense = "max"
+    · have hoptData :
+          Feasible v a ∧ ∀ b, Feasible v b → objectiveReal v b ≤ objectiveReal v a := by
+        simpa [IsOptimal, hmin, hmax] using hopt
+      simp only [RangeBoundValid, if_neg hmin, if_pos hmax] at hbound
+      simp only [if_neg hmin, if_pos hmax] at hwitness
+      constructor
+      · cases lb with
+        | none => trivial
+        | some lower =>
+            obtain ⟨s, hs, hlower⟩ := hwitness
+            have hge := hoptData.2 (solutionValuation s) (hall s hs)
+            rw [objectiveReal_solution] at hge
+            exact (by exact_mod_cast hlower : (lower : ℝ) ≤ _).trans hge
+      · cases ub with
+        | none => trivial
+        | some upper => exact hbound a hoptData.1
+    · simp [IsOptimal, hmin, hmax] at hopt
 
 /-! ## Executable predicates used by the checker -/
 

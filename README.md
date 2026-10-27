@@ -109,7 +109,14 @@ well-formed supported VIPR derivation, not only the checked-in examples.
 Relative to the emitted certificate AST, trusted: the Lean kernel and the small
 definitions of “satisfies” and “infeasible”. Not trusted: SCIP, certificate replay
 in the compiled CLI, and proof generation. The generated theorem is checked with
-`decide +kernel`, not `native_decide`.
+`decide +kernel`, not `native_decide`, and `ACCEPT` additionally requires its
+reported axioms to be among `propext`, `Classical.choice`, and `Quot.sound`.
+
+For `RTP range`, `Vipr.ClaimValid` states that every listed solution is feasible,
+the primal witness bound holds, and the derived objective bound holds at every
+feasible point (minimization: `lb ≤ obj(x)` for all feasible `x`). The classical
+statement that every optimal value lies in `[lb, ub]` is the corollary
+`Vipr.ClaimValid.optimal_within`.
 
 The current artifact does not kernel-check that the emitted AST is the parse of the
 exact source bytes. Therefore the parser/compiler/runtime and OS/file plumbing remain

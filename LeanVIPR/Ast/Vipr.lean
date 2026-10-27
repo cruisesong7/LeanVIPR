@@ -99,8 +99,22 @@ structure ViprDer where
 /-- The `RTP` (relation-to-prove) target. -/
 inductive ViprRtp where
   | infeas
-  | range (lb ub : Option ℚ)   -- `none` = unbounded (`inf` / `-inf`)
-  deriving Repr, Inhabited, DecidableEq
+  | range (lb ub : Option ℚ)   -- `none` = unbounded (`-inf` / `inf`)
+  deriving Inhabited, DecidableEq
+
+/-- Render an optional bound with explicit parentheses. The derived instance prints
+`some -7`, which Lean reparses as a subtraction when emitting kernel-mode data. -/
+def reprOptionRat : Option ℚ → Std.Format
+  | none => "none"
+  | some q => "(some (" ++ repr q ++ "))"
+
+instance : Repr ViprRtp where
+  reprPrec
+    | .infeas, _ => "LeanVIPR.Ast.ViprRtp.infeas"
+    | .range lb ub, prec =>
+        Repr.addAppParen
+          ("LeanVIPR.Ast.ViprRtp.range " ++ reprOptionRat lb ++ " " ++ reprOptionRat ub)
+          prec
 
 /-- A parsed VIPR certificate. -/
 structure Vipr where
@@ -329,10 +343,70 @@ def takeSols : Nat → Toks → Except String (List (String × List (Nat × ℚ)
       let (rest, ts2) ← takeSols n ts1
       Except.ok (s :: rest, ts2)
 
+/-- Read one `RTP range` bound. Only the matching infinity spelling (`-inf` for the
+lower bound, `inf` for the upper bound) means unbounded; any other token must be an
+exact number, so a malformed bound cannot silently weaken the claim. -/
+def takeBound (infinity : String) (t : String) : Except String (Option ℚ) :=
+  if t == infinity then
+    Except.ok none
+  else
+    match parseNum? t with
+    | some q => Except.ok (some q)
+    | none => Except.error s!"expected number or '{infinity}' as RTP bound, got '{t}'"
+
+/-- Variable indices must be declared, and a sparse vector may mention each index at
+most once. Duplicate indices have no agreed meaning (the reference checker keeps the
+last value, while summing them is also natural), so they are rejected. -/
+def checkDistinct (what : String) (idxs : List Nat) : Except String Unit := do
+  let sorted := idxs.toArray.qsort (· < ·)
+  for k in [1:sorted.size] do
+    if sorted[k - 1]! == sorted[k]! then
+      throw s!"{what}: duplicate index {sorted[k]!}"
+
+def checkIndices (nvar : Nat) (what : String) (idxs : List Nat) : Except String Unit := do
+  if let some i := idxs.find? (· ≥ nvar) then
+    throw s!"{what}: variable index {i} out of range (VAR {nvar})"
+  checkDistinct what idxs
+
+def checkFormIndices (nvar : Nat) (what : String) (f : LinForm) : Except String Unit :=
+  checkIndices nvar what (f.map (·.idx))
+
+/-- Well-formedness of every sparse vector that contributes to the claimed problem or
+to a stated derived row. -/
+def validateVipr (v : Vipr) : Except String Unit := do
+  let nvar := v.varNames.size
+  if let some i := v.intVars.find? (· ≥ nvar) then
+    throw s!"INT: variable index {i} out of range (VAR {nvar})"
+  checkIndices nvar "OBJ" (v.objTerms.map Prod.fst)
+  for c in v.cons do
+    checkFormIndices nvar s!"CON {c.name}" c.form
+  for s in v.sols do
+    checkIndices nvar s!"SOL {s.1}" (s.2.map Prod.fst)
+  for d in v.ders do
+    checkFormIndices nvar s!"DER {d.name}" d.form
+    -- The specification requires the constraint indices of `lin` and `rnd` reasons
+    -- to be distinct; the reference checker silently keeps the last multiplier.
+    match d.reason with
+    | .lin terms | .linWeak _ terms | .rnd terms =>
+        checkDistinct s!"DER {d.name} reason" (terms.map Prod.fst)
+    | _ => pure ()
+
+/-- Drop the leading comment lines permitted by the specification: lines before
+`VER` whose first character is `%`. Blank lines are skipped as well. -/
+def dropLeadingComments : List (List Char) → List (List Char)
+  | [] => []
+  | line :: rest =>
+      if line.head? == some '%' || line.all Char.isWhitespace then
+        dropLeadingComments rest
+      else
+        line :: rest
+
 /-! ## Top-level parser -/
 
 def parseVipr (content : String) : Except String Vipr := do
-  let ts0 := wsTokens content.toList
+  let lines := (content.toList.splitOn '\n')
+  let ts0 := wsTokens (String.intercalate "\n"
+    ((dropLeadingComments lines).map String.ofList)).toList
   let ts1 ← expectTok "VER" ts0
   let (ver, ts2) ← takeTok ts1
   let ts3 ← expectTok "VAR" ts2
@@ -357,7 +431,9 @@ def parseVipr (content : String) : Except String Vipr := do
     else if rtpkind == "range" then do
       let (lb, tsa) ← takeTok ts18
       let (ub, tsb) ← takeTok tsa
-      Except.ok (ViprRtp.range (parseNum? lb) (parseNum? ub), tsb)
+      let lower ← takeBound "-inf" lb
+      let upper ← takeBound "inf" ub
+      Except.ok (ViprRtp.range lower upper, tsb)
     else
       Except.error s!"unknown RTP kind '{rtpkind}'"
   let ts20 ← expectTok "SOL" ts19
@@ -365,8 +441,10 @@ def parseVipr (content : String) : Except String Vipr := do
   let (sols, ts22) ← takeSols nsol ts21
   let ts23 ← expectTok "DER" ts22
   let (nder, ts24) ← takeNat ts23
-  let (ders, _ts25) ← takeDers nder ts24
-  Except.ok {
+  let (ders, ts25) ← takeDers nder ts24
+  if let t :: _ := ts25 then
+    throw s!"unexpected token after DER section: '{t}'"
+  let v : Vipr := {
     version := ver,
     varNames := names.toArray,
     intVars := ints,
@@ -379,6 +457,8 @@ def parseVipr (content : String) : Except String Vipr := do
     numSol := nsol,
     sols := sols.toArray,
     ders := ders.toArray }
+  validateVipr v
+  return v
 
 /-! ## Bridge to the `Le` representation of `Cert/LinCon` -/
 

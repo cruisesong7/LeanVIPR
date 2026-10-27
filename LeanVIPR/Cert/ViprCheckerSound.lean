@@ -221,4 +221,19 @@ theorem checkViprInfeasibleSubset_sound (original sliced : Vipr)
   · intro c hc
     exact hfeas.2 c (hrows c hc)
 
+/-- Executable slice check. The slicer itself is untrusted; this test re-establishes
+every side condition of `checkViprInfeasibleSubset_sound` at run time. The slicer
+keeps rows in their original order, so a sublist test suffices. -/
+def checkViprSliceB (original sliced : Vipr) : Bool :=
+  decide (sliced.rtp = .infeas) && decide (sliced.intVars = original.intVars) &&
+    (conSLes sliced).isSublist (conSLes original) && checkVipr sliced
+
+theorem checkViprSliceB_sound (original sliced : Vipr)
+    (h : checkViprSliceB original sliced = true) :
+    ∀ a, Feasible original a → False := by
+  simp only [checkViprSliceB, Bool.and_eq_true, decide_eq_true_eq] at h
+  obtain ⟨⟨⟨hinfeas, hint⟩, hsub⟩, hcheck⟩ := h
+  exact checkViprInfeasibleSubset_sound original sliced hinfeas hint
+    (fun c hc => (List.isSublist_iff_sublist.mp hsub).subset hc) hcheck
+
 end LeanVIPR.Cert.ViprChecker

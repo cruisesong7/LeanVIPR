@@ -54,6 +54,8 @@ def checkLin (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
   (formEq combined.form stated.form &&
     (if stated.sense = 'L' then suitLeB cs && decide (combined.rhs ≤ stated.rhs)
      else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ combined.rhs)
+     else if stated.sense = 'E' then
+       suitLeB cs && suitGeB cs && decide (combined.rhs = stated.rhs)
      else false))
 
 def checkRnd (intVars : List Nat) (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=

@@ -216,7 +216,7 @@ def emitViprProof : String :=
   ++ "open LeanVIPR.Ast.Vipr LeanVIPR.Cert.ViprChecker\n\n"
   ++ "theorem accepted : checkVipr cert = true := by\n"
   ++ "  decide +kernel\n\n"
-  ++ "theorem certified : Vipr.ClaimValid cert :=\n"
+  ++ "theorem certified : LeanVIPR.Ast.Vipr.ClaimValid cert :=\n"
   ++ "  checkVipr_sound cert accepted\n\n"
   ++ "#print axioms certified\n\n"
   ++ "end LeanVIPR.Generated\n"
@@ -253,8 +253,10 @@ def runKernelModuleDirect (proofDir moduleName : String) : IO (Except String Str
   let sourcePath := generatedSourcePath proofDir moduleName
   let oleanPath := generatedOleanPath proofDir moduleName
   let inheritedLeanPath := (← IO.getEnv "LEAN_PATH").getD ""
+  -- The proof directory comes last, so files planted there cannot shadow library
+  -- modules; it only needs to supply the generated `LeanVIPRGenerated.*` modules.
   let localLeanPath :=
-    if inheritedLeanPath.isEmpty then proofDir else proofDir ++ ":" ++ inheritedLeanPath
+    if inheritedLeanPath.isEmpty then proofDir else inheritedLeanPath ++ ":" ++ proofDir
   let out ← IO.Process.output {
     cmd := "lean"
     args := #["-R", proofDir, "-o", oleanPath, sourcePath]
@@ -293,11 +295,14 @@ def checkFileNative (path : String) (useSlice : Bool := false) : IO UInt32 := do
       return 1
   | .ok (_, v) =>
       reportCertificate path v
+      -- Range certificates are always replayed completely, as in kernel mode.
+      let useSlice := useSlice && v.rtp == .infeas
       let checked := if useSlice then sliceVipr v else v
       if useSlice then
         IO.println (s!"slice: {v.cons.size} → {checked.cons.size} constraints, "
           ++ s!"{v.ders.size} → {checked.ders.size} steps")
-      let accepted := checkVipr checked
+      -- `checkViprSliceB_sound`: acceptance of the slice refutes the original.
+      let accepted := if useSlice then checkViprSliceB v checked else checkVipr checked
       if accepted then
         IO.println "NATIVE PRECHECK PASS  (verified array-backed checker; untrusted compiled/runtime result)"
         return 0
@@ -366,6 +371,22 @@ def debugFirstInvalid (path : String) : IO UInt32 := do
       IO.println s!"final result: {solSectionB v && finalValidB v pool.back?}"
       return 0
 
+/-- The axioms reported for the generated theorem must be among Lean's standard
+axioms; in particular `sorryAx` or any user-declared axiom causes rejection. -/
+def certifiedAxiomsOk (log : String) : Bool :=
+  let flat := " ".intercalate (log.splitOn "\n")
+  let key := "'LeanVIPR.Generated.certified' "
+  match (flat.splitOn key).drop 1 with
+  | [] => false
+  | rest :: _ =>
+      if rest.startsWith "does not depend on any axioms" then true
+      else if rest.startsWith "depends on axioms: [" then
+        let afterKey := ((rest.splitOn "depends on axioms: [").drop 1).headD ""
+        let inner := (afterKey.splitOn "]").headD ""
+        let names := (inner.splitOn ",").map (fun n => n.trimAscii.toString)
+        names.all (· ∈ ["propext", "Classical.choice", "Quot.sound"])
+      else false
+
 def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := do
   match ← parseFile path with
   | .error e =>
@@ -421,6 +442,9 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
           return 2
       | .ok log =>
           if !log.isEmpty then IO.println log
+          if !certifiedAxiomsOk log then
+            IO.eprintln "REJECT  (generated theorem uses a nonstandard axiom or its axiom report is missing)"
+            return 2
           IO.println (s!"ACCEPT  (kernel-checked {kernelModeName effectiveMode}; "
             ++ "theorem LeanVIPR.Generated.certified)")
           IO.println s!"proof artifact: {generatedSourcePath proofDir "Proof"}"

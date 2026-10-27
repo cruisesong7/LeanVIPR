@@ -140,16 +140,45 @@ theorem suitLeB_sound {cs} (h : suitLeB cs = true) : ∀ p ∈ cs, p.1 * senseSi
 theorem suitGeB_sound {cs} (h : suitGeB cs = true) : ∀ p ∈ cs, 0 ≤ p.1 * senseSign p.2.sense :=
   fun p hp => of_decide_eq_true ((List.all_eq_true.mp h) p hp)
 
-/-- The stated form is integer-valued (integer coeffs on integer variables). -/
+/-- One normalized coefficient is integral on an integer variable, or vanishes. -/
+def intEntryB (intVars : List Nat) (p : Nat × ℚ) : Bool :=
+  p.2 == 0 || (isIntValB p.2 && decide (p.1 ∈ intVars))
+
+/-- The form is integer-valued: after summing duplicate indices, every nonzero
+coefficient is an integer on an integer variable. Normalizing first accepts
+combinations whose fractional or continuous-variable terms cancel. -/
 def formIntB (intVars : List Nat) (f : LinForm) : Bool :=
-  f.all (fun t => isIntValB t.coeff && decide (t.idx ∈ intVars))
+  (normForm f).all (intEntryB intVars)
+
+theorem intEntryB_sound {intVars : List Nat} {p : Nat × ℚ}
+    (h : intEntryB intVars p = true) :
+    p.2 = 0 ∨ (IsIntVal p.2 ∧ p.1 ∈ intVars) := by
+  simp only [intEntryB, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
+    decide_eq_true_eq] at h
+  rcases h with h | ⟨hq, hidx⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨isIntValB_sound hq, hidx⟩
+
+theorem evalAL_isInt (al : List (Nat × ℚ)) (a : Valuation)
+    (h : ∀ p ∈ al, p.2 = 0 ∨ (IsIntVal p.2 ∧ IsIntVal (a p.1))) :
+    IsIntVal (evalAL al a) := by
+  induction al with
+  | nil => exact ⟨0, by simp⟩
+  | cons p tl ih =>
+      obtain ⟨m, hm⟩ := ih (fun q hq => h q (by simp [hq]))
+      rw [evalAL_cons, hm]
+      rcases h p (by simp) with hp | ⟨⟨c, hc⟩, ⟨v, hv⟩⟩
+      · exact ⟨m, by simp [hp]⟩
+      · exact ⟨c * v + m, by rw [hc, hv]; push_cast; ring⟩
 
 theorem formIntB_sound {intVars f} (h : formIntB intVars f = true) (a : Valuation)
-    (hint : ∀ j ∈ intVars, IsIntVal (a j)) : IsIntVal (f.eval a) :=
-  LinForm.eval_isInt f a (fun t ht => by
-    have hb := (List.all_eq_true.mp h) t ht
-    rw [Bool.and_eq_true] at hb
-    exact ⟨isIntValB_sound hb.1, hint t.idx (of_decide_eq_true hb.2)⟩)
+    (hint : ∀ j ∈ intVars, IsIntVal (a j)) : IsIntVal (f.eval a) := by
+  rw [← normForm_eval]
+  apply evalAL_isInt
+  intro p hp
+  rcases intEntryB_sound ((List.all_eq_true.mp h) p hp) with h0 | ⟨hq, hidx⟩
+  · exact Or.inl h0
+  · exact Or.inr ⟨hq, hint p.1 hidx⟩
 
 /-- Rounding up (`≥` direction): an integer-valued `≥ β` implies `≥ ⌈β⌉`. -/
 theorem rnd_ge (form : LinForm) (β : ℚ) (a : Valuation)
@@ -179,6 +208,8 @@ def linCheck (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
   (formEq (scomb cs).form stated.form &&
    (if stated.sense = 'L' then suitLeB cs && decide ((scomb cs).rhs ≤ stated.rhs)
     else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ (scomb cs).rhs)
+    else if stated.sense = 'E' then
+      suitLeB cs && suitGeB cs && decide ((scomb cs).rhs = stated.rhs)
     else false))
 
 theorem linCheck_sound {stated cs} (h : linCheck stated cs = true) {a : Valuation}
@@ -190,7 +221,7 @@ theorem linCheck_sound {stated cs} (h : linCheck stated cs = true) {a : Valuatio
   obtain ⟨hform, hrest⟩ := h
   have hfe := formEq_sound hform a
   simp only [SLe.sat]
-  split_ifs at hrest with hL hG
+  split_ifs at hrest with hL hG hE
   · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
     rw [if_pos hL]
     have hle := scomb_le_sat cs a (suitLeB_sound hrest.1) hsat
@@ -199,6 +230,12 @@ theorem linCheck_sound {stated cs} (h : linCheck stated cs = true) {a : Valuatio
     rw [if_neg hL, if_pos hG]
     have hge := scomb_ge_sat cs a (suitGeB_sound hrest.1) hsat
     rw [← hfe]; linarith [hrest.2]
+  · simp only [Bool.and_eq_true, decide_eq_true_eq] at hrest
+    obtain ⟨⟨hsl, hsg⟩, hrhs⟩ := hrest
+    rw [if_neg hL, if_neg hG, if_pos hE]
+    have hle := scomb_le_sat cs a (suitLeB_sound hsl) hsat
+    have hge := scomb_ge_sat cs a (suitGeB_sound hsg) hsat
+    rw [← hfe]; linarith
 
 /-- **`rnd` step check.** -/
 def rndCheck (intVars : List Nat) (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=

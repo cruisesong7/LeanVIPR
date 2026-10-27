@@ -1,5 +1,9 @@
-import LeanVIPR.Cert.LinCon
-import Mathlib.Data.Rat.Floor
+module
+
+public import LeanVIPR.Cert.LinCon
+public import Mathlib.Data.Rat.Floor
+
+@[expose] public section
 
 /-!
 # Soundness of VIPR derivation replay (`lin`, `rnd`, `uns`) and a checked fold
@@ -279,9 +283,8 @@ A VIPR `RTP infeas` certificate is, in essence, a proof by cases: `lin` leaves
 refute LP branches, and `uns` splits combine the branches of an integer variable.
 We model that directly as a refutation *tree* — the tree structure carries the
 case-split ("assumption") bookkeeping, so a leaf's rows are exactly the branch bounds
-accumulated on the path to it. This is complete for MILP infeasibility using only
-`lin` (Farkas) leaves and integer `split`s; `rnd` cuts are an optimization layered on
-top later. -/
+accumulated on the path to it. A separate completeness argument is required to show
+that every infeasible rational MILP admits a finite tree of this form. -/
 
 /-- A branch-and-bound refutation: a direct Farkas combination refuting the current
 rows (`leaf`), or an integer split on variable `i` at `k` with refutations of both
@@ -401,9 +404,9 @@ theorem addTerm_eval (al : List (Nat × ℚ)) (i : Nat) (c : ℚ) (a : Valuation
       obtain ⟨j, d⟩ := hd
       by_cases heq : i = j
       · subst heq
-        simp only [addTerm, beq_self_eq_true, if_true, evalAL_cons]; ring
+        simp only [addTerm, beq_self_eq_true, ite_true, evalAL_cons]; ring
       · have hcond : ¬ ((i == j) = true) := by rw [beq_iff_eq]; exact heq
-        simp only [addTerm, if_neg hcond, evalAL_cons, ih]; ring
+        simp only [addTerm, ite_eq_right hcond, evalAL_cons, ih]; ring
 
 /-- Normalize a linear form to per-index coefficient sums. -/
 def normForm (f : LinForm) : List (Nat × ℚ) :=

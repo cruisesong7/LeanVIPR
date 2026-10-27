@@ -1,5 +1,9 @@
-import LeanVIPR.Ast.Vipr
-import LeanVIPR.Cert.ViprSem
+module
+
+public import LeanVIPR.Ast.Vipr
+public import LeanVIPR.Cert.ViprSem
+
+@[expose] public section
 
 /-!
 # Parsed VIPR certificates and the executable checker

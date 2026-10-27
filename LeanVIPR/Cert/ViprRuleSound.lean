@@ -1,5 +1,9 @@
-import LeanVIPR.Cert.ViprSystemSound
-import LeanVIPR.Pipeline.Vipr
+module
+
+public import LeanVIPR.Cert.ViprSystemSound
+public import LeanVIPR.Pipeline.Vipr
+
+@[expose] public section
 
 /-!
 # Soundness of the executable VIPR rule checks
@@ -31,13 +35,13 @@ private theorem addTerm_eval_real (al : List (Nat × ℚ)) (i : Nat) (c : ℚ)
       obtain ⟨j, d⟩ := hd
       by_cases heq : i = j
       · subst heq
-        simp only [addTerm, beq_self_eq_true, if_true, evalALReal_cons]
+        simp only [addTerm, beq_self_eq_true, ite_true, evalALReal_cons]
         push_cast
         ring
       · have hcond : ¬ ((i == j) = true) := by
           rw [beq_iff_eq]
           exact heq
-        simp only [addTerm, if_neg hcond, evalALReal_cons, ih]
+        simp only [addTerm, ite_eq_right hcond, evalALReal_cons, ih]
         ring
 
 private theorem normForm_foldl_eval_real (f : LinForm) (al : List (Nat × ℚ))

@@ -1,5 +1,9 @@
-import LeanVIPR.Ast.Number
-import LeanVIPR.Cert.LinCon
+module
+
+public import LeanVIPR.Ast.Number
+public import LeanVIPR.Cert.LinCon
+
+@[expose] public section
 
 /-!
 # VIPR v1.0 certificate parser

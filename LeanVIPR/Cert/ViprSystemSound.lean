@@ -1,5 +1,9 @@
-import LeanVIPR.Cert.ViprSem
-import Mathlib.Data.Real.Basic
+module
+
+public import LeanVIPR.Cert.ViprSem
+public import Mathlib.Basic.Real.Basic
+
+@[expose] public section
 
 /-!
 # Declarative soundness of the VIPR infeasibility proof system
@@ -198,7 +202,7 @@ theorem linValid_sound {stated : SLe} {cs : List (ℚ × SLe)}
     have hrhsR : ((scomb cs).rhs : ℝ) = (stated.rhs : ℝ) := by exact_mod_cast hrhs
     have hL : stated.sense ≠ 'L' := by rw [hE]; decide
     have hG : stated.sense ≠ 'G' := by rw [hE]; decide
-    simp only [satReal, if_neg hL, if_neg hG, if_pos hE]
+    simp only [satReal, ite_eq_right hL, ite_eq_right hG, ite_eq_left hE]
     linarith
 
 /-! ## The `rnd` rule -/

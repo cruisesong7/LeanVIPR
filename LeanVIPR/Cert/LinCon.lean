@@ -1,5 +1,9 @@
-import Mathlib.Data.Rat.Defs
-import Mathlib.Tactic.Linarith
+module
+
+public import Mathlib.Data.Rat.Defs
+public import Mathlib.Tactic.Linarith
+
+@[expose] public section
 
 /-!
 # Sparse linear constraints and Farkas over a valuation

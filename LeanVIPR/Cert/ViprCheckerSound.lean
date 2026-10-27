@@ -1,4 +1,8 @@
-import LeanVIPR.Cert.ViprChecker
+module
+
+public import LeanVIPR.Cert.ViprChecker
+
+@[expose] public section
 
 /-!
 # Soundness of the array-backed VIPR checker
@@ -110,7 +114,7 @@ theorem replaySteps_refines (v : Vipr) :
       intro final h
       simp only [replaySteps?] at h
       by_cases hs : stepValidB v pool s = true
-      · simp only [hs, if_true] at h
+      · simp only [hs, ite_true] at h
         have htail := ih (pool.push (entryOf pool s)) final h
         have htailValid :
             Vipr.DerivationValid
@@ -158,7 +162,7 @@ theorem finalValidB_sound {v : Vipr} {last? : Option CheckerEntry}
       simp only [FinalValid, hr]
       simp only [finalValidB, hr] at h
       by_cases hmin : v.objSense = "min"
-      · simp only [if_pos hmin] at h ⊢
+      · simp only [ite_eq_left hmin] at h ⊢
         cases lb with
         | none => trivial
         | some lower =>
@@ -172,7 +176,7 @@ theorem finalValidB_sound {v : Vipr} {last? : Option CheckerEntry}
                 exact ⟨e, by rw [← hlast, he], h.1,
                   ViprRule.domSLe_valid_real h.2⟩
       · by_cases hmax : v.objSense = "max"
-        · simp only [if_neg hmin, if_pos hmax] at h ⊢
+        · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
           cases ub with
           | none => trivial
           | some upper =>

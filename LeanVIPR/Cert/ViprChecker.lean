@@ -1,4 +1,8 @@
-import LeanVIPR.Cert.ViprClaimSound
+module
+
+public import LeanVIPR.Cert.ViprClaimSound
+
+@[expose] public section
 
 /-!
 # Array-backed VIPR checker

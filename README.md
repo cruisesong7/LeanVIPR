@@ -14,7 +14,7 @@ steps, the primal witness bound, and the final closed dual-bound row. It prints
 ## Setup
 
 Install [`elan`](https://github.com/leanprover/elan), then build from this
-directory. Lean 4.31.0 and Mathlib are pinned by `lean-toolchain` and
+directory. Lean 4.35.0 and Mathlib v4.35.0 are pinned by `lean-toolchain` and
 `lakefile.toml`.
 
 ```bash

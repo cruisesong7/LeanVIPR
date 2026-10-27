@@ -1,4 +1,8 @@
-import LeanVIPR.Cert.ViprRuleSound
+module
+
+public import LeanVIPR.Cert.ViprRuleSound
+
+@[expose] public section
 
 /-!
 # VIPR claim semantics and soundness
@@ -388,12 +392,12 @@ theorem proofSystem_sound (v : Vipr)
         simpa [Candidate, hr] using And.intro hfeas hb
       unfold RangeBoundValid
       by_cases hmin : v.objSense = "min"
-      · rw [if_pos hmin]
+      · rw [ite_eq_left hmin]
         cases lb with
         | none => trivial
         | some lower =>
             have hfinalData := hfinal
-            simp only [FinalValid, hr, if_pos hmin] at hfinalData
+            simp only [FinalValid, hr, ite_eq_left hmin] at hfinalData
             obtain ⟨e, hlast, hclosed, hdom⟩ := hfinalData
             -- the closed final row holds at every candidate valuation
             have hat : ∀ a, Candidate v a → (lower : ℝ) ≤ objectiveReal v a := by
@@ -406,27 +410,27 @@ theorem proofSystem_sound (v : Vipr)
             · exact hat a (hcandOf a hfeas hb)
             · -- some listed solution is strictly better than `a`; the best one is a
               -- candidate, and it bounds `a` from below
-              simp only [SolBounded, if_pos hmin, not_forall, not_le] at hb
+              simp only [SolBounded, ite_eq_left hmin, not_forall, not_le] at hb
               obtain ⟨t, ht, hlt⟩ := hb
               have hne : v.sols.toList ≠ [] := List.ne_nil_of_mem ht
               obtain ⟨s, hs, hsmin⟩ := exists_min_solution v hne
               have hsCand : Candidate v (solutionValuation s) := by
                 refine hcandOf _ (hall s hs) ?_
-                simp only [SolBounded, if_pos hmin, objectiveReal_solution]
+                simp only [SolBounded, ite_eq_left hmin, objectiveReal_solution]
                 exact fun u hu => by exact_mod_cast hsmin u hu
               have hs_le := hat _ hsCand
               rw [objectiveReal_solution] at hs_le
               have hst : (objectiveQ v s : ℝ) ≤ objectiveQ v t := by
                 exact_mod_cast hsmin t ht
               linarith
-      · rw [if_neg hmin]
+      · rw [ite_eq_right hmin]
         by_cases hmax : v.objSense = "max"
-        · rw [if_pos hmax]
+        · rw [ite_eq_left hmax]
           cases ub with
           | none => trivial
           | some upper =>
               have hfinalData := hfinal
-              simp only [FinalValid, hr, if_neg hmin, if_pos hmax] at hfinalData
+              simp only [FinalValid, hr, ite_eq_right hmin, ite_eq_left hmax] at hfinalData
               obtain ⟨e, hlast, hclosed, hdom⟩ := hfinalData
               have hat : ∀ a, Candidate v a → objectiveReal v a ≤ (upper : ℝ) := by
                 intro a hcand
@@ -436,14 +440,14 @@ theorem proofSystem_sound (v : Vipr)
               intro a hfeas
               by_cases hb : SolBounded v a
               · exact hat a (hcandOf a hfeas hb)
-              · simp only [SolBounded, if_neg hmin, if_pos hmax, not_forall,
+              · simp only [SolBounded, ite_eq_right hmin, ite_eq_left hmax, not_forall,
                   not_le] at hb
                 obtain ⟨t, ht, hlt⟩ := hb
                 have hne : v.sols.toList ≠ [] := List.ne_nil_of_mem ht
                 obtain ⟨s, hs, hsmax⟩ := exists_max_solution v hne
                 have hsCand : Candidate v (solutionValuation s) := by
                   refine hcandOf _ (hall s hs) ?_
-                  simp only [SolBounded, if_neg hmin, if_pos hmax,
+                  simp only [SolBounded, ite_eq_right hmin, ite_eq_left hmax,
                     objectiveReal_solution]
                   exact fun u hu => by exact_mod_cast hsmax u hu
                 have hs_le := hat _ hsCand
@@ -468,8 +472,8 @@ theorem ClaimValid.optimal_within {v : Vipr} {lb ub : Option ℚ}
   · have hoptData :
         Feasible v a ∧ ∀ b, Feasible v b → objectiveReal v a ≤ objectiveReal v b := by
       simpa [IsOptimal, hmin] using hopt
-    simp only [RangeBoundValid, if_pos hmin] at hbound
-    simp only [if_pos hmin] at hwitness
+    simp only [RangeBoundValid, ite_eq_left hmin] at hbound
+    simp only [ite_eq_left hmin] at hwitness
     constructor
     · cases lb with
       | none => trivial
@@ -485,8 +489,8 @@ theorem ClaimValid.optimal_within {v : Vipr} {lb ub : Option ℚ}
     · have hoptData :
           Feasible v a ∧ ∀ b, Feasible v b → objectiveReal v b ≤ objectiveReal v a := by
         simpa [IsOptimal, hmin, hmax] using hopt
-      simp only [RangeBoundValid, if_neg hmin, if_pos hmax] at hbound
-      simp only [if_neg hmin, if_pos hmax] at hwitness
+      simp only [RangeBoundValid, ite_eq_right hmin, ite_eq_left hmax] at hbound
+      simp only [ite_eq_right hmin, ite_eq_left hmax] at hwitness
       constructor
       · cases lb with
         | none => trivial
@@ -590,7 +594,7 @@ theorem solSectionB_sound {v : Vipr} (h : solSectionB v = true) :
       simp only [solSectionB, hr, Bool.and_eq_true] at h
       refine ⟨allSolutionsB_sound h.1, ?_⟩
       by_cases hmin : v.objSense = "min"
-      · simp only [if_pos hmin] at h
+      · simp only [ite_eq_left hmin] at h
         simp only [hmin]
         cases ub with
         | none => trivial
@@ -598,7 +602,7 @@ theorem solSectionB_sound {v : Vipr} (h : solSectionB v = true) :
             obtain ⟨s, hs, hle⟩ := List.any_eq_true.mp h.2
             exact ⟨s, hs, of_decide_eq_true hle⟩
       · by_cases hmax : v.objSense = "max"
-        · simp only [if_neg hmin, if_pos hmax] at h
+        · simp only [ite_eq_right hmin, ite_eq_left hmax] at h
           simp only [hmax]
           cases lb with
           | none => trivial
@@ -612,11 +616,11 @@ theorem solReasonB_sound {v : Vipr} {stated : SLe}
   unfold solReasonB at h
   unfold SolReasonValid
   by_cases hmin : v.objSense = "min"
-  · simp only [if_pos hmin] at h ⊢
+  · simp only [ite_eq_left hmin] at h ⊢
     obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
     exact ⟨s, hs, ViprRule.domSLe_valid_real hdom⟩
   · by_cases hmax : v.objSense = "max"
-    · simp only [if_neg hmin, if_pos hmax] at h ⊢
+    · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
       obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
       exact ⟨s, hs, ViprRule.domSLe_valid_real hdom⟩
     · simp [hmin, hmax] at h

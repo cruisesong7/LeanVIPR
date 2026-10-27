@@ -1,8 +1,12 @@
-import LeanVIPR.Cert.Vipr
-import Mathlib.Data.Finset.Erase
-import Mathlib.Data.Finset.Insert
-import Mathlib.Data.Finset.Lattice.Basic
-import Mathlib.Data.List.GetD
+module
+
+public import LeanVIPR.Cert.Vipr
+public import Mathlib.Data.Finset.Erase
+public import Mathlib.Data.Finset.Insert
+public import Mathlib.Data.Finset.Lattice.Basic
+public import Mathlib.Data.List.GetD
+
+@[expose] public section
 
 /-!
 # Full VIPR v1.0 verification semantics (sensed constraints)
@@ -223,16 +227,16 @@ theorem linCheck_sound {stated cs} (h : linCheck stated cs = true) {a : Valuatio
   simp only [SLe.sat]
   split_ifs at hrest with hL hG hE
   · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [if_pos hL]
+    rw [ite_eq_left hL]
     have hle := scomb_le_sat cs a (suitLeB_sound hrest.1) hsat
     rw [← hfe]; linarith [hrest.2]
   · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [if_neg hL, if_pos hG]
+    rw [ite_eq_right hL, ite_eq_left hG]
     have hge := scomb_ge_sat cs a (suitGeB_sound hrest.1) hsat
     rw [← hfe]; linarith [hrest.2]
   · simp only [Bool.and_eq_true, decide_eq_true_eq] at hrest
     obtain ⟨⟨hsl, hsg⟩, hrhs⟩ := hrest
-    rw [if_neg hL, if_neg hG, if_pos hE]
+    rw [ite_eq_right hL, ite_eq_right hG, ite_eq_left hE]
     have hle := scomb_le_sat cs a (suitLeB_sound hsl) hsat
     have hge := scomb_ge_sat cs a (suitGeB_sound hsg) hsat
     rw [← hfe]; linarith
@@ -253,12 +257,12 @@ theorem rndCheck_sound {intVars stated cs} (h : rndCheck intVars stated cs = tru
   simp only [SLe.sat]
   split_ifs at hrest with hL hG
   · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [if_pos hL]
+    rw [ite_eq_left hL]
     have hle := scomb_le_sat cs a (suitLeB_sound hrest.1) hsat
     have hr := rnd_sound (scomb cs).form (scomb cs).rhs a hInt hle
     rw [← hfe]; simp only [Le.sat] at hr; linarith [hrest.2]
   · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [if_neg hL, if_pos hG]
+    rw [ite_eq_right hL, ite_eq_left hG]
     have hge := scomb_ge_sat cs a (suitGeB_sound hrest.1) hsat
     have hr := rnd_ge (scomb cs).form (scomb cs).rhs a hInt hge
     rw [← hfe]; linarith [hrest.2]
@@ -340,7 +344,6 @@ theorem unsBounds_split {intVars : List Nat} {b1 b2 : SLe}
     · left; rw [hm, hn]; exact_mod_cast hmn
     · right; rw [hb2, hn, ← hfe', hm]
       have : n + 1 ≤ m := by omega
-      push_cast
       exact_mod_cast this
   · obtain ⟨m, hm⟩ := formIntB_sound hfi a hint
     obtain ⟨n, hn⟩ := isIntValB_sound hb
@@ -351,7 +354,6 @@ theorem unsBounds_split {intVars : List Nat} {b1 b2 : SLe}
     · right; rw [hm, hn]; exact_mod_cast hmn
     · left; rw [hb2, hn, hfe', hm]
       have : n + 1 ≤ m := by omega
-      push_cast
       exact_mod_cast this
 
 /-! ## Derivation replay over sensed constraints -/

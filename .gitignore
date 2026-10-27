@@ -1,5 +1,4 @@
 /.lake/
-/manual/_out/
 __pycache__/
 *.pyc
 *.olean

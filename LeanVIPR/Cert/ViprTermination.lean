@@ -1,4 +1,8 @@
-import LeanVIPR.Cert.ViprCheckerSound
+module
+
+public import LeanVIPR.Cert.ViprCheckerSound
+
+@[expose] public section
 
 /-!
 # Termination of VIPR checking
@@ -11,6 +15,7 @@ The fuel counts derivation records, not arithmetic or finite-set operations.
 namespace LeanVIPR.Cert.ViprTermination
 
 open LeanVIPR.Ast LeanVIPR.Pipeline
+open LeanVIPR.Ast.Vipr
 open LeanVIPR.Cert.ViprChecker
 
 /-- Every successful replay appends exactly one array entry per derivation record. -/
@@ -29,7 +34,7 @@ theorem replaySteps_size (v : Vipr) :
       intro final h
       simp only [replaySteps?] at h
       by_cases hs : stepValidB v pool s = true
-      · simp only [hs, if_true] at h
+      · simp only [hs, ite_true] at h
         have hsize := ih (pool.push (entryOf pool s)) final h
         simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using hsize
       · simp [hs] at h
@@ -56,6 +61,27 @@ theorem replayFuel_complete (v : Vipr) (pool : CheckerPool) (steps : List SStep)
       by_cases hs : stepValidB v pool s = true
       · simp [hs, ih]
       · simp [hs]
+
+/-- Fuel-bounded presentation of the complete production checker. A result of
+`none` means that replay fuel was exhausted; `some accepted` is the exact
+Boolean result returned by `checkVipr`. -/
+def checkViprFuel (v : Vipr) (fuel : Nat) : Option Bool :=
+  match replayFuel v (initialPool v) fuel (viprSteps v) with
+  | none => none
+  | some replayResult =>
+      some
+        (solSectionB v &&
+          match replayResult.map Array.back? with
+          | none => false
+          | some last? => finalValidB v last?)
+
+/-- The full checker needs at most one replay-fuel unit per derivation record.
+This theorem links the explicit fuel semantics to the production checker,
+including solution validation and final-claim validation. -/
+theorem checkViprFuel_complete (v : Vipr) :
+    checkViprFuel v (viprSteps v).length = some (checkVipr v) := by
+  rw [checkViprFuel, replayFuel_complete]
+  rfl
 
 /-- Logical termination of the production checker on every finite parsed certificate. -/
 theorem checkVipr_terminates (v : Vipr) :

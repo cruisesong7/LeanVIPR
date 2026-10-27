@@ -1,4 +1,8 @@
-import LeanVIPR.Cert.ViprSystemSound
+module
+
+public import LeanVIPR.Cert.ViprSystemSound
+
+@[expose] public section
 
 /-!
 # Completeness statements for the VIPR proof system

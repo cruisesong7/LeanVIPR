@@ -1,9 +1,13 @@
-import LeanVIPR.Ast.Vipr
-import LeanVIPR.Cert.ViprSystemSound
-import LeanVIPR.Cert.ViprRuleSound
-import LeanVIPR.Cert.ViprClaimSound
-import LeanVIPR.Cert.ViprChecker
-import LeanVIPR.Cert.ViprCheckerSound
-import LeanVIPR.Cert.ViprTermination
-import LeanVIPR.Cert.ViprComplexity
-import LeanVIPR.Cert.ViprCompleteness
+module
+
+public import LeanVIPR.Ast.Vipr
+public import LeanVIPR.Cert.ViprSystemSound
+public import LeanVIPR.Cert.ViprRuleSound
+public import LeanVIPR.Cert.ViprClaimSound
+public import LeanVIPR.Cert.ViprChecker
+public import LeanVIPR.Cert.ViprCheckerSound
+public import LeanVIPR.Cert.ViprTermination
+public import LeanVIPR.Cert.ViprComplexity
+public import LeanVIPR.Cert.ViprCompleteness
+
+@[expose] public section

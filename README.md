@@ -129,32 +129,33 @@ suite and 6 objective-range certificates from ALU/MIPLIB 3.0. All are genuine
 official exact-SCIP 10.0.3 output.
 
 Measured as one warmed sequential run on an Apple M3 Pro (12 cores, 36 GB),
-Lean 4.31.0, macOS 26.6.2. These are compiled CLI timings and are not kernel
+Lean 4.35.0, macOS 26.7.1. These are compiled CLI timings and are not kernel
 certification.
 
 | Infeasibility family | Files | C++ pipeline | Lean full | Lean sliced |
 |---|---:|---:|---:|---:|
-| `alu4` | 6 | 0.74 s | 3.51 s | 0.80 s |
-| `alu5` | 5 | 0.12 s | 0.51 s | 0.22 s |
-| `alu6` | 5 | 0.48 s | 2.16 s | 0.54 s |
-| `alu7` | 4 | 0.24 s | 2.31 s | 1.88 s |
-| **Total** | **20** | **1.58 s** | **8.49 s** | **3.44 s** |
+| `alu4` | 6 | 0.83 s | 2.68 s | 0.74 s |
+| `alu5` | 5 | 0.14 s | 0.44 s | 0.21 s |
+| `alu6` | 5 | 0.52 s | 1.61 s | 0.51 s |
+| `alu7` | 4 | 0.26 s | 0.84 s | 0.51 s |
+| **Total** | **20** | **1.75 s** | **5.57 s** | **1.97 s** |
 
 Range certificates currently use complete replay:
 
 | Certificate | Steps | C++ pipeline | Lean full |
 |---|---:|---:|---:|
-| `alu4_9` | 40,648 | 0.14 s | 2.96 s |
-| `egout` | 372 | 0.05 s | 0.09 s |
-| `enigma` | 36,872 | 0.26 s | 13.72 s |
-| `flugpl` | 7,553 | 0.09 s | 0.19 s |
-| `gt2` | 3,284 | 0.21 s | 2.80 s |
-| `vpm1` | 6,416 | 0.62 s | 8.65 s |
-| **Total** | **95,145** | **1.37 s** | **28.41 s** |
+| `alu4_9` | 40,648 | 0.51 s | 2.14 s |
+| `egout` | 372 | 0.04 s | 0.07 s |
+| `enigma` | 36,872 | 0.27 s | 3.15 s |
+| `flugpl` | 7,553 | 0.09 s | 0.17 s |
+| `gt2` | 3,284 | 0.20 s | 1.10 s |
+| `vpm1` | 6,416 | 0.59 s | 2.87 s |
+| **Total** | **95,145** | **1.70 s** | **9.50 s** |
 
 The C++ column is the official `viprcomp --soplex=off --threads=1` followed by
-`viprchk`, because every selected solver certificate contains `lin weak`.
-No false acceptance was observed from the complete pipeline.
+`viprchk`, both built from scipopt/vipr `master` (`99eec19`), because every
+selected solver certificate contains `lin weak`. Both pipelines accept all 26
+certificates.
 
 The exact per-certificate measurements and structural counts are in
 [`benchmarks/results/checker.csv`](benchmarks/results/checker.csv);

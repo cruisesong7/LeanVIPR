@@ -67,10 +67,11 @@ python3 benchmarks/run_cpp.py \
 ```
 
 The runner uses one completion thread with SoPlex disabled, as only weak
-derivations occur, then checks the completed file. On this corpus the official
-pipeline accepts 13 of 26 files. For the remaining 13, `viprcomp` returns
-success but its output is rejected by `viprchk`; `results/cpp.csv` records
-these outcomes rather than treating them as successful timings.
+derivations occur, then checks the completed file. With scipopt/vipr `master`
+(`99eec19`) the official pipeline accepts all 26 files. (At the earlier commit
+`30f2951`, `viprcomp` returned success for 13 files but produced completions that
+`viprchk` rejected.) `results/cpp.csv` records each outcome rather than treating a
+failure as a successful timing.
 
 Certificate generation, parsing, and compiled execution are outside the
 kernel-only trust boundary. These measurements evaluate checker performance;

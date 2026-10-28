@@ -8,6 +8,6 @@ public import LeanVIPR.Cert.ViprChecker
 public import LeanVIPR.Cert.ViprCheckerSound
 public import LeanVIPR.Cert.ViprTermination
 public import LeanVIPR.Cert.ViprComplexity
-public import LeanVIPR.Cert.ViprCompleteness
+public import LeanVIPR.Completeness
 
 @[expose] public section

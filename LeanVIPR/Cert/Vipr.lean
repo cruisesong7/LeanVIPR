@@ -166,6 +166,12 @@ inductive RefTree where
   | split (i : Nat) (k : ℤ) (lo hi : RefTree)
   | derive (comb : List (ℚ × Le)) (rnd : Bool) (sub : RefTree)
 
+/-- The branch-and-bound fragment containing only Farkas leaves and integer splits. -/
+def RefTree.NoDerive : RefTree → Prop
+  | .leaf _ => True
+  | .split _ _ lower upper => lower.NoDerive ∧ upper.NoDerive
+  | .derive _ _ _ => False
+
 /-- The row a `derive` node introduces: the nonnegative combination `combine comb`,
 optionally with its right-hand side rounded down (a `rnd`/cut step). -/
 def deriveRow (comb : List (ℚ × Le)) (rnd : Bool) : Le :=

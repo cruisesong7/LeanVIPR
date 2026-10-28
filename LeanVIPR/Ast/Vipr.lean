@@ -37,12 +37,15 @@ def parseInt? (s : String) : Option ℤ :=
   | '+' :: rest => (natOfDigits? rest).map (fun n => (n : ℤ))
   | cs          => (natOfDigits? cs).map (fun n => (n : ℤ))
 
-/-- Parse an exact rational: either a decimal literal (`Ast.parseRat?`) or `p/q`. -/
+/-- Parse an exact rational: either a decimal literal (`Ast.parseRat?`) or `p/q`.
+Both `p` and `q` may carry a sign, as GMP's reader accepts (a negative numerator
+over a negative denominator is positive); the value is normalized exactly, so the
+written signs cannot change its meaning. -/
 def parseNum? (s : String) : Option ℚ :=
   match splitOnChar '/' s.toList with
   | [_] => parseRat? s
   | [num, den] =>
-      match parseInt? (String.ofList num), natOfDigits? den with
+      match parseInt? (String.ofList num), parseInt? (String.ofList den) with
       | some p, some q => if q == 0 then none else some ((p : ℚ) / (q : ℚ))
       | _, _ => none
   | _ => none
@@ -381,6 +384,18 @@ def checkIndices (nvar : Nat) (what : String) (idxs : List Nat) : Except String 
     throw s!"{what}: variable index {i} out of range (VAR {nvar})"
   checkDistinct what idxs
 
+/-- A solution vector may repeat a variable index only with the same value; repeated
+indices with different values have no single meaning (the reference checker keeps the
+last value). -/
+def checkSolution (nvar : Nat) (what : String) (vals : List (Nat × ℚ)) :
+    Except String Unit := do
+  if let some (i, _) := vals.find? (·.1 ≥ nvar) then
+    throw s!"{what}: variable index {i} out of range (VAR {nvar})"
+  let sorted := vals.toArray.qsort (fun a b => a.1 < b.1)
+  for k in [1:sorted.size] do
+    if sorted[k - 1]!.1 == sorted[k]!.1 && sorted[k - 1]!.2 != sorted[k]!.2 then
+      throw s!"{what}: conflicting values for variable index {sorted[k]!.1}"
+
 def checkFormIndices (nvar : Nat) (what : String) (f : LinForm) : Except String Unit :=
   checkIndices nvar what (f.map (·.idx))
 
@@ -394,7 +409,7 @@ def validateVipr (v : Vipr) : Except String Unit := do
   for c in v.cons do
     checkFormIndices nvar s!"CON {c.name}" c.form
   for s in v.sols do
-    checkIndices nvar s!"SOL {s.1}" (s.2.map Prod.fst)
+    checkSolution nvar s!"SOL {s.1}" s.2
   for d in v.ders do
     checkFormIndices nvar s!"DER {d.name}" d.form
     -- The specification requires the constraint indices of `lin` and `rnd` reasons

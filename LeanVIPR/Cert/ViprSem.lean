@@ -9,13 +9,13 @@ public import Mathlib.Data.List.GetD
 @[expose] public section
 
 /-!
-# Full VIPR v1.0 verification semantics (sensed constraints)
+# Sensed VIPR rows and the executable rule checks
 
 Real solver certificates use VIPR's *suitable linear combination*: **signed**
 multipliers over constraints of mixed senses (`≤`, `≥`, `=`), deriving a row of a
-computed sense that must **dominate** the stated one. This module models that
-faithfully over *sensed* constraints `SLe`, and proves its soundness by reduction to
-per-term monotonicity (the same idea as `lin_sound`, generalized to signed multipliers).
+computed sense that must **dominate** the stated one. This module defines sensed rows
+`SLe`, the Boolean rule checks (`linCheck`, `rndCheck`, `domSLe`, `unsBoundsB`), and the
+replay pool. Their real-valued soundness is proved in `ViprRuleSound`.
 
 Sign convention (VIPR spec): `s(C) = -1` for `≤`, `+1` for `≥`, `0` for `=`. A
 combination with multipliers `λⱼ` derives a `≤` row when every `λⱼ·s(Cⱼ) ≤ 0`, and a
@@ -32,61 +32,12 @@ structure SLe where
   rhs : ℚ
 deriving Inhabited, DecidableEq
 
-/-- Satisfaction of a sensed constraint (an unrecognized sense is unsatisfiable). -/
-def SLe.sat (c : SLe) (a : Valuation) : Prop :=
-  if c.sense = 'L' then c.form.eval a ≤ c.rhs
-  else if c.sense = 'G' then c.rhs ≤ c.form.eval a
-  else if c.sense = 'E' then c.form.eval a = c.rhs
-  else False
-
 /-- VIPR sign `s(C)`: `-1` for `≤`, `+1` for `≥`, `0` for `=`. -/
 def senseSign (s : Char) : ℚ :=
   if s = 'L' then -1 else if s = 'G' then 1 else 0
 
 /-- Forget the sense (to reuse `combineForm`/`combine`). -/
 def SLe.toLe (c : SLe) : Le := ⟨c.form, c.rhs⟩
-
-/-- **Per-term bound (≤ direction).** -/
-theorem term_le (lam : ℚ) (c : SLe) (a : Valuation)
-    (hsat : c.sat a) (hsuit : lam * senseSign c.sense ≤ 0) :
-    lam * c.form.eval a ≤ lam * c.rhs := by
-  simp only [SLe.sat, senseSign] at hsat hsuit
-  split_ifs at hsat hsuit <;> (try rw [hsat]) <;> nlinarith [hsat, hsuit]
-
-/-- **Per-term bound (≥ direction).** -/
-theorem term_ge (lam : ℚ) (c : SLe) (a : Valuation)
-    (hsat : c.sat a) (hsuit : 0 ≤ lam * senseSign c.sense) :
-    lam * c.rhs ≤ lam * c.form.eval a := by
-  simp only [SLe.sat, senseSign] at hsat hsuit
-  split_ifs at hsat hsuit <;> (try rw [hsat]) <;> nlinarith [hsat, hsuit]
-
-theorem comb_le_terms (comb : List (ℚ × SLe)) (a : Valuation)
-    (hsuit : ∀ p ∈ comb, p.1 * senseSign p.2.sense ≤ 0)
-    (hsat : ∀ p ∈ comb, p.2.sat a) :
-    (comb.map (fun p => p.1 * p.2.form.eval a)).sum
-      ≤ (comb.map (fun p => p.1 * p.2.rhs)).sum := by
-  induction comb with
-  | nil => simp
-  | cons p ps ih =>
-      simp only [List.map_cons, List.sum_cons]
-      have hp := term_le p.1 p.2 a (hsat p (by simp)) (hsuit p (by simp))
-      have ihp := ih (fun q hq => hsuit q (List.mem_cons.mpr (Or.inr hq)))
-                     (fun q hq => hsat q (List.mem_cons.mpr (Or.inr hq)))
-      linarith
-
-theorem comb_ge_terms (comb : List (ℚ × SLe)) (a : Valuation)
-    (hsuit : ∀ p ∈ comb, 0 ≤ p.1 * senseSign p.2.sense)
-    (hsat : ∀ p ∈ comb, p.2.sat a) :
-    (comb.map (fun p => p.1 * p.2.rhs)).sum
-      ≤ (comb.map (fun p => p.1 * p.2.form.eval a)).sum := by
-  induction comb with
-  | nil => simp
-  | cons p ps ih =>
-      simp only [List.map_cons, List.sum_cons]
-      have hp := term_ge p.1 p.2 a (hsat p (by simp)) (hsuit p (by simp))
-      have ihp := ih (fun q hq => hsuit q (List.mem_cons.mpr (Or.inr hq)))
-                     (fun q hq => hsat q (List.mem_cons.mpr (Or.inr hq)))
-      linarith
 
 /-- The combined form/rhs, reusing `combineForm`/`combine` on sense-forgotten rows. -/
 def scomb (comb : List (ℚ × SLe)) : Le := combine (comb.map (fun p => (p.1, p.2.toLe)))
@@ -101,36 +52,13 @@ theorem scomb_rhs (comb : List (ℚ × SLe)) :
   simp only [scomb, combine, List.map_map]
   rfl
 
-/-- **Combination row as a `≤` row holds.** -/
-theorem scomb_le_sat (comb : List (ℚ × SLe)) (a : Valuation)
-    (hsuit : ∀ p ∈ comb, p.1 * senseSign p.2.sense ≤ 0)
-    (hsat : ∀ p ∈ comb, p.2.sat a) :
-    (scomb comb).form.eval a ≤ (scomb comb).rhs := by
-  rw [scomb_eval, scomb_rhs]; exact comb_le_terms comb a hsuit hsat
-
-/-- **Combination row as a `≥` row holds.** -/
-theorem scomb_ge_sat (comb : List (ℚ × SLe)) (a : Valuation)
-    (hsuit : ∀ p ∈ comb, 0 ≤ p.1 * senseSign p.2.sense)
-    (hsat : ∀ p ∈ comb, p.2.sat a) :
-    (scomb comb).rhs ≤ (scomb comb).form.eval a := by
-  rw [scomb_eval, scomb_rhs]; exact comb_ge_terms comb a hsuit hsat
-
 /-! ## Form equality (for constraint domination) -/
 
 /-- Negate a form (as `-1 · f`). -/
 def sNegForm (f : LinForm) : LinForm := LinForm.scale (-1) f
 
-theorem sNegForm_eval (f : LinForm) (a : Valuation) : (sNegForm f).eval a = -(f.eval a) := by
-  simp [sNegForm, LinForm.eval_scale]
-
 /-- Decidable "the two forms are equal as functions" (their difference is identically 0). -/
 def formEq (f g : LinForm) : Bool := formIsZero (f ++ sNegForm g)
-
-theorem formEq_sound {f g : LinForm} (h : formEq f g = true) (a : Valuation) :
-    f.eval a = g.eval a := by
-  have hz := formIsZero_sound _ h a
-  rw [LinForm.eval_append, sNegForm_eval] at hz
-  linarith
 
 /-! ## Per-reason checks and soundness -/
 
@@ -154,6 +82,29 @@ combinations whose fractional or continuous-variable terms cancel. -/
 def formIntB (intVars : List Nat) (f : LinForm) : Bool :=
   (normForm f).all (intEntryB intVars)
 
+/-! ### Tests on an already normalized form
+
+`linCheck` and `rndCheck` normalize the (typically long) combined form once and reuse
+it: `normForm (f ++ g)` extends `normForm f` term by term with the short stated row `g`.
+The `@[simp]` lemmas fold these tests back into `formIsZero`, `formEq`, and `formIntB`. -/
+
+/-- Extend a normalized form with further terms. -/
+def alExtend (al : List (Nat × ℚ)) (g : LinForm) : List (Nat × ℚ) :=
+  g.foldl (fun acc t => addTerm acc t.idx t.coeff) al
+
+def alIsZero (al : List (Nat × ℚ)) : Bool := al.all (fun p => p.2 == 0)
+
+def alIntB (intVars : List Nat) (al : List (Nat × ℚ)) : Bool := al.all (intEntryB intVars)
+
+@[simp] theorem alIsZero_normForm (f : LinForm) : alIsZero (normForm f) = formIsZero f := rfl
+
+@[simp] theorem alIntB_normForm (intVars : List Nat) (f : LinForm) :
+    alIntB intVars (normForm f) = formIntB intVars f := rfl
+
+@[simp] theorem alIsZero_alExtend_normForm (f g : LinForm) :
+    alIsZero (alExtend (normForm f) (sNegForm g)) = formEq f g := by
+  simp only [alExtend, normForm, formEq, formIsZero, alIsZero, List.foldl_append]
+
 theorem intEntryB_sound {intVars : List Nat} {p : Nat × ℚ}
     (h : intEntryB intVars p = true) :
     p.2 = 0 ∨ (IsIntVal p.2 ∧ p.1 ∈ intVars) := by
@@ -163,109 +114,35 @@ theorem intEntryB_sound {intVars : List Nat} {p : Nat × ℚ}
   · exact Or.inl h
   · exact Or.inr ⟨isIntValB_sound hq, hidx⟩
 
-theorem evalAL_isInt (al : List (Nat × ℚ)) (a : Valuation)
-    (h : ∀ p ∈ al, p.2 = 0 ∨ (IsIntVal p.2 ∧ IsIntVal (a p.1))) :
-    IsIntVal (evalAL al a) := by
-  induction al with
-  | nil => exact ⟨0, by simp⟩
-  | cons p tl ih =>
-      obtain ⟨m, hm⟩ := ih (fun q hq => h q (by simp [hq]))
-      rw [evalAL_cons, hm]
-      rcases h p (by simp) with hp | ⟨⟨c, hc⟩, ⟨v, hv⟩⟩
-      · exact ⟨m, by simp [hp]⟩
-      · exact ⟨c * v + m, by rw [hc, hv]; push_cast; ring⟩
-
-theorem formIntB_sound {intVars f} (h : formIntB intVars f = true) (a : Valuation)
-    (hint : ∀ j ∈ intVars, IsIntVal (a j)) : IsIntVal (f.eval a) := by
-  rw [← normForm_eval]
-  apply evalAL_isInt
-  intro p hp
-  rcases intEntryB_sound ((List.all_eq_true.mp h) p hp) with h0 | ⟨hq, hidx⟩
-  · exact Or.inl h0
-  · exact Or.inr ⟨hq, hint p.1 hidx⟩
-
-/-- Rounding up (`≥` direction): an integer-valued `≥ β` implies `≥ ⌈β⌉`. -/
-theorem rnd_ge (form : LinForm) (β : ℚ) (a : Valuation)
-    (hInt : IsIntVal (form.eval a)) (hsat : β ≤ form.eval a) : ((⌈β⌉ : ℤ) : ℚ) ≤ form.eval a := by
-  obtain ⟨n, hn⟩ := hInt
-  rw [hn] at hsat ⊢
-  exact_mod_cast Int.ceil_le.mpr hsat
-
 /-- The combination is itself an absurdity (identically-zero form, rhs contradicting a
 valid sense) — which, per the VIPR spec, dominates *any* stated constraint. -/
-def linAbsurd (cs : List (ℚ × SLe)) : Bool :=
-  (suitLeB cs && formIsZero (scomb cs).form && decide ((scomb cs).rhs < 0)) ||
-  (suitGeB cs && formIsZero (scomb cs).form && decide (0 < (scomb cs).rhs))
+def linAbsurd (cs : List (ℚ × SLe)) (combined : Le) (normalized : List (Nat × ℚ)) : Bool :=
+  (suitLeB cs && alIsZero normalized && decide (combined.rhs < 0)) ||
+  (suitGeB cs && alIsZero normalized && decide (0 < combined.rhs))
 
-theorem linAbsurd_false {cs} (h : linAbsurd cs = true) {a : Valuation}
-    (hsat : ∀ p ∈ cs, p.2.sat a) : False := by
-  simp only [linAbsurd, Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq] at h
-  rcases h with ⟨⟨hs, hz⟩, hr⟩ | ⟨⟨hs, hz⟩, hr⟩
-  · have hle := scomb_le_sat cs a (suitLeB_sound hs) hsat
-    rw [formIsZero_sound _ hz a] at hle; linarith
-  · have hge := scomb_ge_sat cs a (suitGeB_sound hs) hsat
-    rw [formIsZero_sound _ hz a] at hge; linarith
-
-/-- **`lin` step check.** Accepts either normal rhs-domination or an absurd combination. -/
+/-- **`lin` step check.** Accepts either normal rhs-domination or an absurd combination.
+The combination is computed once and shared by every test. -/
 def linCheck (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
-  linAbsurd cs ||
-  (formEq (scomb cs).form stated.form &&
-   (if stated.sense = 'L' then suitLeB cs && decide ((scomb cs).rhs ≤ stated.rhs)
-    else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ (scomb cs).rhs)
-    else if stated.sense = 'E' then
-      suitLeB cs && suitGeB cs && decide ((scomb cs).rhs = stated.rhs)
-    else false))
-
-theorem linCheck_sound {stated cs} (h : linCheck stated cs = true) {a : Valuation}
-    (hsat : ∀ p ∈ cs, p.2.sat a) : stated.sat a := by
-  simp only [linCheck, Bool.or_eq_true] at h
-  rcases h with ha | h
-  · exact (linAbsurd_false ha hsat).elim
-  rw [Bool.and_eq_true] at h
-  obtain ⟨hform, hrest⟩ := h
-  have hfe := formEq_sound hform a
-  simp only [SLe.sat]
-  split_ifs at hrest with hL hG hE
-  · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [ite_eq_left hL]
-    have hle := scomb_le_sat cs a (suitLeB_sound hrest.1) hsat
-    rw [← hfe]; linarith [hrest.2]
-  · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [ite_eq_right hL, ite_eq_left hG]
-    have hge := scomb_ge_sat cs a (suitGeB_sound hrest.1) hsat
-    rw [← hfe]; linarith [hrest.2]
-  · simp only [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    obtain ⟨⟨hsl, hsg⟩, hrhs⟩ := hrest
-    rw [ite_eq_right hL, ite_eq_right hG, ite_eq_left hE]
-    have hle := scomb_le_sat cs a (suitLeB_sound hsl) hsat
-    have hge := scomb_ge_sat cs a (suitGeB_sound hsg) hsat
-    rw [← hfe]; linarith
+  let combined := scomb cs
+  let normalized := normForm combined.form
+  linAbsurd cs combined normalized ||
+  (alIsZero (alExtend normalized (sNegForm stated.form)) &&
+    (if stated.sense = 'L' then suitLeB cs && decide (combined.rhs ≤ stated.rhs)
+     else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ combined.rhs)
+     else if stated.sense = 'E' then
+       suitLeB cs && suitGeB cs && decide (combined.rhs = stated.rhs)
+     else false))
 
 /-- **`rnd` step check.** -/
 def rndCheck (intVars : List Nat) (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
-  formEq (scomb cs).form stated.form && formIntB intVars (scomb cs).form &&
-  (if stated.sense = 'L' then suitLeB cs && decide (((⌊(scomb cs).rhs⌋ : ℤ) : ℚ) ≤ stated.rhs)
-   else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ ((⌈(scomb cs).rhs⌉ : ℤ) : ℚ))
+  let combined := scomb cs
+  let normalized := normForm combined.form
+  alIsZero (alExtend normalized (sNegForm stated.form)) && alIntB intVars normalized &&
+  (if stated.sense = 'L' then
+      suitLeB cs && decide (((⌊combined.rhs⌋ : ℤ) : ℚ) ≤ stated.rhs)
+   else if stated.sense = 'G' then
+      suitGeB cs && decide (stated.rhs ≤ ((⌈combined.rhs⌉ : ℤ) : ℚ))
    else false)
-
-theorem rndCheck_sound {intVars stated cs} (h : rndCheck intVars stated cs = true) {a : Valuation}
-    (hint : ∀ j ∈ intVars, IsIntVal (a j)) (hsat : ∀ p ∈ cs, p.2.sat a) : stated.sat a := by
-  simp only [rndCheck, Bool.and_eq_true] at h
-  obtain ⟨⟨hform, hfi⟩, hrest⟩ := h
-  have hfe := formEq_sound hform a
-  have hInt := formIntB_sound hfi a hint
-  simp only [SLe.sat]
-  split_ifs at hrest with hL hG
-  · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [ite_eq_left hL]
-    have hle := scomb_le_sat cs a (suitLeB_sound hrest.1) hsat
-    have hr := rnd_sound (scomb cs).form (scomb cs).rhs a hInt hle
-    rw [← hfe]; simp only [Le.sat] at hr; linarith [hrest.2]
-  · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    rw [ite_eq_right hL, ite_eq_left hG]
-    have hge := scomb_ge_sat cs a (suitGeB_sound hrest.1) hsat
-    have hr := rnd_ge (scomb cs).form (scomb cs).rhs a hInt hge
-    rw [← hfe]; linarith [hrest.2]
 
 /-! ## Domination and complementary integer bounds (for `uns` case-splits) -/
 
@@ -276,17 +153,6 @@ def absurdB (c : SLe) : Bool :=
    else if c.sense = 'G' then decide (0 < c.rhs)
    else if c.sense = 'E' then decide (c.rhs ≠ 0)
    else false)
-
-theorem absurd_unsat {c : SLe} (h : absurdB c = true) (a : Valuation) : ¬ c.sat a := by
-  simp only [absurdB, Bool.and_eq_true] at h
-  obtain ⟨hz, hcase⟩ := h
-  have hze := formIsZero_sound _ hz a
-  simp only [SLe.sat]
-  split_ifs at hcase ⊢ with hL hG hE
-  · rw [hze]; rw [decide_eq_true_eq] at hcase; exact not_le.mpr hcase
-  · rw [hze]; rw [decide_eq_true_eq] at hcase; exact not_le.mpr hcase
-  · rw [hze]; rw [decide_eq_true_eq] at hcase; exact fun hh => hcase hh.symm
-
 
 /-- `c` dominates `d`: either `c` is an absurdity (which, per the VIPR spec, dominates
 any constraint), or the forms are equal as functions and the right-hand side is at least
@@ -299,25 +165,6 @@ def domSLe (c d : SLe) : Bool :=
     else if d.sense = 'E' then (c.sense == 'E') && decide (c.rhs = d.rhs)
     else false))
 
-theorem domSLe_sat {c d : SLe} (h : domSLe c d = true) {a : Valuation}
-    (hc : c.sat a) : d.sat a := by
-  simp only [domSLe, Bool.or_eq_true, Bool.and_eq_true] at h
-  rcases h with habs | ⟨hform, hrest⟩
-  · exact absurd hc (absurd_unsat habs a)
-  have hfe := formEq_sound hform a
-  simp only [SLe.sat] at hc ⊢
-  split_ifs at hrest ⊢ with hdL hdG hdE
-  · rw [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq, beq_iff_eq, decide_eq_true_eq] at hrest
-    obtain ⟨hcs, hle⟩ := hrest
-    rcases hcs with hcs | hcs <;> simp [hcs] at hc <;> linarith
-  · rw [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq, beq_iff_eq, decide_eq_true_eq] at hrest
-    obtain ⟨hcs, hle⟩ := hrest
-    rcases hcs with hcs | hcs <;> simp [hcs] at hc <;> linarith
-  · rw [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hrest
-    obtain ⟨hcs, heq⟩ := hrest
-    simp [hcs] at hc
-    rw [← hfe, hc, heq]
-
 /-- `b1`,`b2` are complementary integer bounds `f ≤ β` / `f ≥ β+1` (in either order):
 same form as functions, integer-valued form over `intVars`, integer `β`. -/
 def unsBoundsB (intVars : List Nat) (b1 b2 : SLe) : Bool :=
@@ -326,35 +173,6 @@ def unsBoundsB (intVars : List Nat) (b1 b2 : SLe) : Bool :=
   ||
   ((b1.sense == 'G') && (b2.sense == 'L') && formEq b1.form b2.form
     && formIntB intVars b2.form && isIntValB b2.rhs && decide (b1.rhs = b2.rhs + 1))
-
-/-- **Exhaustiveness of the integer split.** At any valuation with the integer variables
-integral, one of the two complementary bounds holds. -/
-theorem unsBounds_split {intVars : List Nat} {b1 b2 : SLe}
-    (h : unsBoundsB intVars b1 b2 = true) {a : Valuation}
-    (hint : ∀ j ∈ intVars, IsIntVal (a j)) : b1.sat a ∨ b2.sat a := by
-  simp only [unsBoundsB, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
-    decide_eq_true_eq] at h
-  rcases h with ⟨⟨⟨⟨⟨h1, h2⟩, hfe⟩, hfi⟩, hb⟩, hb2⟩ | ⟨⟨⟨⟨⟨h1, h2⟩, hfe⟩, hfi⟩, hb⟩, hb2⟩
-  · obtain ⟨m, hm⟩ := formIntB_sound hfi a hint
-    obtain ⟨n, hn⟩ := isIntValB_sound hb
-    have hfe' := formEq_sound hfe a
-    simp only [SLe.sat, h1, h2]
-    norm_num
-    by_cases hmn : m ≤ n
-    · left; rw [hm, hn]; exact_mod_cast hmn
-    · right; rw [hb2, hn, ← hfe', hm]
-      have : n + 1 ≤ m := by omega
-      exact_mod_cast this
-  · obtain ⟨m, hm⟩ := formIntB_sound hfi a hint
-    obtain ⟨n, hn⟩ := isIntValB_sound hb
-    have hfe' := formEq_sound hfe a
-    simp only [SLe.sat, h1, h2]
-    norm_num
-    by_cases hmn : m ≤ n
-    · right; rw [hm, hn]; exact_mod_cast hmn
-    · left; rw [hb2, hn, hfe', hm]
-      have : n + 1 ≤ m := by omega
-      exact_mod_cast this
 
 /-! ## Derivation replay over sensed constraints -/
 

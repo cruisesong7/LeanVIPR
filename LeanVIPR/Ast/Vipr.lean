@@ -18,9 +18,8 @@ The heart is the `DER` list of derived constraints, each with a *reason*
 same in both `CON` and `DER`: either an explicit sparse form `p i₁ a₁ … iₚ aₚ` or
 the keyword `OBJ`.
 
-`conLes` / `senseToLes` normalize a parsed constraint to the `Le` representation of
-`LeanVIPR.Cert.LinCon` (`G` by negation, `E` as two `Le`s), so the parser output
-feeds directly into the `Cert/Vipr` replay checker.
+`LeanVIPR.Pipeline` maps the parsed rows and derivations to the sensed rows (`SLe`)
+replayed by the checker.
 
 The `SOL` section is parsed as exact sparse vectors and is checked for `RTP range`.
 -/
@@ -139,13 +138,23 @@ structure Vipr where
 /-! ## Tokenizer -/
 
 /-- Split into whitespace-separated tokens (drops empty runs). VIPR pads its
-structural tokens (`{`, `}`) with whitespace, so a whitespace split is faithful. -/
+structural tokens (`{`, `}`) with whitespace, so a whitespace split is faithful.
+
+A `%` that begins a token starts a comment that runs to the end of the line. This
+covers the leading comment lines of the specification as well as the end-of-line and
+interleaved comments used by the reference examples and accepted by `viprchk`. A `%`
+inside a token is an ordinary character. -/
 def wsTokens (input : List Char) : List String := Id.run do
   let mut toks : List String := []
   let mut cur : List Char := []
+  let mut inComment := false
   for c in input do
-    if c.isWhitespace then
+    if inComment then
+      if c == '\n' then inComment := false
+    else if c.isWhitespace then
       if !cur.isEmpty then toks := String.ofList cur.reverse :: toks; cur := []
+    else if cur.isEmpty && c == '%' then
+      inComment := true
     else
       cur := c :: cur
   if !cur.isEmpty then toks := String.ofList cur.reverse :: toks
@@ -395,22 +404,10 @@ def validateVipr (v : Vipr) : Except String Unit := do
         checkDistinct s!"DER {d.name} reason" (terms.map Prod.fst)
     | _ => pure ()
 
-/-- Drop the leading comment lines permitted by the specification: lines before
-`VER` whose first character is `%`. Blank lines are skipped as well. -/
-def dropLeadingComments : List (List Char) → List (List Char)
-  | [] => []
-  | line :: rest =>
-      if line.head? == some '%' || line.all Char.isWhitespace then
-        dropLeadingComments rest
-      else
-        line :: rest
-
 /-! ## Top-level parser -/
 
 def parseVipr (content : String) : Except String Vipr := do
-  let lines := (content.toList.splitOn '\n')
-  let ts0 := wsTokens (String.intercalate "\n"
-    ((dropLeadingComments lines).map String.ofList)).toList
+  let ts0 := wsTokens content.toList
   let ts1 ← expectTok "VER" ts0
   let (ver, ts2) ← takeTok ts1
   let ts3 ← expectTok "VAR" ts2
@@ -464,26 +461,11 @@ def parseVipr (content : String) : Except String Vipr := do
   validateVipr v
   return v
 
-/-! ## Bridge to the `Le` representation of `Cert/LinCon` -/
-
-/-- Negate every coefficient of a form (used to normalize `G`/`E` rows). -/
-def negForm (f : LinForm) : LinForm := f.map (fun t => (⟨t.idx, -t.coeff⟩ : Term))
-
-/-- Normalize a sensed row to `≤`-form `Le`s: `L` as-is, `G` negated, `E` as two. -/
-def senseToLes (sense : Char) (form : LinForm) (rhs : ℚ) : List Le :=
-  match sense with
-  | 'L' => [⟨form, rhs⟩]
-  | 'G' => [⟨negForm form, -rhs⟩]
-  | 'E' => [⟨form, rhs⟩, ⟨negForm form, -rhs⟩]
-  | _   => []
+/-! ## Objective references -/
 
 /-- Resolve a `CON` constraint's linear form, substituting the objective row when the
 constraint uses `OBJ`. -/
 def ViprCon.resolvedForm (c : ViprCon) (objTerms : List (Nat × ℚ)) : LinForm :=
   if c.usesObj then objTerms.map (fun q => (⟨q.1, q.2⟩ : Term)) else c.form
-
-/-- All `CON` rows of a certificate as `Le`s (objective references resolved). -/
-def Vipr.conLes (v : Vipr) : List Le :=
-  (v.cons.toList).flatMap (fun c => senseToLes c.sense (c.resolvedForm v.objTerms) c.rhs)
 
 end LeanVIPR.Ast

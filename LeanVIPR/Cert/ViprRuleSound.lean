@@ -102,11 +102,9 @@ private theorem formIntB_sound_real {intVars : List Nat} {f : LinForm}
     (h : formIntB intVars f = true) : FormIntegralReal intVars f := by
   intro a hint
   rw [← normForm_eval_real]
-  apply evalALReal_isInt
-  intro p hp
-  rcases intEntryB_sound ((List.all_eq_true.mp h) p hp) with h0 | ⟨hq, hidx⟩
-  · exact Or.inl h0
-  · exact Or.inr ⟨hq, hint p.1 hidx⟩
+  refine evalALReal_isInt _ a fun p hp => ?_
+  exact (intEntryB_sound ((List.all_eq_true.mp h) p hp)).imp_right
+    fun ⟨hq, hidx⟩ => ⟨hq, hint p.1 hidx⟩
 
 private theorem senseSign_cast (s : Char) :
     senseSignReal s = ((senseSign s : ℚ) : ℝ) := by
@@ -126,7 +124,7 @@ private theorem suitGeB_sound_real {cs : List (ℚ × SLe)} (h : suitGeB cs = tr
   exact_mod_cast suitGeB_sound h p hp
 
 private theorem linAbsurd_sound_real {cs : List (ℚ × SLe)}
-    (h : linAbsurd cs = true) : LinAbsurd cs := by
+    (h : linAbsurd cs (scomb cs) (normForm (scomb cs).form) = true) : LinAbsurd cs := by
   simp only [linAbsurd, Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq] at h
   rcases h with ⟨⟨hs, hz⟩, hrhs⟩ | ⟨⟨hs, hz⟩, hrhs⟩
   · exact Or.inl ⟨suitLeB_sound_real hs, formIsZero_sound_real hz, hrhs⟩
@@ -134,7 +132,7 @@ private theorem linAbsurd_sound_real {cs : List (ℚ × SLe)}
 
 theorem linCheck_valid_real {stated : SLe} {cs : List (ℚ × SLe)}
     (h : linCheck stated cs = true) : LinValid stated cs := by
-  simp only [linCheck, Bool.or_eq_true] at h
+  simp only [linCheck, alIsZero_alExtend_normForm, Bool.or_eq_true] at h
   rcases h with habs | hnormal
   · exact Or.inl (linAbsurd_sound_real habs)
   · rw [Bool.and_eq_true] at hnormal
@@ -152,7 +150,7 @@ theorem linCheck_valid_real {stated : SLe} {cs : List (ℚ × SLe)}
 theorem rndCheck_valid_real {intVars : List Nat} {stated : SLe}
     {cs : List (ℚ × SLe)} (h : rndCheck intVars stated cs = true) :
     RndValid intVars stated cs := by
-  simp only [rndCheck, Bool.and_eq_true] at h
+  simp only [rndCheck, alIsZero_alExtend_normForm, alIntB_normForm, Bool.and_eq_true] at h
   obtain ⟨⟨hform, hInt⟩, hrest⟩ := h
   refine ⟨formEq_sound_real hform, formIntB_sound_real hInt, ?_⟩
   split_ifs at hrest with hL hG

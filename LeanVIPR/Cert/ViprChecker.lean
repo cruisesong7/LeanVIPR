@@ -48,29 +48,6 @@ def entryOf (pool : CheckerPool) (s : SStep) : CheckerEntry :=
         (poolAsm pool i2).erase (poolRow pool l2))
   | .sol => (s.stated, ∅)
 
-def linAbsurdB (cs : List (ℚ × SLe)) (combined : Le) : Bool :=
-  (suitLeB cs && formIsZero combined.form && decide (combined.rhs < 0)) ||
-  (suitGeB cs && formIsZero combined.form && decide (0 < combined.rhs))
-
-def checkLin (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
-  let combined := scomb cs
-  linAbsurdB cs combined ||
-  (formEq combined.form stated.form &&
-    (if stated.sense = 'L' then suitLeB cs && decide (combined.rhs ≤ stated.rhs)
-     else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ combined.rhs)
-     else if stated.sense = 'E' then
-       suitLeB cs && suitGeB cs && decide (combined.rhs = stated.rhs)
-     else false))
-
-def checkRnd (intVars : List Nat) (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
-  let combined := scomb cs
-  formEq combined.form stated.form && formIntB intVars combined.form &&
-  (if stated.sense = 'L' then
-      suitLeB cs && decide (((⌊combined.rhs⌋ : ℤ) : ℚ) ≤ stated.rhs)
-   else if stated.sense = 'G' then
-      suitGeB cs && decide (stated.rhs ≤ ((⌈combined.rhs⌉ : ℤ) : ℚ))
-   else false)
-
 def referencesPastB (pool : CheckerPool) : SReason → Bool
   | .asm => true
   | .lin comb => comb.all fun p => decide (p.2 < pool.size)
@@ -84,8 +61,8 @@ def stepValidB (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
   referencesPastB pool s.reason &&
   match s.reason with
   | .asm => true
-  | .lin comb => checkLin s.stated (resolveRefs pool comb)
-  | .rnd comb => checkRnd v.intVars s.stated (resolveRefs pool comb)
+  | .lin comb => linCheck s.stated (resolveRefs pool comb)
+  | .rnd comb => rndCheck v.intVars s.stated (resolveRefs pool comb)
   | .uns i1 l1 i2 l2 =>
       domSLe (poolRow pool i1) s.stated &&
       domSLe (poolRow pool i2) s.stated &&

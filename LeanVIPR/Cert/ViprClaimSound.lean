@@ -457,6 +457,15 @@ theorem proofSystem_sound (v : Vipr)
                 linarith
         · simp [SolSectionValid, hr, hmin, hmax] at hsols
 
+/-- The claimed result depends only on the problem, the relation to prove, and the
+listed solutions, never on the derivation list. Replacing the derivations, for example by
+their `lin weak` completions, therefore leaves the certified claim unchanged. -/
+theorem Feasible.withDers {v : Vipr} {a : RealValuation} (ders : Array ViprDer) :
+    Feasible { v with ders := ders } a ↔ Feasible v a := Iff.rfl
+
+theorem ClaimValid.withDers {v : Vipr} (ders : Array ViprDer) :
+    ClaimValid { v with ders := ders } ↔ ClaimValid v := Iff.rfl
+
 /-- The strengthened range claim implies the classical one: every optimal valuation
 lies in the reported interval. -/
 theorem ClaimValid.optimal_within {v : Vipr} {lb ub : Option ℚ}

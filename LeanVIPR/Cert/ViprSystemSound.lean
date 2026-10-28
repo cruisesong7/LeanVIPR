@@ -90,13 +90,8 @@ theorem scomb_rhs_real (comb : List (ℚ × SLe)) :
       (comb.map (fun p => (p.1 : ℝ) * (p.2.rhs : ℝ))).sum := by
   rw [scomb_rhs]
   change (Rat.castHom ℝ) (comb.map (fun p => p.1 * p.2.rhs)).sum = _
-  rw [map_list_sum]
-  apply congrArg List.sum
-  rw [List.map_map]
-  apply List.map_congr_left
-  intro p _
-  change ((p.1 * p.2.rhs : ℚ) : ℝ) = (p.1 : ℝ) * (p.2.rhs : ℝ)
-  exact Rat.cast_mul p.1 p.2.rhs
+  rw [map_list_sum, List.map_map]
+  exact congrArg List.sum (List.map_congr_left fun p _ => Rat.cast_mul p.1 p.2.rhs)
 
 /-! ## Suitable combinations and the `lin` rule -/
 
@@ -290,33 +285,28 @@ theorem dominates_sound {c d : SLe} (h : Dominates c d) {a : RealValuation}
       ⟨hdG, hcG | hcE, hrhs⟩ | ⟨hdE, hcE, hrhs⟩
   · have hc' : evalReal c.form a ≤ (c.rhs : ℝ) := by simpa [satReal, hcL] using hc
     have hrhsR : (c.rhs : ℝ) ≤ (d.rhs : ℝ) := by exact_mod_cast hrhs
-    have hd' : evalReal d.form a ≤ (d.rhs : ℝ) := by
-      rw [← hform a]
-      exact le_trans hc' hrhsR
+    have hd' : evalReal d.form a ≤ (d.rhs : ℝ) :=
+      hform a ▸ le_trans hc' hrhsR
     simpa [satReal, hdL] using hd'
   · have hc' : evalReal c.form a = (c.rhs : ℝ) := by simpa [satReal, hcE] using hc
     have hrhsR : (c.rhs : ℝ) ≤ (d.rhs : ℝ) := by exact_mod_cast hrhs
-    have hd' : evalReal d.form a ≤ (d.rhs : ℝ) := by
-      rw [← hform a]
-      exact hc'.le.trans hrhsR
+    have hd' : evalReal d.form a ≤ (d.rhs : ℝ) :=
+      hform a ▸ hc'.le.trans hrhsR
     simpa [satReal, hdL] using hd'
   · have hc' : (c.rhs : ℝ) ≤ evalReal c.form a := by simpa [satReal, hcG] using hc
     have hrhsR : (d.rhs : ℝ) ≤ (c.rhs : ℝ) := by exact_mod_cast hrhs
-    have hd' : (d.rhs : ℝ) ≤ evalReal d.form a := by
-      rw [← hform a]
-      exact hrhsR.trans hc'
+    have hd' : (d.rhs : ℝ) ≤ evalReal d.form a :=
+      hform a ▸ hrhsR.trans hc'
     simpa [satReal, hdG] using hd'
   · have hc' : evalReal c.form a = (c.rhs : ℝ) := by simpa [satReal, hcE] using hc
     have hrhsR : (d.rhs : ℝ) ≤ (c.rhs : ℝ) := by exact_mod_cast hrhs
-    have hd' : (d.rhs : ℝ) ≤ evalReal d.form a := by
-      rw [← hform a]
-      exact hrhsR.trans hc'.ge
+    have hd' : (d.rhs : ℝ) ≤ evalReal d.form a :=
+      hform a ▸ hrhsR.trans hc'.ge
     simpa [satReal, hdG] using hd'
   · have hc' : evalReal c.form a = (c.rhs : ℝ) := by simpa [satReal, hcE] using hc
     have hrhsR : (c.rhs : ℝ) = (d.rhs : ℝ) := by exact_mod_cast hrhs
-    have hd' : evalReal d.form a = (d.rhs : ℝ) := by
-      rw [← hform a]
-      exact hc'.trans hrhsR
+    have hd' : evalReal d.form a = (d.rhs : ℝ) :=
+      hform a ▸ hc'.trans hrhsR
     simpa [satReal, hdE] using hd'
 
 /-- Complementary integer bounds `f ≤ β` and `f ≥ β+1`, in either order. -/

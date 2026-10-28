@@ -121,11 +121,12 @@ def isLinWeak : ViprReason → Bool
 proposed by the completion algorithm. The ordinary checker still validates every
 materialized combination, so this transformation is untrusted preprocessing. -/
 def materializeWeakVipr (v : Vipr) : Vipr :=
+  let table := boundTable v
   { v with
     ders := v.ders.mapIdx fun idx d =>
       match d.reason with
       | .linWeak bounds terms =>
-          let comb := completeWeakComb v idx (derStated v d) bounds terms
+          let comb := completeWeakComb v table idx (derStated v d) bounds terms
           { d with reason := .lin (comb.map fun p => (p.2, p.1)) }
       | _ => d }
 
@@ -319,7 +320,7 @@ def reportInvalidReason (v : Vipr) (pool : CheckerPool)
       let combined := scomb resolved
       IO.println s!"reason: lin ({comb.length} references)"
       IO.println s!"references-past: {referencesPastB pool step.reason}"
-      IO.println s!"checkLin: {checkLin step.stated resolved}"
+      IO.println s!"linCheck: {linCheck step.stated resolved}"
       IO.println s!"formEq: {formEq combined.form step.stated.form}"
       IO.println s!"suitLe: {suitLeB resolved}  suitGe: {suitGeB resolved}"
       IO.println s!"combined rhs: {combined.rhs}  stated rhs: {step.stated.rhs}"
@@ -336,7 +337,7 @@ def reportInvalidReason (v : Vipr) (pool : CheckerPool)
   | .rnd comb =>
       IO.println s!"reason: rnd ({comb.length} references)"
       IO.println s!"references-past: {referencesPastB pool step.reason}"
-      IO.println s!"rndCheck: {checkRnd v.intVars step.stated (resolveRefs pool comb)}"
+      IO.println s!"rndCheck: {rndCheck v.intVars step.stated (resolveRefs pool comb)}"
   | .uns i1 l1 i2 l2 =>
       IO.println s!"reason: uns {i1} {l1} {i2} {l2}"
       IO.println s!"references-past: {referencesPastB pool step.reason}"
@@ -387,6 +388,23 @@ def certifiedAxiomsOk (log : String) : Bool :=
         names.all (· ∈ ["propext", "Classical.choice", "Quot.sound"])
       else false
 
+/-- Diagnostic command: print every derivation's replayed reason after `lin weak`
+completion, one line per derivation. Used to regression-test the untrusted completer. -/
+def dumpMaterialized (path : String) : IO UInt32 := do
+  match ← parseFile path with
+  | .error e =>
+      IO.eprintln s!"parse error: {e}"
+      return 1
+  | .ok (_, v) =>
+      for step in viprSteps v do
+        match step.reason with
+        | .lin comb => IO.println s!"lin {repr comb}"
+        | .rnd comb => IO.println s!"rnd {repr comb}"
+        | .uns i1 l1 i2 l2 => IO.println s!"uns {i1} {l1} {i2} {l2}"
+        | .asm => IO.println "asm"
+        | .sol => IO.println "sol"
+      return 0
+
 def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := do
   match ← parseFile path with
   | .error e =>
@@ -404,30 +422,36 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
           | .reconstruct =>
               IO.println "range result: reconstruction is unavailable; using complete replay"
           effectiveMode := .full
-          if !checkVipr v then
+          -- Emit the `lin weak`-completed certificate so the kernel does not rerun the
+          -- completer; `ClaimValid.withDers` shows the claim is unchanged.
+          let complete := materializeWeakVipr v
+          if !checkVipr complete then
             IO.eprintln "REJECT  (native precheck found checkVipr = false)"
             return 2
-          dataSource := emitViprData sourceText v
+          dataSource := emitViprData sourceText complete
           proofSource := emitViprProof
       | .infeas =>
           match mode with
           | .full =>
-            if !checkVipr v then
+            let complete := materializeWeakVipr v
+            if !checkVipr complete then
               IO.eprintln "REJECT  (native precheck found checkVipr = false)"
               return 2
-            dataSource := emitViprData sourceText v
+            dataSource := emitViprData sourceText complete
             proofSource := emitViprProof
           | .reconstruct =>
               let sliced := sliceVipr v
               if checkVipr sliced then
                 IO.println (s!"slice: {v.cons.size} → {sliced.cons.size} constraints, "
                   ++ s!"{v.ders.size} → {sliced.ders.size} steps")
-                dataSource := emitViprReconstructionData sourceText v sliced
+                -- The reconstruction theorem reads only the original rows and integer
+                -- declarations (`Feasible.withDers`), so the derivations are not emitted.
+                dataSource := emitViprReconstructionData sourceText { v with ders := #[] } sliced
                 proofSource := emitViprReconstructionProof
               else if checkVipr v then
                 IO.println "slice precheck failed; falling back to complete replay"
                 effectiveMode := .full
-                dataSource := emitViprData sourceText v
+                dataSource := emitViprData sourceText (materializeWeakVipr v)
                 proofSource := emitViprProof
               else
                 IO.eprintln "REJECT  (native prechecks found no valid replay)"
@@ -471,6 +495,7 @@ def main (args : List String) : IO UInt32 := do
   | ["--native-mode", "full", path] => checkFileNative path false
   | ["--native-mode", "slice", path] => checkFileNative path true
   | ["--debug-first-invalid", path] => debugFirstInvalid path
+  | ["--dump-materialized", path] => dumpMaterialized path
   | ["--kernel-mode", mode, path] =>
       runKernelMode mode path s!"/tmp/viprcheck_{mode}"
   | ["--kernel-mode", mode, path, "--proof-dir", proofDir] =>

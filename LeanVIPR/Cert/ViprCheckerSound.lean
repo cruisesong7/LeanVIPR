@@ -47,12 +47,6 @@ theorem entryOf_eq (pool : CheckerPool) (s : SStep) :
     cases reason <;> simp [entryOf, sentryOf, poolRow_eq, poolAsm_eq,
       collectReferencedAsms_eq]
 
-theorem checkLin_eq (stated : SLe) (cs : List (ℚ × SLe)) :
-    checkLin stated cs = linCheck stated cs := rfl
-
-theorem checkRnd_eq (intVars : List Nat) (stated : SLe) (cs : List (ℚ × SLe)) :
-    checkRnd intVars stated cs = rndCheck intVars stated cs := rfl
-
 theorem back?_toList (pool : CheckerPool) :
     pool.back? = pool.toList.getLast? := by
   rw [Array.back?_eq_getElem?, List.getLast?_eq_getElem?]
@@ -84,11 +78,11 @@ theorem stepValidB_sound {v : Vipr} {pool : CheckerPool} {s : SStep}
   | lin comb =>
       simp only [hr] at h
       apply ViprRule.linCheck_valid_real
-      simpa only [resolveRefs_eq, checkLin_eq] using h.2
+      simpa only [resolveRefs_eq] using h.2
   | rnd comb =>
       simp only [hr] at h
       apply ViprRule.rndCheck_valid_real
-      simpa only [resolveRefs_eq, checkRnd_eq] using h.2
+      simpa only [resolveRefs_eq] using h.2
   | uns i1 l1 i2 l2 =>
       simp only [hr, Bool.and_eq_true] at h
       exact ⟨ViprRule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.1),
@@ -217,13 +211,8 @@ theorem checkViprInfeasibleSubset_sound (original sliced : Vipr)
   intro a hfeas
   have hsound : ∀ a, Feasible sliced a → False := by
     simpa [Vipr.ClaimValid, hinfeas] using checkVipr_sound sliced hcheck
-  apply hsound a
-  refine ⟨?_, ?_⟩
-  · intro j hj
-    apply hfeas.1 j
-    simpa [hint] using hj
-  · intro c hc
-    exact hfeas.2 c (hrows c hc)
+  exact hsound a
+    ⟨fun j hj => hfeas.1 j (by simpa [hint] using hj), fun c hc => hfeas.2 c (hrows c hc)⟩
 
 /-- Executable slice check. The slicer itself is untrusted; this test re-establishes
 every side condition of `checkViprInfeasibleSubset_sound` at run time. The slicer

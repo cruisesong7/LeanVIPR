@@ -1,8 +1,7 @@
 # LeanVIPR (`viprcheck`)
 
 LeanVIPR is a formally verified Lean 4 checker for **VIPR v1.0 infeasibility
-and objective-range certificates**, using exact rational arithmetic. The companion paper is
-[`paper/main.tex`](paper/main.tex).
+and objective-range certificates**, using exact rational arithmetic.
 
 The solver (exact SCIP) is **untrusted**. `viprcheck` re-reads the certificate,
 emits its parsed AST as Lean data, and asks Lean's kernel to prove

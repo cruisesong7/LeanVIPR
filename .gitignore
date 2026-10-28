@@ -19,3 +19,10 @@ __pycache__/
 *.toc
 *.vrb
 .DS_Store
+
+# Local-only files
+/AGENT_HANDOFF.md
+/examples/audit/
+/docs/disclosure/
+/paper/
+/slides/

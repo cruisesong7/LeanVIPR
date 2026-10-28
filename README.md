@@ -169,3 +169,9 @@ python3 benchmarks/run_compiled.py \
   --modes full slice \
   --output benchmarks/results/checker.csv
 ```
+
+## License
+
+Copyright 2026 the LeanVIPR contributors.
+
+Licensed under the Apache License, Version 2.0; see [`LICENSE`](LICENSE).

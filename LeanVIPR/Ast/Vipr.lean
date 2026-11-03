@@ -412,6 +412,35 @@ def checkSolution (nvar : Nat) (what : String) (vals : List (Nat × ℚ)) :
 def checkFormIndices (nvar : Nat) (what : String) (f : LinForm) : Except String Unit :=
   checkIndices nvar what (f.map (·.idx))
 
+/-- The constraint indices a reason refers to. A `lin weak` reason also refers to the
+rows naming its local variable bounds, since completion may use them. -/
+def reasonRefs : ViprReason → List Nat
+  | .asm | .sol => []
+  | .lin terms | .rnd terms => terms.map Prod.fst
+  | .linWeak bounds terms =>
+      terms.map Prod.fst ++
+        (match bounds with
+         | .global => []
+         | .local bs => bs.map (·.rowIdx))
+  | .uns i1 l1 i2 l2 => [i1, l1, i2, l2]
+
+/-- The `DER` section's trailing field is `-1`, or an index such that no constraint with
+a larger index refers to this one (spec, `DER` section). It lets a verifier discard the
+constraint from memory once that index has been checked, so a derivation that is used
+after its own final-use index is ill-formed; the reference checker reports it as a
+trashed constraint. Soundness does not depend on this, but conformance does. -/
+def checkFinalUse (v : Vipr) : Except String Unit := do
+  let ncon := v.cons.size
+  let hint : Nat → Int := fun k =>
+    if k < ncon then -1 else (v.ders.getD (k - ncon) default).idx
+  for (d, pos) in v.ders.toList.zipIdx do
+    let user : Int := (ncon + pos : Nat)
+    for k in reasonRefs d.reason do
+      let h := hint k
+      if 0 ≤ h && h < user then
+        throw s!"DER {d.name} (index {user}) refers to constraint {k}, whose final-use \
+                 index is {h}"
+
 /-- Well-formedness of every sparse vector that contributes to the claimed problem or
 to a stated derived row. -/
 def validateVipr (v : Vipr) : Except String Unit := do
@@ -431,6 +460,7 @@ def validateVipr (v : Vipr) : Except String Unit := do
     | .lin terms | .linWeak _ terms | .rnd terms =>
         checkDistinct s!"DER {d.name} reason" (terms.map Prod.fst)
     | _ => pure ()
+  checkFinalUse v
 
 /-! ## Top-level parser -/
 

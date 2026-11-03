@@ -103,6 +103,22 @@ Then run `lake exe viprcheck` on the file SCIP wrote. A different SCIP build may
 emit a different (still valid) derivation; the result checker accepts any
 well-formed supported VIPR derivation, not only the checked-in examples.
 
+## Format coverage
+
+LeanVIPR checks the five VIPR v1.0 derivation rules — `asm`, `lin`, `rnd`, `uns`,
+and `{ sol }` — over rows of either sense, and both `RTP infeas` and `RTP range`.
+
+It also accepts the `lin weak` derivations of v1.1: the missing variable-bound rows
+are supplied by an untrusted completer, and the resulting ordinary combination is
+rechecked by the verified `lin` rule, so the completer is not trusted. The reference
+checker `viprchk` has no `lin weak` support and rejects such files outright.
+
+The other v1.1 form, `lin incomplete`, supplies no multipliers at all; recovering
+them requires solving an exact linear program, which is the job of a completer such
+as the reference `viprcomp`. LeanVIPR reports it as unsupported and names the row,
+rather than treating the file as malformed. The reference checker does not support
+this form either.
+
 ## What is trusted
 
 Relative to the emitted certificate AST, trusted: the Lean kernel and the small

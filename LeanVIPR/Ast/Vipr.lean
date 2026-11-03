@@ -285,8 +285,15 @@ def takeCons : Nat → Toks → Except String (List ViprCon × Toks)
       let (rest, ts2) ← takeCons n ts1
       Except.ok (c :: rest, ts2)
 
-/-- Read a `{ reason }` block. -/
-def takeReason (ts : Toks) : Except String (ViprReason × Toks) := do
+/-- Read a `{ reason }` block. `name` labels the row in diagnostics.
+
+Every reason this returns maps to a checkable step in `LeanVIPR.Pipeline`, so an
+unsupported-but-well-formed reason is rejected here rather than being carried into
+the certificate. `lin weak` is supported: it is completed from variable-bound rows
+and the completion is rechecked. `lin incomplete` supplies no multipliers at all and
+requires solving an exact LP to recover them, which is the job of a completer such as
+the reference `viprcomp`; it is therefore reported as unsupported. -/
+def takeReason (name : String) (ts : Toks) : Except String (ViprReason × Toks) := do
   let ts1 ← expectTok "{" ts
   let (kw, ts2) ← takeTok ts1
   match kw with
@@ -302,7 +309,13 @@ def takeReason (ts : Toks) : Except String (ViprReason × Toks) := do
         Except.ok (ViprReason.linWeak bounds pairs, ts7)
       else
         match natOfDigits? next.toList with
-        | none => Except.error s!"expected lin count or 'weak', got '{next}'"
+        | none =>
+            if next == "incomplete" then
+              Except.error
+                s!"{name}: 'lin incomplete' is not supported; complete the \
+                   certificate first (for example with viprcomp)"
+            else
+              Except.error s!"{name}: expected lin count or 'weak', got '{next}'"
         | some p => do
             let (pairs, ts4) ← takePairs p ts3
             let ts5 ← expectTok "}" ts4
@@ -319,14 +332,14 @@ def takeReason (ts : Toks) : Except String (ViprReason × Toks) := do
       let (l2, ts6) ← takeNat ts5
       let ts7 ← expectTok "}" ts6
       Except.ok (ViprReason.uns i1 l1 i2 l2, ts7)
-  | _ => Except.error s!"unknown reason '{kw}'"
+  | _ => Except.error s!"{name}: unknown reason '{kw}'"
 
 def takeDer (ts : Toks) : Except String (ViprDer × Toks) := do
   let (name, ts1) ← takeTok ts
   let (sense, ts2) ← takeSense ts1
   let (rhs, ts3) ← takeNum ts2
   let ((form, usesObj), ts4) ← takeBody ts3
-  let (reason, ts5) ← takeReason ts4
+  let (reason, ts5) ← takeReason name ts4
   let (idx, ts6) ← takeInt ts5
   -- A global one-variable derivation may tighten the bounds used by a later
   -- `lin weak { 0 }` completion.

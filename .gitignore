@@ -26,3 +26,13 @@ __pycache__/
 /docs/disclosure/
 /paper/
 /slides/
+
+# Large benchmark certificates; fetch with benchmarks/download_new.py
+/benchmarks/new/*/*.vipr.gz
+/benchmarks/new/*/*.vipr.gz.part
+/benchmarks/new/*/*.vipr.gz.gzpart
+
+# Local build of the reference C++ checker (scipopt/vipr @ 99eec19); see benchmarks/new/README.md
+/viprcheck/
+# Temporary rusage files written by benchmarks/run_new.py while a run is in progress
+/benchmarks/results/*_logs/*.time

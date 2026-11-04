@@ -1,0 +1,27 @@
+key,value
+date,2026-11-03T00:47:01
+host_cpu,Apple M2
+host_ncpu,8
+host_perf_cores,4
+host_mem_bytes,25769803776
+os,Darwin 14.4 (23.4.0)
+python,3.9.6
+lean_toolchain,leanprover/lean4:v4.35.0
+lean_version,"Lean (version 4.35.0, arm64-apple-darwin24.6.0, commit eb6cafb7290e8bd5f2937522d8d804f58f02bafc, Release)"
+leanvipr_commit,0fd117e0509735da0090f5840b7f2c73028ffd11
+leanvipr_dirty,clean
+lean_binary,/Users/haiduong/Desktop/LeanVIPR/.lake/build/bin/viprcheck
+lean_binary_sha256,8487f8ab4b0de8e847ba05c0e09fcac491f781f04148bce6b7b4d16d64d998bd
+viprchk_commit,99eec197a49b2bd9ad33c1f4c7afabe93caa6511
+viprchk_binary,/Users/haiduong/Desktop/LeanVIPR/viprcheck/code/build/viprchk
+viprchk_build,"CMake Release (-O3 -DNDEBUG), target viprchk, VIPRCOMP=OFF"
+cxx_compiler,Apple clang version 15.0.0 (clang-1500.3.9.4)
+gmp,gmp 6.3.0
+timeout_s,3600.0
+mem_limit_gib,18.0
+footprint_limit_gib,32.0
+watchdog,kill if tree RSS > mem_limit or tree phys_footprint > footprint_limit (footprint check added after vpm1; rows before it used RSS only)
+corpus,/Users/haiduong/Desktop/LeanVIPR/benchmarks/new
+sets,easy hard chvatal negative
+lean_modes,"full (all); slice (RTP infeas only, as in run_compiled.py)"
+cpp_mode,viprchk on the complete certificate (no viprcomp; no lin weak present)

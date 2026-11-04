@@ -186,6 +186,64 @@ python3 benchmarks/run_compiled.py \
   --output benchmarks/results/checker.csv
 ```
 
+## Benchmark setup
+
+The 26 certificates above are checked in under `benchmarks/infeas/` and
+`benchmarks/range/`, so they need no download.
+
+A larger corpus of 112 published VIPR v1.0 certificates (about 18 GB gzipped) is
+not stored in git. It contains:
+
+- the 56 numerically easy and 50 numerically difficult MIPs from the
+  [scipopt/vipr experiments](https://github.com/scipopt/vipr/tree/master/experiments)
+- 3 Chvátal's-conjecture proofs
+- 3 forged or manipulated certificates
+
+Download it into `benchmarks/new/`. Each file is checked against the SHA-256
+in [`benchmarks/new/manifest.csv`](benchmarks/new/manifest.csv):
+
+```bash
+python3 benchmarks/download_new.py                          # all 112; skips files already present
+python3 benchmarks/download_new.py --sets negative chvatal  # or a subset
+python3 benchmarks/download_new.py --verify                 # re-hash what is on disk
+```
+
+The reference C++ checker `viprchk` is built from
+[scipopt/vipr](https://github.com/scipopt/vipr) at `99eec19` into the ignored
+directory `viprcheck/`. It needs a C++ compiler, CMake, GMP and Boost (on macOS:
+`brew install cmake gmp boost`):
+
+```bash
+git clone https://github.com/scipopt/vipr.git viprcheck
+git -C viprcheck checkout 99eec19
+cmake -S viprcheck/code -B viprcheck/code/build -DCMAKE_BUILD_TYPE=Release -DVIPRCOMP=OFF
+cmake --build viprcheck/code/build --target viprchk
+```
+
+The 26 checked-in certificates contain `lin weak`, so their C++ pipeline
+([`benchmarks/run_cpp.py`](benchmarks/run_cpp.py)) also needs `viprcomp`. To
+build it, configure with `-DVIPRCOMP=ON`, which requires SoPlex. The 112
+downloaded certificates are complete, so they need only `viprchk`.
+
+Run `viprchk` and both Lean modes on every downloaded certificate, one process
+at a time. Run this inside `tmux` or `screen`, because the whole corpus takes
+many hours:
+
+```bash
+lake build viprcheck
+python3 benchmarks/run_new.py --sets easy hard chvatal negative \
+  --workdir /tmp/vipr-work --slice-all
+```
+
+The runner writes one CSV per method to `benchmarks/results/`: `new_cpp.csv`,
+`new_lean_full.csv` and `new_lean_slice.csv`. It records the environment in
+`new_env.csv` and writes per-run logs to `benchmarks/results/new_logs/`. Pass
+`--resume` to continue an interrupted run, or create
+`benchmarks/results/new_STOP` to stop after the current certificate. Without
+`--slice-all`, slice mode runs only on `RTP infeas` certificates; for the other
+certificates `viprcheck` falls back to complete replay anyway. The defaults are
+a 1-hour timeout and an 18 GiB RSS / 32 GiB memory-footprint limit per check.
+
 ## License
 
 Copyright 2026 the LeanVIPR contributors.

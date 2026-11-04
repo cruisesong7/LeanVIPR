@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Parser.Number
-public import LeanVIPR.Parser.Ast
+public import LeanVIPR.Impl.Number
+public import LeanVIPR.Spec.Ast
 
 @[expose] public section
 
@@ -473,12 +473,5 @@ def parseViprToks (ts0 : Toks) : Except String Vipr := do
 
 def parseVipr (content : String) : Except String Vipr :=
   parseViprToks (wsTokens content.toList)
-
-/-! ## Objective references -/
-
-/-- Resolve a `CON` constraint's linear form, substituting the objective row when the
-constraint uses `OBJ`. -/
-def ViprCon.resolvedForm (c : ViprCon) (objTerms : List (Nat × ℚ)) : LinForm :=
-  if c.usesObj then objTerms.map (fun q => (⟨q.1, q.2⟩ : Term)) else c.form
 
 end LeanVIPR.Parser

@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Semantics.Claim
+public import LeanVIPR.Impl.Solution
 
 @[expose] public section
 

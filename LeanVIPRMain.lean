@@ -186,7 +186,7 @@ def sliceVipr (input : Vipr) : Vipr := Id.run do
   return { v with numCon := keptCon, numBounds := numBounds, cons := cons, ders := ders }
 
 def emitViprData (sourceText : String) (cert : Vipr) : String :=
-  "import LeanVIPR.Semantics.Lower\n\n"
+  "import LeanVIPR.Spec.Lower\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"
@@ -197,7 +197,7 @@ def emitViprData (sourceText : String) (cert : Vipr) : String :=
   ++ "end LeanVIPR.Generated\n"
 
 def emitViprReconstructionData (sourceText : String) (original sliced : Vipr) : String :=
-  "import LeanVIPR.Semantics.Lower\n\n"
+  "import LeanVIPR.Spec.Lower\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"

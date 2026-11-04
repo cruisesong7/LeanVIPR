@@ -1,8 +1,8 @@
 module
 
-public import LeanVIPR.Parser
+public import LeanVIPR.Impl.Parser
 public import LeanVIPR.Thm.Parser.Tokens
-public import LeanVIPR.Thm.Parser.Grammar
+public import LeanVIPR.Spec.Grammar
 public import LeanVIPR.Thm.Parser.Number
 
 @[expose] public section

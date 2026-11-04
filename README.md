@@ -123,30 +123,30 @@ this form either.
 
 ```
 LeanVIPR/
-  Parser.lean          -- tokenizer, parser, validator
-  Parser/              Ast.lean  Number.lean
-  Semantics/           LinCon.lean  LinForm.lean  Rows.lean  Claim.lean  Lower.lean
-  Checker.lean         -- the array-backed executable checker
-  Thm/
-    Parser.lean        -- the reader's results: sound, complete, the iff
-    Parser/            Grammar.lean  -- the specification
-                       Tokens.lean  Number.lean  Certificate.lean  Valid.lean
-    System.lean        -- the proof system's results: the rules are valid
-    System/            Sound.lean  RuleSound.lean  RuleComplete.lean
-                       Completeness.lean
-    Checker.lean       -- the checker's results: decides the system, and it is sound
-    Checker/           Sound.lean  Complete.lean
-LeanVIPRMain.lean      -- the `viprcheck` command line
+  Spec.lean   Spec/   Ast  Grammar  LinCon  LinForm  Row  Lower  System  Claim
+                      Completeness
+  Impl.lean   Impl/   Number  Parser  Form  Rules  Solution  Checker
+  Thm.lean    Thm/    Parser(+/)  System(+/)  Checker(+/)  Claim  LinForm  Row
+LeanVIPRMain.lean     -- the `viprcheck` command line
 ```
 
-`Parser.lean` and `Checker.lean` are the two ends of the pipeline. `Semantics/` sits
-between them: it says what the AST means, holds the declarative proof system, and lowers
-parsed rows to the rows the checker replays (`Lower.lean`).
+Three parts, and the division is the point of the development:
 
-`Thm/` holds every proof, one directory per layer, and each layer's results are collected
-in a file beside its directory — `Thm/Parser.lean`, `Thm/System.lean`,
-`Thm/Checker.lean`. Those three plus `Thm/Parser/Grammar.lean`, the specification they
-are stated against, are the files meant to be read. The rest is how they are proved.
+* **`Spec/`** — what a certificate is and what it claims. Nothing here refers to an
+  executable function: no reader, no checker, no `Bool`, no `Except`. Accept these
+  definitions and you know what `ACCEPT` means without reading the implementation.
+* **`Impl/`** — the reader and the checker. The only artifacts whose correctness is in
+  question, and nothing here is trusted.
+* **`Thm/`** — the proofs that `Impl` meets `Spec`, with one results file per layer
+  (`Thm/Parser.lean`, `Thm/System.lean`, `Thm/Checker.lean`) beside the directory that
+  proves it.
+
+The dependency order is enforced, not just intended: `Spec/` imports nothing from
+`Impl/` or `Thm/`, and `Impl/` imports only `Spec/`. So no correctness statement can be
+satisfied by an implementation that merely agrees with itself.
+
+Each directory has a header file — `LeanVIPR.Spec`, `LeanVIPR.Impl`, `LeanVIPR.Thm` —
+saying what is in it and what to read first.
 
 ## What is trusted
 
@@ -165,10 +165,10 @@ statement that every optimal value lies in `[lb, ub]` is the corollary
 ## Parser verification
 
 The reader is verified against an independent specification rather than trusted. That
-specification is one file — [`Thm/Parser/Grammar.lean`](LeanVIPR/Thm/Parser/Grammar.lean),
+specification is one file — [`Spec/Grammar.lean`](LeanVIPR/Spec/Grammar.lean),
 about 450 lines — stated without reference to any parser function:
 
-| section of that file | covers |
+| section of `Spec/Grammar.lean` | covers |
 |---|---|
 | `IsNumValue` | a numeric token to an exact rational |
 | `IsTokenization` | characters to tokens |
@@ -191,7 +191,7 @@ and `isNumValue_unique` record that no part of the grammar is ambiguous.
 
 The specification contains no implementation function. Nothing on the right-hand side
 of that `↔` reduces to `wsTokens`, `parseViprToks` or `validateVipr`; it mentions only
-that one grammar file and the AST type definitions. That is the property that makes
+that one grammar file and the AST type definitions, which is checked mechanically. That is the property that makes
 the theorem worth proving — a correctness statement phrased in terms of `wsTokens`
 would take the tokenizer's own output as the definition of tokenization and so could
 not detect a tokenizer that dropped, merged or truncated tokens.

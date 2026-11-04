@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Semantics.LinCon
+public import LeanVIPR.Spec.LinCon
 
 @[expose] public section
 
@@ -148,5 +148,12 @@ instance (v : Vipr) (user k : Nat) : Decidable (usedAfterFinal v user k) := by
 
 /-- A certificate as a list of whitespace-separated tokens. -/
 abbrev Toks := List String
+
+/-! ## Objective references -/
+
+/-- Resolve a `CON` constraint's linear form, substituting the objective row when the
+constraint uses `OBJ`. -/
+def ViprCon.resolvedForm (c : ViprCon) (objTerms : List (Nat × ℚ)) : LinForm :=
+  if c.usesObj then objTerms.map (fun q => (⟨q.1, q.2⟩ : Term)) else c.form
 
 end LeanVIPR.Parser

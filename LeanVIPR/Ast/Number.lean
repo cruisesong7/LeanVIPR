@@ -38,22 +38,59 @@ one side of a decimal point. -/
 def natOfDigitsOrZero? (l : List Char) : Option Nat :=
   if l.isEmpty then some 0 else natOfDigits? l
 
-/-- Parse a signed finite decimal as the exact rational it denotes. -/
-def parseRat? (s0 : String) : Option ℚ :=
-  let (neg, cs) :=
-    match s0.toList with
-    | '-' :: rest => (true, rest)
-    | '+' :: rest => (false, rest)
-    | cs => (false, cs)
+/-- Parse an unsigned finite decimal: a run of digits, or `i.f` with at least one side
+present, as the exact rational it denotes. -/
+def parseUDec? (cs : List Char) : Option ℚ :=
   match splitOnChar '.' cs with
-  | [i] => (natOfDigits? i).map (fun n => if neg then -(n : ℚ) else (n : ℚ))
+  | [i] =>
+      match natOfDigits? i with
+      | some n => some (n : ℚ)
+      | none => none
   | [i, f] =>
       if i.isEmpty && f.isEmpty then none else
       match natOfDigitsOrZero? i, natOfDigitsOrZero? f with
       | some ni, some nf =>
-          let q : ℚ := (ni : ℚ) + (nf : ℚ) / (10 : ℚ) ^ f.length
-          some (if neg then -q else q)
+          some ((ni : ℚ) + (nf : ℚ) / (10 : ℚ) ^ f.length)
       | _, _ => none
   | _ => none
+
+/-- Split off at most one leading sign, reporting whether the token is negated. -/
+def splitSign : List Char → Bool × List Char
+  | '-' :: rest => (true, rest)
+  | '+' :: rest => (false, rest)
+  | cs => (false, cs)
+
+/-- Parse a signed finite decimal as the exact rational it denotes. At most one leading
+sign is accepted. -/
+def parseRatChars? (cs0 : List Char) : Option ℚ :=
+  let (neg, cs) := splitSign cs0
+  match parseUDec? cs with
+  | some q => some (if neg then -q else q)
+  | none => none
+
+def parseRat? (s : String) : Option ℚ := parseRatChars? s.toList
+
+/-- Parse a signed integer literal. -/
+def parseIntChars? (cs0 : List Char) : Option ℤ :=
+  let (neg, cs) := splitSign cs0
+  match natOfDigits? cs with
+  | some n => some (if neg then -(n : ℤ) else (n : ℤ))
+  | none => none
+
+def parseInt? (s : String) : Option ℤ := parseIntChars? s.toList
+
+/-- Parse an exact rational: a signed decimal, or `p/q` with a sign permitted on each
+side, as GMP's reader accepts (a negative numerator over a negative denominator is
+positive). The value is normalized exactly, so the written signs cannot change it. -/
+def parseNumChars? (cs : List Char) : Option ℚ :=
+  match splitOnChar '/' cs with
+  | [_] => parseRatChars? cs
+  | [num, den] =>
+      match parseIntChars? num, parseIntChars? den with
+      | some p, some q => if q == 0 then none else some ((p : ℚ) / (q : ℚ))
+      | _, _ => none
+  | _ => none
+
+def parseNum? (s : String) : Option ℚ := parseNumChars? s.toList
 
 end LeanVIPR.Ast

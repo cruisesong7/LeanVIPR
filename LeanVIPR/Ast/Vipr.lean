@@ -28,28 +28,6 @@ namespace LeanVIPR.Ast
 
 open LeanVIPR.Cert
 
-/-! ## Number parsing (integers and `p/q` rationals) -/
-
-/-- Parse a signed integer literal. -/
-def parseInt? (s : String) : Option ℤ :=
-  match s.toList with
-  | '-' :: rest => (natOfDigits? rest).map (fun n => -(n : ℤ))
-  | '+' :: rest => (natOfDigits? rest).map (fun n => (n : ℤ))
-  | cs          => (natOfDigits? cs).map (fun n => (n : ℤ))
-
-/-- Parse an exact rational: either a decimal literal (`Ast.parseRat?`) or `p/q`.
-Both `p` and `q` may carry a sign, as GMP's reader accepts (a negative numerator
-over a negative denominator is positive); the value is normalized exactly, so the
-written signs cannot change its meaning. -/
-def parseNum? (s : String) : Option ℚ :=
-  match splitOnChar '/' s.toList with
-  | [_] => parseRat? s
-  | [num, den] =>
-      match parseInt? (String.ofList num), parseInt? (String.ofList den) with
-      | some p, some q => if q == 0 then none else some ((p : ℚ) / (q : ℚ))
-      | _, _ => none
-  | _ => none
-
 /-! ## Parsed AST -/
 
 /-- A `CON` constraint: `name sense rhs (form | OBJ)`. -/

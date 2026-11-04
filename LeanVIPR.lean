@@ -1,6 +1,7 @@
 module
 
 public import LeanVIPR.Ast.Vipr
+public import LeanVIPR.Ast.NumberSpec
 public import LeanVIPR.Cert.ViprSystemSound
 public import LeanVIPR.Cert.ViprRuleSound
 public import LeanVIPR.Cert.ViprRuleComplete

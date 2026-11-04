@@ -135,34 +135,50 @@ statement that every optimal value lies in `[lb, ub]` is the corollary
 
 ## Parser verification
 
-The reader is verified against an independent grammar rather than trusted. Two
-specifications are stated without reference to any parser function — the number grammar
-in [`LeanVIPR/Thm/Number/Grammar.lean`](LeanVIPR/Thm/Number/Grammar.lean) and the
-certificate grammar in
-[`LeanVIPR/Thm/Vipr/Grammar.lean`](LeanVIPR/Thm/Vipr/Grammar.lean) — and the reader is
-proved to agree with both in each direction:
+The reader is verified against an independent specification rather than trusted. Four
+grammars are stated without reference to any parser function:
+
+| specification | covers |
+|---|---|
+| [`Thm/Tokens/Grammar.lean`](LeanVIPR/Thm/Tokens/Grammar.lean) | characters to tokens |
+| [`Thm/Number/Grammar.lean`](LeanVIPR/Thm/Number/Grammar.lean) | a numeric token to an exact rational |
+| [`Thm/Vipr/Grammar.lean`](LeanVIPR/Thm/Vipr/Grammar.lean) | tokens to a certificate |
+| [`Thm/Valid/Grammar.lean`](LeanVIPR/Thm/Valid/Grammar.lean) | when a certificate denotes a usable problem |
+
+and the reader is proved to agree with them in both directions:
 
 ```lean
-theorem parseNum_eq_some_iff  : parseNumChars? cs = some q ↔ IsNumValue cs q
-theorem parseVipr_eq_ok_iff   : parseVipr content = .ok v ↔
-                                  IsVipr (wsTokens content.toList) v ∧
-                                  validateVipr v = .ok ()
+theorem parseVipr_eq_ok_iff : parseVipr content = .ok v ↔
+                                (IsViprText content.toList v ∧ IsValid v)
 ```
 
-Soundness is the direction that closes a gap: `checkVipr_sound` proves a claim about the
-AST it is handed, so a token read as the wrong rational would let it establish a true
-claim about a *different* mixed-integer problem. Completeness is what makes a rejection
-meaningful, rather than possibly an artefact of a narrow reader. `isNumValue_unique` and
-`isVipr_unique` record that neither grammar is ambiguous.
+Both sides of that `↔` matter. **Soundness** closes a gap replay cannot:
+`checkVipr_sound` proves a claim about the AST it is handed, so a token read as the
+wrong rational would let it establish a true claim about a *different* mixed-integer
+problem. **Completeness** is what makes a rejection a statement about the file rather
+than possibly an artefact of a narrow reader. `isVipr_unique`, `isTokenization_unique`
+and `isNumValue_unique` record that no grammar is ambiguous.
 
-Two things are deliberately still outside this result. `validateVipr` appears in the
-statement as a function, not as a declarative predicate: it is a semantic check on
-indices (in range, each variable at most once per sparse vector, no derivation used
-after its own final-use index), and stating it declaratively needs a sort with a
-specification, which `Array.qsort` does not have. And the artifact does not
-*kernel-check*, on each run, that the AST emitted into the generated proof is the parse
-of the exact source bytes; the compiled CLI and the AST printer remain a frontend trust
-boundary for that per-run binding. Neither is included in the benchmark below.
+The specification contains no implementation function. Nothing on the right-hand side
+of that `↔` reduces to `wsTokens`, `parseViprToks` or `validateVipr`; it mentions only
+the four grammars above and the AST type definitions. That is the property that makes
+the theorem worth proving — a correctness statement phrased in terms of `wsTokens`
+would take the tokenizer's own output as the definition of tokenization and so could
+not detect a tokenizer that dropped, merged or truncated tokens.
+
+One limit is worth naming because the grammar states it rather than hiding it. VIPR
+v1.1 leaves the `DER` scope keyword `global`/`local` optional *and* unbracketed, so the
+format is only unambiguous under maximal munch: a derivation *named* `global` or
+`local` directly after a flagless row would have its name read as that row's flag.
+`IsDers` carries that side condition. Such a file is rejected rather than misread, so
+this limits completeness only, and it is a property of the format — `viprchk` has the
+same exposure.
+
+What remains trusted is the per-run binding, not the reader. The theorems are about the
+Lean functions; the artifact does not *kernel-check*, on each run, that the AST emitted
+into the generated proof is the parse of the exact source bytes. The compiled CLI, the
+AST printer, and the OS/file plumbing sit outside this result and are not included in
+the benchmark below.
 
 ## VIPR-only benchmark
 

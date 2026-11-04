@@ -2,6 +2,7 @@ module
 
 public import LeanVIPR.Ast.Types
 public import LeanVIPR.Thm.Number.Grammar
+public import LeanVIPR.Thm.Tokens.Grammar
 
 @[expose] public section
 
@@ -217,5 +218,10 @@ def IsVipr (ts : Toks) (v : Vipr) : Prop :=
     IsRtpSection sRtp v.rtp ∧
     IsSolSection sSol v.numSol v.sols.toList ∧
     IsDerSection sDer v.ders.toList
+
+/-- `cs` is the text of exactly the certificate `v`: it tokenizes to a token list that
+derives `v`. Characters in, certificate out, with no parser function in between. -/
+def IsViprText (cs : List Char) (v : Vipr) : Prop :=
+  ∃ ts, IsTokenization cs ts ∧ IsVipr ts v
 
 end LeanVIPR.Ast

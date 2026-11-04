@@ -102,6 +102,45 @@ structure Vipr where
   ders : Array ViprDer
   deriving Repr, Inhabited
 
+/-! ## What the AST's index fields mean
+
+These are not parser functions: they say what a reason refers to and what a `DER` row's
+trailing field declares, which is part of the format and is used both by the validator
+and by its specification in `LeanVIPR.Thm.Valid.Grammar`. -/
+
+/-- The constraint indices a reason refers to. A `lin weak` reason also refers to the
+rows naming its local variable bounds, since completion may use them. -/
+def reasonRefs : ViprReason → List Nat
+  | .asm | .sol => []
+  | .lin terms | .rnd terms => terms.map Prod.fst
+  | .linWeak bounds terms =>
+      terms.map Prod.fst ++
+        (match bounds with
+         | .global => []
+         | .local bs => bs.map (·.rowIdx))
+  | .uns i1 l1 i2 l2 => [i1, l1, i2, l2]
+
+/-- The multipliers a reason must not repeat. The specification requires the constraint
+indices of `lin` and `rnd` reasons to be distinct; the reference checker silently keeps
+the last multiplier. -/
+def reasonMultipliers : ViprReason → List Nat
+  | .lin terms | .linWeak _ terms | .rnd terms => terms.map Prod.fst
+  | .asm | .sol | .uns _ _ _ _ => []
+
+/-- The final-use index declared for constraint `k`: `-1` for an original `CON` row,
+which is never discarded, and otherwise the trailing field of derivation `k`. -/
+def finalUseHint (v : Vipr) (k : Nat) : Int :=
+  if k < v.cons.size then -1 else (v.ders.getD (k - v.cons.size) default).idx
+
+/-- Constraint `k` is used by the derivation with index `user`, but `k` declared a
+final-use index before `user` — so a verifier was entitled to have discarded it. A
+hint of `-1` means "never discarded" and so is never a violation. -/
+def usedAfterFinal (v : Vipr) (user : Nat) (k : Nat) : Prop :=
+  0 ≤ finalUseHint v k ∧ finalUseHint v k < (user : Int)
+
+instance (v : Vipr) (user k : Nat) : Decidable (usedAfterFinal v user k) := by
+  unfold usedAfterFinal; infer_instance
+
 /-- A certificate as a list of whitespace-separated tokens. -/
 abbrev Toks := List String
 

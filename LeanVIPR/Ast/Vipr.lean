@@ -320,84 +320,94 @@ def takeBound (infinity : String) (t : String) : Except String (Option ℚ) :=
     | some q => Except.ok (some q)
     | none => Except.error s!"expected number or '{infinity}' as RTP bound, got '{t}'"
 
+/-- Run a check on every element, reporting the first failure. -/
+def checkAll {α : Type} (f : α → Except String Unit) : List α → Except String Unit
+  | [] => Except.ok ()
+  | a :: as => do f a; checkAll f as
+
+/-- The first value repeated adjacently, if any. On a sorted list this finds a duplicate
+exactly when there is one, which is why the callers sort first. -/
+def firstAdjacentDup : List Nat → Option Nat
+  | [] => none
+  | [_] => none
+  | a :: b :: rest => if a = b then some a else firstAdjacentDup (b :: rest)
+
+/-- The first key given two different values adjacently, if any. -/
+def firstKeyConflict : List (Nat × ℚ) → Option Nat
+  | [] => none
+  | [_] => none
+  | a :: b :: rest =>
+      if a.1 = b.1 ∧ a.2 ≠ b.2 then some a.1 else firstKeyConflict (b :: rest)
+
 /-- Variable indices must be declared, and a sparse vector may mention each index at
 most once. Duplicate indices have no agreed meaning (the reference checker keeps the
-last value, while summing them is also natural), so they are rejected. -/
-def checkDistinct (what : String) (idxs : List Nat) : Except String Unit := do
-  let sorted := idxs.toArray.qsort (· < ·)
-  for k in [1:sorted.size] do
-    if sorted[k - 1]! == sorted[k]! then
-      throw s!"{what}: duplicate index {sorted[k]!}"
+last value, while summing them is also natural), so they are rejected.
 
-def checkIndices (nvar : Nat) (what : String) (idxs : List Nat) : Except String Unit := do
-  if let some i := idxs.find? (· ≥ nvar) then
-    throw s!"{what}: variable index {i} out of range (VAR {nvar})"
-  checkDistinct what idxs
+Sorting with `mergeSort` rather than `qsort` keeps this `O(n log n)` while leaving it
+provable: `List.pairwise_mergeSort` and `List.mergeSort_perm` are what
+`LeanVIPR.Thm.Valid` needs to show the adjacent-duplicate scan decides `List.Nodup`. -/
+def checkDistinct (what : String) (idxs : List Nat) : Except String Unit :=
+  match firstAdjacentDup (idxs.mergeSort (fun a b => decide (a ≤ b))) with
+  | some i => Except.error s!"{what}: duplicate index {i}"
+  | none => Except.ok ()
+
+def checkIndices (nvar : Nat) (what : String) (idxs : List Nat) : Except String Unit :=
+  match idxs.find? (fun i => decide (nvar ≤ i)) with
+  | some i => Except.error s!"{what}: variable index {i} out of range (VAR {nvar})"
+  | none => checkDistinct what idxs
 
 /-- A solution vector may repeat a variable index only with the same value; repeated
 indices with different values have no single meaning (the reference checker keeps the
 last value). -/
 def checkSolution (nvar : Nat) (what : String) (vals : List (Nat × ℚ)) :
-    Except String Unit := do
-  if let some (i, _) := vals.find? (·.1 ≥ nvar) then
-    throw s!"{what}: variable index {i} out of range (VAR {nvar})"
-  let sorted := vals.toArray.qsort (fun a b => a.1 < b.1)
-  for k in [1:sorted.size] do
-    if sorted[k - 1]!.1 == sorted[k]!.1 && sorted[k - 1]!.2 != sorted[k]!.2 then
-      throw s!"{what}: conflicting values for variable index {sorted[k]!.1}"
+    Except String Unit :=
+  match vals.find? (fun p => decide (nvar ≤ p.1)) with
+  | some p => Except.error s!"{what}: variable index {p.1} out of range (VAR {nvar})"
+  | none =>
+      match firstKeyConflict (vals.mergeSort (fun a b => decide (a.1 ≤ b.1))) with
+      | some i => Except.error s!"{what}: conflicting values for variable index {i}"
+      | none => Except.ok ()
 
 def checkFormIndices (nvar : Nat) (what : String) (f : LinForm) : Except String Unit :=
   checkIndices nvar what (f.map (·.idx))
 
-/-- The constraint indices a reason refers to. A `lin weak` reason also refers to the
-rows naming its local variable bounds, since completion may use them. -/
-def reasonRefs : ViprReason → List Nat
-  | .asm | .sol => []
-  | .lin terms | .rnd terms => terms.map Prod.fst
-  | .linWeak bounds terms =>
-      terms.map Prod.fst ++
-        (match bounds with
-         | .global => []
-         | .local bs => bs.map (·.rowIdx))
-  | .uns i1 l1 i2 l2 => [i1, l1, i2, l2]
+/-- The derivations in `ds`, whose first element has index `pos`, that use a constraint
+after that constraint's declared final-use index — paired with the offending
+reference. -/
+def finalUseViolations (v : Vipr) (pos : Nat) : List ViprDer → List (ViprDer × Nat)
+  | [] => []
+  | d :: ds =>
+      ((reasonRefs d.reason).filterMap fun k =>
+        if usedAfterFinal v (v.cons.size + pos) k then some (d, k) else none)
+      ++ finalUseViolations v (pos + 1) ds
 
 /-- The `DER` section's trailing field is `-1`, or an index such that no constraint with
 a larger index refers to this one (spec, `DER` section). It lets a verifier discard the
 constraint from memory once that index has been checked, so a derivation that is used
 after its own final-use index is ill-formed; the reference checker reports it as a
 trashed constraint. Soundness does not depend on this, but conformance does. -/
-def checkFinalUse (v : Vipr) : Except String Unit := do
-  let ncon := v.cons.size
-  let hint : Nat → Int := fun k =>
-    if k < ncon then -1 else (v.ders.getD (k - ncon) default).idx
-  for (d, pos) in v.ders.toList.zipIdx do
-    let user : Int := (ncon + pos : Nat)
-    for k in reasonRefs d.reason do
-      let h := hint k
-      if 0 ≤ h && h < user then
-        throw s!"DER {d.name} (index {user}) refers to constraint {k}, whose final-use \
-                 index is {h}"
+def checkFinalUse (v : Vipr) : Except String Unit :=
+  match finalUseViolations v 0 v.ders.toList with
+  | [] => Except.ok ()
+  | (d, k) :: _ =>
+      Except.error s!"DER {d.name} refers to constraint {k}, whose final-use index is \
+                      {finalUseHint v k}"
 
 /-- Well-formedness of every sparse vector that contributes to the claimed problem or
 to a stated derived row. -/
-def validateVipr (v : Vipr) : Except String Unit := do
-  let nvar := v.varNames.size
-  if let some i := v.intVars.find? (· ≥ nvar) then
-    throw s!"INT: variable index {i} out of range (VAR {nvar})"
-  checkIndices nvar "OBJ" (v.objTerms.map Prod.fst)
-  for c in v.cons do
-    checkFormIndices nvar s!"CON {c.name}" c.form
-  for s in v.sols do
-    checkSolution nvar s!"SOL {s.1}" s.2
-  for d in v.ders do
-    checkFormIndices nvar s!"DER {d.name}" d.form
-    -- The specification requires the constraint indices of `lin` and `rnd` reasons
-    -- to be distinct; the reference checker silently keeps the last multiplier.
-    match d.reason with
-    | .lin terms | .linWeak _ terms | .rnd terms =>
-        checkDistinct s!"DER {d.name} reason" (terms.map Prod.fst)
-    | _ => pure ()
-  checkFinalUse v
+def validateVipr (v : Vipr) : Except String Unit :=
+  match v.intVars.find? (fun i => decide (v.varNames.size ≤ i)) with
+  | some i =>
+      Except.error s!"INT: variable index {i} out of range (VAR {v.varNames.size})"
+  | none => do
+      checkIndices v.varNames.size "OBJ" (v.objTerms.map Prod.fst)
+      checkAll (fun c => checkFormIndices v.varNames.size s!"CON {c.name}" c.form)
+        v.cons.toList
+      checkAll (fun s => checkSolution v.varNames.size s!"SOL {s.1}" s.2) v.sols.toList
+      checkAll (fun d => do
+        checkFormIndices v.varNames.size s!"DER {d.name}" d.form
+        checkDistinct s!"DER {d.name} reason" (reasonMultipliers d.reason)) v.ders.toList
+      checkFinalUse v
 
 /-- Read the `RTP` (relation-to-prove) section: `RTP infeas`, or `RTP range lb ub`. -/
 def takeRtp (ts : Toks) : Except String (ViprRtp × Toks) := do

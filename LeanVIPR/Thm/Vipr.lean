@@ -1,16 +1,28 @@
 module
 
 public import LeanVIPR.Thm.Vipr.Lemmas
+public import LeanVIPR.Thm.Valid
 
 @[expose] public section
 
 /-!
 # The certificate parser implements the certificate grammar
 
-The headline result is `parseVipr_eq_ok_iff`: the parser accepts exactly the token lists
-the grammar of `LeanVIPR.Thm.Vipr.Grammar` derives, and returns exactly the certificate
-the grammar assigns to them. With `isVipr_unique`, the grammar therefore *is* the
-specification of what LeanVIPR reads — no parser function needs to be read to know it.
+The headline result is `parseVipr_eq_ok_iff`: the parser accepts exactly the files the
+grammar derives, and returns exactly the certificate the grammar assigns to them.
+
+```lean
+parseVipr content = .ok v ↔ (IsViprText content.toList v ∧ IsValid v)
+```
+
+Neither side of that `↔` mentions a parser function. `IsViprText` composes
+`LeanVIPR.Thm.Tokens.Grammar` with `LeanVIPR.Thm.Vipr.Grammar`, and `IsValid` is
+`LeanVIPR.Thm.Valid.Grammar`; between them they reach down to characters without
+reference to `wsTokens`, `parseViprToks` or `validateVipr`. That is what makes the
+theorem worth proving: phrased in terms of `wsTokens` it would take the tokenizer's own
+output as the definition of tokenization, and so could not detect a tokenizer that
+dropped, merged, or truncated tokens. With `isVipr_unique` and `isTokenization_unique`,
+the grammars therefore *are* the specification of what LeanVIPR reads.
 
 Why both directions matter. `parseVipr_sound` is the one that closes a soundness gap:
 `checkVipr_sound` proves a claim about the AST it is given, so a misparse would let it
@@ -19,9 +31,6 @@ what makes a rejection meaningful: without it, "LeanVIPR rejects this file" coul
 be an artefact of a narrow reader rather than a statement about the file.
 
 Supporting results, in decreasing order of interest:
-
-**Tokenizer.** What every later stage may assume: tokens are nonempty, no token contains
-whitespace, and a comment at a token boundary contributes nothing.
 
 **Terminals.** For each terminal, an `iff` saying the consumer reads exactly the tokens
 the grammar derives, returns exactly the value the grammar assigns, and leaves exactly
@@ -39,60 +48,17 @@ the VIPR format, which leaves the keyword optional and unbracketed, not of this 
 
 namespace LeanVIPR.Ast
 
-/-! ## Tokenizer -/
-
-/-- Every token is nonempty. -/
-theorem wsTokens_ne_empty (cs : List Char) : ∀ t ∈ wsTokens cs, t ≠ "" := by
-  induction cs using wsTokens.induct with
-  | case1 => simp [wsTokens]
-  | case2 c cs hws ih => rw [wsTokens]; simpa [hws] using ih
-  | case3 c cs hws hpct ih =>
-      rw [wsTokens]
-      simpa [hws, hpct] using ih
-  | case4 c cs hws hpct t r hr ih =>
-      rw [wsTokens]
-      simp only [hws, hpct, Bool.false_eq_true, ite_false, hr]
-      intro s hs
-      rcases List.mem_cons.mp hs with rfl | hs
-      · intro hempty
-        exact absurd (congrArg String.length hempty) (by simp)
-      · exact ih s hs
-
-/-- No token contains whitespace. -/
-theorem wsTokens_no_ws (cs : List Char) :
-    ∀ t ∈ wsTokens cs, ∀ c ∈ t.toList, ¬ c.isWhitespace := by
-  induction cs using wsTokens.induct with
-  | case1 => simp [wsTokens]
-  | case2 c cs hws ih => rw [wsTokens]; simpa [hws] using ih
-  | case3 c cs hws hpct ih => rw [wsTokens]; simpa [hws, hpct] using ih
-  | case4 c cs hws hpct t r hr ih =>
-      rw [wsTokens]
-      simp only [hws, hpct, Bool.false_eq_true, ite_false, hr]
-      intro s hs
-      rcases List.mem_cons.mp hs with rfl | hs
-      · intro d hd
-        simp only [String.toList_ofList] at hd
-        rcases List.mem_cons.mp hd with rfl | hd
-        · simpa using hws
-        · have := takeToken_no_ws cs d (by rw [hr] at *; exact hd)
-          simpa using this
-      · exact ih s hs
-
-/-- A comment at a token boundary contributes nothing. -/
-theorem wsTokens_comment (body rest : List Char) (h : '\n' ∉ body) :
-    wsTokens ('%' :: (body ++ '\n' :: rest)) = wsTokens ('\n' :: rest) := by
-  rw [wsTokens]
-  simp [dropComment_append h]
-
 /-! ## The whole certificate
 
-`validateVipr` is a separate conjunct because it is not a syntactic condition: it checks
-that indices are in range, that sparse vectors mention each variable once, and that no
+`IsValid` is a separate conjunct because it is not a syntactic condition: it says
+indices are in range, that sparse vectors mention each variable once, and that no
 derivation is used after its own final-use index. The grammar says what the file *is*;
-`validateVipr` says whether what it denotes is a usable problem. -/
+`IsValid` says whether what it denotes is a usable problem. Both are declarative, so
+no parser or validator function appears in `parseVipr_eq_ok_iff`. -/
 
 theorem parseViprToks_complete {ts : Toks} {v : Vipr} (hg : IsVipr ts v)
-    (hv : validateVipr v = .ok ()) : parseViprToks ts = .ok v := by
+    (hvalid : IsValid v) : parseViprToks ts = .ok v := by
+  have hv : validateVipr v = .ok () := validateVipr_eq_ok_iff.mpr hvalid
   obtain ⟨sVer, sVar, sInt, sObj, sCon, sRtp, sSol, sDer, hts,
     hver, ⟨cntV, hvarEq, hcntV⟩, ⟨cntI, bodyI, hintEq, hcntI, hbodyI⟩,
     ⟨cntO, bodyO, hobjEq, hcntO, hbodyO⟩,
@@ -119,7 +85,7 @@ theorem parseViprToks_complete {ts : Toks} {v : Vipr} (hg : IsVipr ts v)
     hS, takeNat_prefix hcntD, takeDers_complete hbodyD, hv]
 
 theorem parseViprToks_sound {ts : Toks} {v : Vipr} (h : parseViprToks ts = .ok v) :
-    IsVipr ts v ∧ validateVipr v = .ok () := by
+    IsVipr ts v ∧ IsValid v := by
   rw [parseViprToks] at h
   obtain ⟨ts1, e1, h1⟩ := bind_eq_ok h
   obtain rfl := expectTok_sound e1
@@ -198,29 +164,32 @@ theorem parseViprToks_sound {ts : Toks} {v : Vipr} (h : parseViprToks ts = .ok v
         ⟨cntO, bodyO, rfl, by simpa [hlenO] using hcntO, hbodyO⟩,
         ⟨cntC, bndC, bodyC, rfl, by simpa using hcntC, hbndC, by simp [hlenC], hbodyC⟩,
         hrtp, ⟨cntS, bodyS, rfl, by simpa using hcntS, by simp [hlenS], hbodyS⟩,
-        ⟨cntD, bodyD, rfl, by simpa [hlenD] using hcntD, hbodyD⟩⟩, e26⟩
+        ⟨cntD, bodyD, rfl, by simpa [hlenD] using hcntD, hbodyD⟩⟩,
+        validateVipr_eq_ok_iff.mp e26⟩
 
-/-- **Soundness.** A certificate the parser accepts is derived by the grammar, and the
-value returned is the one the grammar assigns to those tokens. -/
+/-- **Soundness.** A certificate the parser accepts is derived by the grammar from the
+characters of the file, and the value returned is the one the grammar assigns to them. -/
 theorem parseVipr_sound {content : String} {v : Vipr} (h : parseVipr content = .ok v) :
-    IsVipr (wsTokens content.toList) v ∧ validateVipr v = .ok () :=
-  parseViprToks_sound h
+    IsViprText content.toList v ∧ IsValid v := by
+  obtain ⟨hg, hv⟩ := parseViprToks_sound h
+  exact ⟨⟨_, wsTokens_isTokenization _, hg⟩, hv⟩
 
 /-- **Completeness.** The parser accepts every certificate the grammar derives whose
 indices validate, and returns the value the grammar assigns. -/
 theorem parseVipr_complete {content : String} {v : Vipr}
-    (hg : IsVipr (wsTokens content.toList) v) (hv : validateVipr v = .ok ()) :
-    parseVipr content = .ok v :=
-  parseViprToks_complete hg hv
+    (hg : IsViprText content.toList v) (hv : IsValid v) :
+    parseVipr content = .ok v := by
+  obtain ⟨ts, ht, hg⟩ := hg
+  rw [isTokenization_eq ht] at hg
+  exact parseViprToks_complete hg hv
 
 theorem parseVipr_eq_ok_iff {content : String} {v : Vipr} :
-    parseVipr content = .ok v ↔
-      (IsVipr (wsTokens content.toList) v ∧ validateVipr v = .ok ()) :=
+    parseVipr content = .ok v ↔ (IsViprText content.toList v ∧ IsValid v) :=
   ⟨parseVipr_sound, fun h => parseVipr_complete h.1 h.2⟩
 
 /-- The grammar is unambiguous: a token list derives at most one certificate. -/
-theorem isVipr_unique {ts : Toks} {v v' : Vipr} (hv : validateVipr v = .ok ())
-    (hv' : validateVipr v' = .ok ()) (h : IsVipr ts v) (h' : IsVipr ts v') : v = v' := by
+theorem isVipr_unique {ts : Toks} {v v' : Vipr} (hv : IsValid v) (hv' : IsValid v')
+    (h : IsVipr ts v) (h' : IsVipr ts v') : v = v' := by
   have h1 := parseViprToks_complete h hv
   rw [parseViprToks_complete h' hv'] at h1
   exact (Except.ok.inj h1).symm

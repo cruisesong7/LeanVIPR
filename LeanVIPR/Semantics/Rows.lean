@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.Vipr
+public import LeanVIPR.Semantics.LinForm
 public import Mathlib.Data.Finset.Erase
 public import Mathlib.Data.Finset.Insert
 public import Mathlib.Data.Finset.Lattice.Basic
@@ -22,7 +22,7 @@ combination with multipliers `λⱼ` derives a `≤` row when every `λⱼ·s(C�
 `≥` row when every `λⱼ·s(Cⱼ) ≥ 0`.
 -/
 
-namespace LeanVIPR.Cert
+namespace LeanVIPR.Semantics
 
 /-- A sensed linear constraint `form  sense  rhs`, sense ∈ {`'L'` (≤), `'G'` (≥),
 `'E'` (=)}. -/
@@ -233,4 +233,4 @@ def sfreplay (pool : SPool) : List SStep → SPool
 /-- Initial pool from the base (CON) rows, each with no assumptions. -/
 def sinitPool (base : List SLe) : SPool := base.map (fun c => (c, (∅ : SAsm)))
 
-end LeanVIPR.Cert
+end LeanVIPR.Semantics

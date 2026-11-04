@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Ast.Number
-public import LeanVIPR.Ast.Types
+public import LeanVIPR.Parser.Number
+public import LeanVIPR.Parser.Ast
 
 @[expose] public section
 
@@ -18,15 +18,15 @@ The heart is the `DER` list of derived constraints, each with a *reason*
 same in both `CON` and `DER`: either an explicit sparse form `p i₁ a₁ … iₚ aₚ` or
 the keyword `OBJ`.
 
-`LeanVIPR.Pipeline` maps the parsed rows and derivations to the sensed rows (`SLe`)
+`LeanVIPR.Semantics.Lower` maps the parsed rows and derivations to the sensed rows (`SLe`)
 replayed by the checker.
 
 The `SOL` section is parsed as exact sparse vectors and is checked for `RTP range`.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
-open LeanVIPR.Cert
+open LeanVIPR.Semantics
 
 /-! ## Tokenizer -/
 
@@ -216,7 +216,7 @@ def takeCons : Nat → Toks → Except String (List ViprCon × Toks)
 
 /-- Read a `{ reason }` block. `name` labels the row in diagnostics.
 
-Every reason this returns maps to a checkable step in `LeanVIPR.Pipeline`, so an
+Every reason this returns maps to a checkable step in `LeanVIPR.Semantics.Lower`, so an
 unsupported-but-well-formed reason is rejected here rather than being carried into
 the certificate. `lin weak` is supported: it is completed from variable-bound rows
 and the completion is rechecked. `lin incomplete` supplies no multipliers at all and
@@ -269,7 +269,7 @@ A global one-variable derivation may tighten the bounds used by a later
 
 The keyword is optional and unbracketed, so it is matched greedily: a row *named*
 `global` or `local` immediately after a flagless row would be read as that row's flag.
-`LeanVIPR.Thm.Vipr.Grammar.IsDers` states this rule, so the exclusion is visible in the
+`LeanVIPR.Thm.Parser.Grammar.IsDers` states this rule, so the exclusion is visible in the
 grammar rather than hidden here. -/
 def takeScope : Toks → Bool × Toks
   | "global" :: rest => (true, rest)
@@ -427,7 +427,7 @@ def takeRtp (ts : Toks) : Except String (ViprRtp × Toks) := do
 /-! ## Top-level parser -/
 
 /-- Parse a tokenized certificate. Separated from `parseVipr` so that the grammar
-correspondence in `LeanVIPR.Thm.Vipr` is stated where the grammar lives: on tokens. -/
+correspondence in `LeanVIPR.Thm.Parser` is stated where the grammar lives: on tokens. -/
 def parseViprToks (ts0 : Toks) : Except String Vipr := do
   let ts1 ← expectTok "VER" ts0
   let (ver, ts2) ← takeTok ts1
@@ -481,4 +481,4 @@ constraint uses `OBJ`. -/
 def ViprCon.resolvedForm (c : ViprCon) (objTerms : List (Nat × ℚ)) : LinForm :=
   if c.usesObj then objTerms.map (fun q => (⟨q.1, q.2⟩ : Term)) else c.form
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

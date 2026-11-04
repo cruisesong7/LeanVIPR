@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Cert.ViprSystemSound
-public import LeanVIPR.Pipeline.Vipr
+public import LeanVIPR.Thm.System
+public import LeanVIPR.Semantics.Lower
 
 @[expose] public section
 
@@ -12,9 +12,9 @@ This module proves that the executable Boolean side-condition checks for the
 individual VIPR rules refine their declarative real-valued semantics.
 -/
 
-namespace LeanVIPR.Cert.ViprRule
+namespace LeanVIPR.Semantics.Rule
 
-open LeanVIPR.Cert LeanVIPR.Cert.ViprSystem
+open LeanVIPR.Semantics LeanVIPR.Semantics.System
 
 /-! ## Boolean arithmetic checks imply their real-semantic counterparts -/
 
@@ -198,4 +198,4 @@ theorem unsBoundsB_valid_real {intVars : List Nat} {b1 b2 : SLe}
   · exact Or.inr ⟨h1, h2, formEq_sound_real hform, formIntB_sound_real hInt,
       isIntValB_sound hb, hrhs⟩
 
-end LeanVIPR.Cert.ViprRule
+end LeanVIPR.Semantics.Rule

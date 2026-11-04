@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Thm.Vipr.Lemmas
+public import LeanVIPR.Thm.Parser.Lemmas
 public import LeanVIPR.Thm.Valid
 
 @[expose] public section
@@ -16,7 +16,7 @@ parseVipr content = .ok v ↔ (IsViprText content.toList v ∧ IsValid v)
 ```
 
 Neither side of that `↔` mentions a parser function. `IsViprText` composes
-`LeanVIPR.Thm.Tokens.Grammar` with `LeanVIPR.Thm.Vipr.Grammar`, and `IsValid` is
+`LeanVIPR.Thm.Tokens.Grammar` with `LeanVIPR.Thm.Parser.Grammar`, and `IsValid` is
 `LeanVIPR.Thm.Valid.Grammar`; between them they reach down to characters without
 reference to `wsTokens`, `parseViprToks` or `validateVipr`. That is what makes the
 theorem worth proving: phrased in terms of `wsTokens` it would take the tokenizer's own
@@ -37,7 +37,7 @@ the grammar derives, returns exactly the value the grammar assigns, and leaves e
 the rest of the stream. Each pairs with a `_nil` lemma: an exhausted stream is always an
 error, never a silent success.
 
-**Nonterminals.** In `LeanVIPR.Thm.Vipr.Lemmas`, a `_complete`/`_sound` pair each.
+**Nonterminals.** In `LeanVIPR.Thm.Parser.Lemmas`, a `_complete`/`_sound` pair each.
 
 One asymmetry is worth naming. `takeScope` is the parser's only lookahead, and it is
 greedy, so the grammar's `IsDers` carries a side condition excluding a `DER` row *named*
@@ -46,7 +46,7 @@ misread, so this is a limit on completeness, not on soundness — and it is a pr
 the VIPR format, which leaves the keyword optional and unbracketed, not of this parser.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
 /-! ## The whole certificate
 
@@ -194,4 +194,4 @@ theorem isVipr_unique {ts : Toks} {v v' : Vipr} (hv : IsValid v) (hv' : IsValid 
   rw [parseViprToks_complete h' hv'] at h1
   exact (Except.ok.inj h1).symm
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

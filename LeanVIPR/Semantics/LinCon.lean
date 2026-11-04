@@ -12,7 +12,7 @@ VIPR certificates use sparse linear constraints over valuations `ℕ → ℚ`.
 This module defines that representation.
 -/
 
-namespace LeanVIPR.Cert
+namespace LeanVIPR.Semantics
 
 /-- A variable valuation (variable id ↦ value). -/
 abbrev Valuation := Nat → ℚ
@@ -37,4 +37,4 @@ structure Le where
 
 def Le.sat (c : Le) (a : Valuation) : Prop := c.form.eval a ≤ c.rhs
 
-end LeanVIPR.Cert
+end LeanVIPR.Semantics

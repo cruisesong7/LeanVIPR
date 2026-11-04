@@ -10,7 +10,7 @@ public import Mathlib.Data.Rat.Defs
 Small total helpers for natural numbers and exact finite decimal rationals.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
 /-- Split a character list on a separator, retaining empty segments. -/
 def splitOnChar (sep : Char) : List Char → List (List Char)
@@ -93,4 +93,4 @@ def parseNumChars? (cs : List Char) : Option ℚ :=
 
 def parseNum? (s : String) : Option ℚ := parseNumChars? s.toList
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

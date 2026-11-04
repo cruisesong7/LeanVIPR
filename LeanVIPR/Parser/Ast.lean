@@ -1,20 +1,25 @@
 module
 
-public import LeanVIPR.Cert.LinCon
+public import LeanVIPR.Semantics.LinCon
 
 @[expose] public section
 
 /-!
 # The parsed certificate
 
-The shape a VIPR certificate is read into. Separated from the reader so that the
-grammar denotation in `LeanVIPR.Ast.ViprDenote` can be stated without reference to
-any parser function.
+The shape a VIPR certificate is read into. Kept separate from the reader
+(`LeanVIPR.Parser.Read`) so that the grammars in `LeanVIPR.Thm.Parser.Grammar` and
+`LeanVIPR.Thm.Valid.Grammar` can be stated without reference to any parser function.
+
+It also holds the few functions that say what the AST's index fields *mean* — which
+constraints a reason cites, and what a `DER` row's trailing field declares. Those are
+part of the format rather than of the reader, and are shared by the validator and by
+its specification.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
-open LeanVIPR.Cert
+open LeanVIPR.Semantics
 
 /-- A `CON` constraint: `name sense rhs (form | OBJ)`. -/
 structure ViprCon where
@@ -80,10 +85,10 @@ def reprOptionRat : Option ℚ → Std.Format
 
 instance : Repr ViprRtp where
   reprPrec
-    | .infeas, _ => "LeanVIPR.Ast.ViprRtp.infeas"
+    | .infeas, _ => "LeanVIPR.Parser.ViprRtp.infeas"
     | .range lb ub, prec =>
         Repr.addAppParen
-          ("LeanVIPR.Ast.ViprRtp.range " ++ reprOptionRat lb ++ " " ++ reprOptionRat ub)
+          ("LeanVIPR.Parser.ViprRtp.range " ++ reprOptionRat lb ++ " " ++ reprOptionRat ub)
           prec
 
 /-- A parsed VIPR certificate. -/
@@ -144,4 +149,4 @@ instance (v : Vipr) (user k : Nat) : Decidable (usedAfterFinal v user k) := by
 /-- A certificate as a list of whitespace-separated tokens. -/
 abbrev Toks := List String
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

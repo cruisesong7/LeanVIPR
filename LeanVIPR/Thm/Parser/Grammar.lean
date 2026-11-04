@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Ast.Types
+public import LeanVIPR.Parser.Ast
 public import LeanVIPR.Thm.Number.Grammar
 public import LeanVIPR.Thm.Tokens.Grammar
 
@@ -11,7 +11,7 @@ public import LeanVIPR.Thm.Tokens.Grammar
 
 **This file is the review surface for the certificate grammar.** It says which token
 sequences are well formed and what they denote, and nothing else: no proofs, and no
-reference to how the parser works. `LeanVIPR.Thm.Vipr` proves the parser agrees with
+reference to how the parser works. `LeanVIPR.Thm.Parser` proves the parser agrees with
 it in both directions, so a reader who accepts these definitions need not read the
 parser.
 
@@ -19,16 +19,16 @@ Nothing here mentions a remainder, an `Except`, or a split. A terminal is a pred
 on one token; a non-terminal is a *concatenation equation* on token lists whose fields
 are supplied existentially. The existential supplies the split, which is what a grammar
 says; the parser's left-to-right discipline is its own business, discharged in
-`LeanVIPR.Thm.Vipr.Lemmas`.
+`LeanVIPR.Thm.Parser.Lemmas`.
 
 The format is count-prefixed throughout — `VAR n`, `CON m b`, `DER d`, and `p i a …`
 inside a row — so every production is determined by its input and admits no ambiguity
 to resolve.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
-open LeanVIPR.Cert
+open LeanVIPR.Semantics
 
 /-! ## Terminals
 
@@ -224,4 +224,4 @@ derives `v`. Characters in, certificate out, with no parser function in between.
 def IsViprText (cs : List Char) (v : Vipr) : Prop :=
   ∃ ts, IsTokenization cs ts ∧ IsVipr ts v
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

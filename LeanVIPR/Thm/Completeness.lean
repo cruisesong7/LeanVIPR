@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.ViprSystemSound
+public import LeanVIPR.Thm.System
 
 @[expose] public section
 
@@ -24,9 +24,9 @@ VIPR LP fragment.  The finite mixed-integer branch-and-cut existence theorem is
 named separately rather than silently assumed.
 -/
 
-namespace LeanVIPR.Cert.ViprCompleteness
+namespace LeanVIPR.Semantics.Completeness
 
-open LeanVIPR.Cert LeanVIPR.Cert.ViprSystem
+open LeanVIPR.Semantics LeanVIPR.Semantics.System
 
 def SemanticallyInfeasible (base : List SLe) (intVars : List Nat) : Prop :=
   ∀ a : RealValuation,
@@ -140,4 +140,4 @@ explicit prevents the cited branch-and-cut completeness result from being
 mistaken for something already proved in this development. -/
 def FiniteBranchAndCutComplete : Prop := ProofSystemComplete
 
-end LeanVIPR.Cert.ViprCompleteness
+end LeanVIPR.Semantics.Completeness

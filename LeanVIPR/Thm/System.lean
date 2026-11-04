@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.ViprSem
+public import LeanVIPR.Semantics.Rows
 public import Mathlib.Basic.Real.Basic
 
 @[expose] public section
@@ -23,9 +23,9 @@ every real valuation satisfying the original rows and the declared integrality
 conditions.
 -/
 
-namespace LeanVIPR.Cert.ViprSystem
+namespace LeanVIPR.Semantics.System
 
-open LeanVIPR.Cert
+open LeanVIPR.Semantics
 
 /-! ## Real semantics for rational VIPR rows -/
 
@@ -508,4 +508,4 @@ theorem proofSystem_sound (base : List SLe) (intVars : List Nat) (steps : List S
   have hsat : satReal e.1 a := he hbase (by simp [hclosed])
   exact absurd_unsat habs a hsat
 
-end LeanVIPR.Cert.ViprSystem
+end LeanVIPR.Semantics.System

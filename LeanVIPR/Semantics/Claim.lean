@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.ViprRuleSound
+public import LeanVIPR.Thm.Rule.Sound
 
 @[expose] public section
 
@@ -11,12 +11,19 @@ This module extends the infeasibility-only development with the semantic objects
 needed for `RTP range`, `SOL`, and derived constraints justified by `{ sol }`.
 Unlike ordinary derivation rows, a `{ sol }` objective row is guaranteed at an
 optimal valuation, not at every feasible valuation.
+
+This is the one module that still spans layers: it defines the claim semantics and the
+declarative proof system (`StepValid`, `ProofValid`, `ClaimValid`), proves them sound,
+*and* defines the executable solution predicates the checker calls, because the proof
+system and its soundness were developed together. Splitting it along the
+`Semantics` / `Checker` / `Thm` boundary the rest of the tree follows is a separate
+task; the dependencies run in both directions through the file as written.
 -/
 
-namespace LeanVIPR.Ast.Vipr
+namespace LeanVIPR.Parser.Vipr
 
-open LeanVIPR.Ast LeanVIPR.Cert LeanVIPR.Cert.ViprSystem
-open LeanVIPR.Pipeline
+open LeanVIPR.Parser LeanVIPR.Semantics LeanVIPR.Semantics.System
+open LeanVIPR.Semantics.Lower
 
 abbrev NamedSolution := String × List (Nat × ℚ)
 
@@ -285,7 +292,7 @@ theorem replay_sound (v : Vipr) (a : RealValuation)
             refine linValid_sound hrule (fun p hp => ?_)
             simp only [resolve, List.mem_map] at hp
             obtain ⟨q, hq, rfl⟩ := hp
-            exact ViprSystem.spoolRow_holds (conSLes v) a pool hpool q.2 hbase
+            exact System.spoolRow_holds (conSLes v) a pool hpool q.2 hbase
               (fun t ht => hS t (mem_collectAsms hq ht))
         | rnd comb =>
             simp only [hr] at hrule
@@ -294,7 +301,7 @@ theorem replay_sound (v : Vipr) (a : RealValuation)
             refine rndValid_sound hrule (candidate_feasible hcand).1 (fun p hp => ?_)
             simp only [resolve, List.mem_map] at hp
             obtain ⟨q, hq, rfl⟩ := hp
-            exact ViprSystem.spoolRow_holds (conSLes v) a pool hpool q.2 hbase
+            exact System.spoolRow_holds (conSLes v) a pool hpool q.2 hbase
               (fun t ht => hS t (mem_collectAsms hq ht))
         | uns i1 l1 i2 l2 =>
             simp only [hr] at hrule
@@ -303,7 +310,7 @@ theorem replay_sound (v : Vipr) (a : RealValuation)
             intro hbase hS
             rcases complementaryBounds_split hbnd (candidate_feasible hcand).1 with hb1 | hb2
             · refine dominates_sound hdom1 ?_
-              refine ViprSystem.spoolRow_holds (conSLes v) a pool hpool i1 hbase
+              refine System.spoolRow_holds (conSLes v) a pool hpool i1 hbase
                 (fun t ht => ?_)
               by_cases hteq : t = spoolRow pool l1
               · rw [hteq]
@@ -311,7 +318,7 @@ theorem replay_sound (v : Vipr) (a : RealValuation)
               · exact hS t (Finset.mem_union_left _
                   (Finset.mem_erase.mpr ⟨hteq, ht⟩))
             · refine dominates_sound hdom2 ?_
-              refine ViprSystem.spoolRow_holds (conSLes v) a pool hpool i2 hbase
+              refine System.spoolRow_holds (conSLes v) a pool hpool i2 hbase
                 (fun t ht => ?_)
               by_cases hteq : t = spoolRow pool l2
               · rw [hteq]
@@ -379,7 +386,7 @@ theorem proofSystem_sound (v : Vipr)
         simpa [Candidate, hr] using hfeas
       obtain ⟨e, hlast, hclosed, habs⟩ := by
         simpa only [FinalValid, hr] using hfinal
-      exact ViprSystem.absurd_unsat habs a
+      exact System.absurd_unsat habs a
         (closedFinal_holds hsols hcand hder hlast hclosed)
   | range lb ub =>
       rw [ClaimValid, hr]
@@ -402,7 +409,7 @@ theorem proofSystem_sound (v : Vipr)
             -- the closed final row holds at every candidate valuation
             have hat : ∀ a, Candidate v a → (lower : ℝ) ≤ objectiveReal v a := by
               intro a hcand
-              have hgoal := ViprSystem.dominates_sound hdom
+              have hgoal := System.dominates_sound hdom
                 (closedFinal_holds hsols hcand hder hlast hclosed)
               simpa [objectiveLowerRow, satReal, objectiveReal] using hgoal
             intro a hfeas
@@ -434,7 +441,7 @@ theorem proofSystem_sound (v : Vipr)
               obtain ⟨e, hlast, hclosed, hdom⟩ := hfinalData
               have hat : ∀ a, Candidate v a → objectiveReal v a ≤ (upper : ℝ) := by
                 intro a hcand
-                have hgoal := ViprSystem.dominates_sound hdom
+                have hgoal := System.dominates_sound hdom
                   (closedFinal_holds hsols hcand hder hlast hclosed)
                 simpa [objectiveUpperRow, satReal, objectiveReal] using hgoal
               intro a hfeas
@@ -627,11 +634,11 @@ theorem solReasonB_sound {v : Vipr} {stated : SLe}
   by_cases hmin : v.objSense = "min"
   · simp only [ite_eq_left hmin] at h ⊢
     obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-    exact ⟨s, hs, ViprRule.domSLe_valid_real hdom⟩
+    exact ⟨s, hs, Rule.domSLe_valid_real hdom⟩
   · by_cases hmax : v.objSense = "max"
     · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
       obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-      exact ⟨s, hs, ViprRule.domSLe_valid_real hdom⟩
+      exact ⟨s, hs, Rule.domSLe_valid_real hdom⟩
     · simp [hmin, hmax] at h
 
-end LeanVIPR.Ast.Vipr
+end LeanVIPR.Parser.Vipr

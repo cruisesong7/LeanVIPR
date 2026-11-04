@@ -1,21 +1,25 @@
 module
 
-public import LeanVIPR.Ast.Vipr
-public import LeanVIPR.Cert.ViprSem
+public import LeanVIPR.Parser.Read
+public import LeanVIPR.Semantics.Rows
 
 @[expose] public section
 
 /-!
-# Parsed VIPR certificates and the executable checker
+# Lowering a parsed certificate to the checker's rows
 
-This module maps the parsed `CON` and `DER` records directly to the sensed
-constraint representation used by the verified checker. VIPR indices match the
-pool indices because equality rows remain single sensed rows.
+The bridge from syntax to semantics: the parsed `CON` and `DER` records become the
+sensed constraint rows (`SLe`) and steps (`SStep`) the checker replays. VIPR indices
+match pool indices because an equality row stays a single sensed row.
+
+This is not the command-line driver — that is `LeanVIPRMain`. Everything here is inside
+the trusted path: `LeanVIPRMain` emits an `import` of this module into the proof it asks
+the kernel to check, so `viprSteps` is part of what the kernel replays.
 -/
 
-namespace LeanVIPR.Pipeline
+namespace LeanVIPR.Semantics.Lower
 
-open LeanVIPR.Cert LeanVIPR.Ast
+open LeanVIPR.Semantics LeanVIPR.Parser
 
 /-- Resolve one parsed constraint to the sensed representation used by the checker. -/
 def conToSLe (v : Vipr) (c : ViprCon) : SLe :=
@@ -178,4 +182,4 @@ def viprSteps (v : Vipr) : List SStep :=
   let table := boundTable v
   v.ders.toList.mapIdx (derToSStep v table)
 
-end LeanVIPR.Pipeline
+end LeanVIPR.Semantics.Lower

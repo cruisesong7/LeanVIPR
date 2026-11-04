@@ -119,6 +119,27 @@ as the reference `viprcomp`. LeanVIPR reports it as unsupported and names the ro
 rather than treating the file as malformed. The reference checker does not support
 this form either.
 
+## Repository layout
+
+```
+LeanVIPR/
+  Parser/        Ast.lean  Number.lean  Read.lean
+  Semantics/     LinCon.lean  LinForm.lean  Rows.lean  Claim.lean  Lower.lean
+  Checker.lean
+  Thm/           Tokens.lean  Number.lean  Parser.lean  Valid.lean
+                 System.lean  Rule/  Checker/  Completeness.lean
+LeanVIPRMain.lean    -- the `viprcheck` command line
+```
+
+`Parser/` reads a file into the AST. `Semantics/` says what the AST means, including
+the declarative proof system and the lowering (`Lower.lean`) from parsed rows to the
+rows the checker replays. `Checker.lean` is the array-backed executable checker.
+
+`Thm/` holds every proof, mirroring the code it is about. Each subdirectory with a
+specification has a `Grammar.lean` stated without reference to any executable function;
+those are the files to read to know what LeanVIPR accepts. `Lemmas.lean` is scaffolding,
+and the file named after the directory holds the theorems worth citing.
+
 ## What is trusted
 
 Relative to the emitted certificate AST, trusted: the Lean kernel and the small
@@ -142,7 +163,7 @@ grammars are stated without reference to any parser function:
 |---|---|
 | [`Thm/Tokens/Grammar.lean`](LeanVIPR/Thm/Tokens/Grammar.lean) | characters to tokens |
 | [`Thm/Number/Grammar.lean`](LeanVIPR/Thm/Number/Grammar.lean) | a numeric token to an exact rational |
-| [`Thm/Vipr/Grammar.lean`](LeanVIPR/Thm/Vipr/Grammar.lean) | tokens to a certificate |
+| [`Thm/Parser/Grammar.lean`](LeanVIPR/Thm/Parser/Grammar.lean) | tokens to a certificate |
 | [`Thm/Valid/Grammar.lean`](LeanVIPR/Thm/Valid/Grammar.lean) | when a certificate denotes a usable problem |
 
 and the reader is proved to agree with them in both directions:

@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Ast.Vipr
+public import LeanVIPR.Parser.Read
 public import LeanVIPR.Thm.Valid.Grammar
 import Mathlib.Data.List.Sort
 
@@ -20,9 +20,9 @@ than `qsort` keeps that cheap while leaving it provable, since `List.mergeSort_p
 has neither.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
-open LeanVIPR.Cert
+open LeanVIPR.Semantics
 
 /-! ## Plumbing -/
 
@@ -314,4 +314,4 @@ theorem validateVipr_eq_ok_iff {v : Vipr} : validateVipr v = .ok () ↔ IsValid 
     checkDistinct_eq_ok_iff, checkFinalUse_eq_ok_iff]
   exact Iff.rfl
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

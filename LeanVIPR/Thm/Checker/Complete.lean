@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Cert.ViprCheckerSound
-public import LeanVIPR.Cert.ViprRuleComplete
+public import LeanVIPR.Thm.Checker.Sound
+public import LeanVIPR.Thm.Rule.Complete
 
 @[expose] public section
 
@@ -15,10 +15,10 @@ exactly when `Vipr.ProofValid v` does, so the checker never rejects a certificat
 that is valid under the declarative rules.
 -/
 
-namespace LeanVIPR.Cert.ViprChecker
+namespace LeanVIPR.Checker
 
-open LeanVIPR.Ast LeanVIPR.Cert LeanVIPR.Pipeline
-open LeanVIPR.Ast.Vipr LeanVIPR.Cert.ViprSystem LeanVIPR.Cert.ViprRuleComplete
+open LeanVIPR.Parser LeanVIPR.Semantics LeanVIPR.Semantics.Lower
+open LeanVIPR.Parser.Vipr LeanVIPR.Semantics.System LeanVIPR.Semantics.RuleComplete
 
 /-! ## Solutions and `{ sol }` rows -/
 
@@ -199,4 +199,4 @@ theorem checkVipr_complete {v : Vipr} (h : Vipr.ProofValid v) : checkVipr v = tr
 theorem checkVipr_iff_proofValid (v : Vipr) : checkVipr v = true ↔ Vipr.ProofValid v :=
   ⟨checkVipr_refines, checkVipr_complete⟩
 
-end LeanVIPR.Cert.ViprChecker
+end LeanVIPR.Checker

@@ -1,8 +1,8 @@
 module
 
-public import LeanVIPR.Ast.Vipr
+public import LeanVIPR.Parser.Read
 public import LeanVIPR.Thm.Tokens
-public import LeanVIPR.Thm.Vipr.Grammar
+public import LeanVIPR.Thm.Parser.Grammar
 public import LeanVIPR.Thm.Number
 
 @[expose] public section
@@ -10,8 +10,8 @@ public import LeanVIPR.Thm.Number
 /-!
 # Bridging lemmas for the certificate parser
 
-Proof scaffolding only; the statements that matter are in `LeanVIPR.Thm.Vipr`, and the
-grammar they are stated against is in `LeanVIPR.Thm.Vipr.Grammar`.
+Proof scaffolding only; the statements that matter are in `LeanVIPR.Thm.Parser`, and the
+grammar they are stated against is in `LeanVIPR.Thm.Parser.Grammar`.
 
 Every consumer gets the same pair of lemmas, and nothing else is needed of it:
 
@@ -24,9 +24,9 @@ Stated this way the two directions compose along the format: the suffix in `_com
 is what lets one row's lemma be applied inside the next.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
-open LeanVIPR.Cert
+open LeanVIPR.Semantics
 
 /-! ## Terminals -/
 
@@ -913,4 +913,4 @@ theorem takeRtp_sound {ts ts' : Toks} {rtp : ViprRtp} (h : takeRtp ts = .ok (rtp
             Or.inr ⟨lt, ut, lb, ub, rfl, takeBound_eq_ok_iff.mp hI,
               takeBound_eq_ok_iff.mp hK, rfl⟩⟩
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

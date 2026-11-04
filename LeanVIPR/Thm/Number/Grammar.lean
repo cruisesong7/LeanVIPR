@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Ast.Number
+public import LeanVIPR.Parser.Number
 
 @[expose] public section
 
@@ -27,7 +27,7 @@ positionally, each digit weighted by a power of ten, rather than as the left-to-
 fold the implementation uses.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
 /-! ## Fields -/
 
@@ -104,4 +104,4 @@ def IsNumValue (cs : List Char) (q : ℚ) : Prop :=
   (∃ sign i f, DecProduction cs sign i f ∧ q = decValue sign i f) ∨
   (∃ sn nd sd dd, QuotProduction cs sn nd sd dd ∧ q = quotValue sn nd sd dd)
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

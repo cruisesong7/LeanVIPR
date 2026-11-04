@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.ViprChecker
+public import LeanVIPR.Checker
 
 @[expose] public section
 
@@ -12,10 +12,10 @@ VIPR proof system. No second executable checker or executable-checker equivalenc
 theorem is involved.
 -/
 
-namespace LeanVIPR.Cert.ViprChecker
+namespace LeanVIPR.Checker
 
-open LeanVIPR.Ast LeanVIPR.Cert LeanVIPR.Pipeline
-open LeanVIPR.Ast.Vipr LeanVIPR.Cert.ViprSystem
+open LeanVIPR.Parser LeanVIPR.Semantics LeanVIPR.Semantics.Lower
+open LeanVIPR.Parser.Vipr LeanVIPR.Semantics.System
 
 theorem poolEntry_eq (pool : CheckerPool) (i : Nat) :
     poolEntry pool i = pool.toList.getD i sdflt := by
@@ -77,17 +77,17 @@ theorem stepValidB_sound {v : Vipr} {pool : CheckerPool} {s : SStep}
   | asm => trivial
   | lin comb =>
       simp only [hr] at h
-      apply ViprRule.linCheck_valid_real
+      apply Rule.linCheck_valid_real
       simpa only [resolveRefs_eq] using h.2
   | rnd comb =>
       simp only [hr] at h
-      apply ViprRule.rndCheck_valid_real
+      apply Rule.rndCheck_valid_real
       simpa only [resolveRefs_eq] using h.2
   | uns i1 l1 i2 l2 =>
       simp only [hr, Bool.and_eq_true] at h
-      exact ⟨ViprRule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.1),
-        ViprRule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.2),
-        ViprRule.unsBoundsB_valid_real (by simpa [poolRow_eq] using h.2.2)⟩
+      exact ⟨Rule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.1),
+        Rule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.2),
+        Rule.unsBoundsB_valid_real (by simpa [poolRow_eq] using h.2.2)⟩
   | sol =>
       simp only [hr] at h
       exact solReasonB_sound h.2
@@ -151,7 +151,7 @@ theorem finalValidB_sound {v : Vipr} {last? : Option CheckerEntry}
       | some e =>
           simp only [he, closedAbsurdB, Bool.and_eq_true, decide_eq_true_eq] at h
           exact ⟨e, by rw [← hlast, he], h.1,
-            ViprRule.absurdB_sound_real h.2⟩
+            Rule.absurdB_sound_real h.2⟩
   | range lb ub =>
       simp only [FinalValid, hr]
       simp only [finalValidB, hr] at h
@@ -168,7 +168,7 @@ theorem finalValidB_sound {v : Vipr} {last? : Option CheckerEntry}
                 simp only [he, closedDominatesB, Bool.and_eq_true,
                   decide_eq_true_eq] at h
                 exact ⟨e, by rw [← hlast, he], h.1,
-                  ViprRule.domSLe_valid_real h.2⟩
+                  Rule.domSLe_valid_real h.2⟩
       · by_cases hmax : v.objSense = "max"
         · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
           cases ub with
@@ -182,7 +182,7 @@ theorem finalValidB_sound {v : Vipr} {last? : Option CheckerEntry}
                   simp only [he, closedDominatesB, Bool.and_eq_true,
                     decide_eq_true_eq] at h
                   exact ⟨e, by rw [← hlast, he], h.1,
-                    ViprRule.domSLe_valid_real h.2⟩
+                    Rule.domSLe_valid_real h.2⟩
         · simp [hmin, hmax] at h
 
 /-- The executable checker refines the declarative VIPR proof system. -/
@@ -229,4 +229,4 @@ theorem checkViprSliceB_sound (original sliced : Vipr)
   exact checkViprInfeasibleSubset_sound original sliced hinfeas hint
     (fun c hc => (List.isSublist_iff_sublist.mp hsub).subset hc) hcheck
 
-end LeanVIPR.Cert.ViprChecker
+end LeanVIPR.Checker

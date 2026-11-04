@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Ast.Vipr
+public import LeanVIPR.Parser.Read
 public import LeanVIPR.Thm.Tokens.Grammar
 
 @[expose] public section
@@ -20,7 +20,7 @@ load-bearing: each is satisfied by tokenizers that are badly wrong, which is exa
 invariants are not a specification.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
 /-! ## Comments -/
 
@@ -255,4 +255,4 @@ theorem wsTokens_no_ws (cs : List Char) :
     ∀ t ∈ wsTokens cs, ∀ c ∈ t.toList, ¬ c.isWhitespace :=
   (wsTokens_isTokenization cs).no_ws
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

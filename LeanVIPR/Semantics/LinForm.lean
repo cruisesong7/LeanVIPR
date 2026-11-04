@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.LinCon
+public import LeanVIPR.Semantics.LinCon
 public import Mathlib.Data.Rat.Floor
 
 @[expose] public section
@@ -9,7 +9,7 @@ public import Mathlib.Data.Rat.Floor
 # Linear-form algebra for VIPR rows
 
 Shared algebra over the sparse `Le` / `LinForm` / `Valuation` representation of
-`LeanVIPR.Cert.LinCon`:
+`LeanVIPR.Semantics.LinCon`:
 
 * combinations of rows (`combineForm`, `combine`) and their soundness (`lin_sound`);
 * integer rounding (`rnd_sound`) and integrality of forms (`LinForm.eval_isInt`);
@@ -19,7 +19,7 @@ Shared algebra over the sparse `Le` / `LinForm` / `Valuation` representation of
   executable rule checks use to decide identities between forms.
 -/
 
-namespace LeanVIPR.Cert
+namespace LeanVIPR.Semantics
 
 open Classical
 
@@ -252,4 +252,4 @@ theorem normForm_eval (f : LinForm) (a : Valuation) : evalAL (normForm f) a = f.
 /-- A linear form is identically zero if all its normalized coefficients vanish. -/
 def formIsZero (f : LinForm) : Bool := (normForm f).all (fun p => p.2 == 0)
 
-end LeanVIPR.Cert
+end LeanVIPR.Semantics

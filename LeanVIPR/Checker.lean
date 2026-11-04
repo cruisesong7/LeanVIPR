@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.ViprClaimSound
+public import LeanVIPR.Semantics.Claim
 
 @[expose] public section
 
@@ -14,10 +14,10 @@ This module implements the production VIPR checker:
 * computing each linear combination once per rule check.
 -/
 
-namespace LeanVIPR.Cert.ViprChecker
+namespace LeanVIPR.Checker
 
-open LeanVIPR.Ast LeanVIPR.Cert LeanVIPR.Pipeline
-open LeanVIPR.Ast.Vipr
+open LeanVIPR.Parser LeanVIPR.Semantics LeanVIPR.Semantics.Lower
+open LeanVIPR.Parser.Vipr
 
 abbrev CheckerEntry := SLe × SAsm
 abbrev CheckerPool := Array CheckerEntry
@@ -114,4 +114,4 @@ def checkVipr (v : Vipr) : Bool :=
   | none => false
   | some last? => finalValidB v last?
 
-end LeanVIPR.Cert.ViprChecker
+end LeanVIPR.Checker

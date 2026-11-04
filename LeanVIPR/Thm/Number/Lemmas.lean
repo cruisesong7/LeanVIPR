@@ -20,7 +20,7 @@ this file is not necessary to audit what the parser accepts.
 the input, and no part contains the separator.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
 /-! ## Reader-shaped relations
 
@@ -628,4 +628,4 @@ theorem numDenotes_iff_isNumValue {cs : List Char} {q : ℚ} :
 
 theorem parseNum?_eq_some_iff {s : String} {q : ℚ} :
     parseNum? s = some q ↔ NumDenotes s.toList q := parseNumChars?_eq_some_iff
-end LeanVIPR.Ast
+end LeanVIPR.Parser

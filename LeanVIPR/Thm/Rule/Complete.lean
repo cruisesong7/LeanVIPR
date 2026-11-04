@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Cert.ViprRuleSound
+public import LeanVIPR.Thm.Rule.Sound
 
 @[expose] public section
 
@@ -13,9 +13,9 @@ rule application is accepted by the executable check. Together they show that th
 checks decide the declarative rules exactly.
 -/
 
-namespace LeanVIPR.Cert.ViprRuleComplete
+namespace LeanVIPR.Semantics.RuleComplete
 
-open LeanVIPR.Cert LeanVIPR.Cert.ViprSystem
+open LeanVIPR.Semantics LeanVIPR.Semantics.System
 
 /-- Embed an exact rational valuation into the real semantics. -/
 def ratToReal (a : Valuation) : RealValuation :=
@@ -367,4 +367,4 @@ theorem unsBoundsB_complete {intVars : List Nat} {left right : SLe}
   · simp [unsBoundsB, hL, hG, formEq_complete_real hform,
       formIntB_complete_real hformInt, isIntValB_complete hint, hrhs]
 
-end LeanVIPR.Cert.ViprRuleComplete
+end LeanVIPR.Semantics.RuleComplete

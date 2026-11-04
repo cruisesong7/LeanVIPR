@@ -26,8 +26,8 @@ The generated theorem currently certifies the emitted certificate AST. Binding t
 AST to the exact source bytes remains a frontend parser/runtime trust boundary.
 -/
 
-open LeanVIPR.Ast LeanVIPR.Cert LeanVIPR.Pipeline
-open LeanVIPR.Cert.ViprChecker LeanVIPR.Ast.Vipr
+open LeanVIPR.Parser LeanVIPR.Semantics LeanVIPR.Semantics.Lower
+open LeanVIPR.Checker LeanVIPR.Parser.Vipr
 
 inductive KernelMode where
   | full
@@ -186,22 +186,22 @@ def sliceVipr (input : Vipr) : Vipr := Id.run do
   return { v with numCon := keptCon, numBounds := numBounds, cons := cons, ders := ders }
 
 def emitViprData (sourceText : String) (cert : Vipr) : String :=
-  "import LeanVIPR.Pipeline.Vipr\n\n"
+  "import LeanVIPR.Semantics.Lower\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"
-  ++ "open LeanVIPR.Ast\n\n"
+  ++ "open LeanVIPR.Parser\n\n"
   ++ emittedOptionRatDivision
   ++ s!"def sourceText : String := {String.quote sourceText}\n\n"
   ++ s!"def cert : Vipr := {renderVipr cert}\n\n"
   ++ "end LeanVIPR.Generated\n"
 
 def emitViprReconstructionData (sourceText : String) (original sliced : Vipr) : String :=
-  "import LeanVIPR.Pipeline.Vipr\n\n"
+  "import LeanVIPR.Semantics.Lower\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"
-  ++ "open LeanVIPR.Ast\n\n"
+  ++ "open LeanVIPR.Parser\n\n"
   ++ emittedOptionRatDivision
   ++ s!"def sourceText : String := {String.quote sourceText}\n\n"
   ++ s!"def original : Vipr := {renderVipr original}\n\n"
@@ -210,25 +210,25 @@ def emitViprReconstructionData (sourceText : String) (original sliced : Vipr) : 
 
 def emitViprProof : String :=
   "import LeanVIPRGenerated.Data\n\n"
-  ++ "import LeanVIPR.Cert.ViprCheckerSound\n\n"
+  ++ "import LeanVIPR.Thm.Checker.Sound\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"
-  ++ "open LeanVIPR.Ast.Vipr LeanVIPR.Cert.ViprChecker\n\n"
+  ++ "open LeanVIPR.Parser.Vipr LeanVIPR.Checker\n\n"
   ++ "theorem accepted : checkVipr cert = true := by\n"
   ++ "  decide +kernel\n\n"
-  ++ "theorem certified : LeanVIPR.Ast.Vipr.ClaimValid cert :=\n"
+  ++ "theorem certified : LeanVIPR.Parser.Vipr.ClaimValid cert :=\n"
   ++ "  checkVipr_sound cert accepted\n\n"
   ++ "#print axioms certified\n\n"
   ++ "end LeanVIPR.Generated\n"
 
 def emitViprReconstructionProof : String :=
   "import LeanVIPRGenerated.Data\n\n"
-  ++ "import LeanVIPR.Cert.ViprCheckerSound\n\n"
+  ++ "import LeanVIPR.Thm.Checker.Sound\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"
-  ++ "open LeanVIPR.Ast.Vipr LeanVIPR.Pipeline LeanVIPR.Cert.ViprChecker\n\n"
+  ++ "open LeanVIPR.Parser.Vipr LeanVIPR.Semantics.Lower LeanVIPR.Checker\n\n"
   ++ "theorem slicedInfeas : sliced.rtp = .infeas := by\n"
   ++ "  decide +kernel\n\n"
   ++ "theorem sameIntVars : sliced.intVars = original.intVars := by\n"

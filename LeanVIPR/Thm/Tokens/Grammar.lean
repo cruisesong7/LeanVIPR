@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Ast.Types
+public import LeanVIPR.Parser.Ast
 
 @[expose] public section
 
@@ -23,7 +23,7 @@ else begins a token that extends to the next whitespace. A `%` inside a token is
 ordinary character, so `x%y` is one token.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
 /-- No character of a token is whitespace. -/
 def NoWhitespace (t : List Char) : Prop := ∀ c ∈ t, ¬ c.isWhitespace
@@ -50,4 +50,4 @@ inductive IsTokenization : List Char → Toks → Prop
       (h : IsTokenization rest ts) :
       IsTokenization (t ++ rest) (String.ofList t :: ts)
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

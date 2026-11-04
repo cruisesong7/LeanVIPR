@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Ast.Types
+public import LeanVIPR.Parser.Ast
 
 @[expose] public section
 
@@ -12,7 +12,7 @@ well formed beyond their syntax, and nothing else: no proofs, and no reference t
 the checks are implemented. `LeanVIPR.Thm.Valid` proves `validateVipr` decides exactly
 this, so a reader who accepts these definitions need not read the validator.
 
-This is deliberately separate from the grammar. `LeanVIPR.Thm.Vipr.Grammar` says what a
+This is deliberately separate from the grammar. `LeanVIPR.Thm.Parser.Grammar` says what a
 certificate *is*; these conditions say whether what it denotes is a problem the checker
 can replay — every index names a declared variable, no sparse vector mentions a variable
 twice, and no derivation uses a constraint the format already allowed a verifier to
@@ -20,15 +20,15 @@ discard. Nothing here is required for soundness; the first two keep the denotati
 single-valued, and the last is conformance with the specification's `DER` rule.
 
 `reasonRefs`, `reasonMultipliers`, `finalUseHint` and `usedAfterFinal` live in
-`LeanVIPR.Ast.Types` because they state what the AST's index fields *mean* — which
+`LeanVIPR.Parser.Types` because they state what the AST's index fields *mean* — which
 constraints a reason cites, and what a `DER` row's trailing field declares. They are
 part of the format, used by this specification and by the validator alike, in the same
 way `digitsValue` is shared by the number grammar and the number reader.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
-open LeanVIPR.Cert
+open LeanVIPR.Semantics
 
 /-- A sparse vector's indices name declared variables, and none is repeated.
 
@@ -62,4 +62,4 @@ def IsValid (v : Vipr) : Prop :=
       (reasonMultipliers d.reason).Nodup) ∧
   FinalUseOk v
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

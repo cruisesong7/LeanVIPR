@@ -7,7 +7,7 @@ public import LeanVIPR.Thm.Number.Lemmas
 /-!
 # The number reader implements the number grammar
 
-The reader of `LeanVIPR.Ast.Number` agrees with the grammar of
+The reader of `LeanVIPR.Parser.Number` agrees with the grammar of
 `LeanVIPR.Thm.Number.Grammar` in both directions:
 
 * `parseNum_sound` — it never returns a value the grammar does not assign, so a token
@@ -21,7 +21,7 @@ about which token denotes which rational. `isNumValue_unique` records that the g
 is unambiguous, so "the" value of a token is well defined.
 -/
 
-namespace LeanVIPR.Ast
+namespace LeanVIPR.Parser
 
 /-! ## Naturals -/
 
@@ -153,4 +153,4 @@ theorem parseInt?_eq_some_iff {s : String} {z : ℤ} :
 theorem parseNum?_eq_some_iff' {s : String} {q : ℚ} :
     parseNum? s = some q ↔ IsNumValue s.toList q := parseNum_eq_some_iff
 
-end LeanVIPR.Ast
+end LeanVIPR.Parser

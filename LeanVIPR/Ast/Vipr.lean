@@ -118,28 +118,64 @@ structure Vipr where
 
 /-! ## Tokenizer -/
 
-/-- Split into whitespace-separated tokens (drops empty runs). VIPR pads its
-structural tokens (`{`, `}`) with whitespace, so a whitespace split is faithful.
+/-- Drop the rest of a `%` comment, retaining the terminating newline as a separator. -/
+def dropComment : List Char → List Char
+  | [] => []
+  | c :: cs => if c == '\n' then c :: cs else dropComment cs
 
-A `%` that begins a token starts a comment that runs to the end of the line. This
-covers the leading comment lines of the specification as well as the end-of-line and
-interleaved comments used by the reference examples and accepted by `viprchk`. A `%`
-inside a token is an ordinary character. -/
-def wsTokens (input : List Char) : List String := Id.run do
-  let mut toks : List String := []
-  let mut cur : List Char := []
-  let mut inComment := false
-  for c in input do
-    if inComment then
-      if c == '\n' then inComment := false
-    else if c.isWhitespace then
-      if !cur.isEmpty then toks := String.ofList cur.reverse :: toks; cur := []
-    else if cur.isEmpty && c == '%' then
-      inComment := true
-    else
-      cur := c :: cur
-  if !cur.isEmpty then toks := String.ofList cur.reverse :: toks
-  return toks.reverse
+theorem dropComment_length_le : ∀ cs : List Char, (dropComment cs).length ≤ cs.length
+  | [] => by simp [dropComment]
+  | c :: cs => by
+      by_cases h : c == '\n'
+      · simp [dropComment, h]
+      · have ih := dropComment_length_le cs
+        simp only [dropComment, h, Bool.false_eq_true, ite_false, List.length_cons]
+        omega
+
+/-- Characters of the token that continues here, and the input after it. -/
+def takeToken : List Char → List Char × List Char
+  | [] => ([], [])
+  | c :: cs =>
+      if c.isWhitespace then ([], c :: cs)
+      else
+        let (t, r) := takeToken cs
+        (c :: t, r)
+
+theorem takeToken_length_lt : ∀ (c : Char) (cs : List Char),
+    (takeToken cs).2.length < (c :: cs).length
+  | _, [] => by simp [takeToken]
+  | _, d :: ds => by
+      by_cases h : d.isWhitespace
+      · simp [takeToken, h]
+      · have := takeToken_length_lt d ds
+        simp only [takeToken, h, Bool.false_eq_true, ite_false, List.length_cons] at *
+        omega
+
+/-- Split into whitespace-separated tokens: the maximal nonempty runs of
+non-whitespace characters, in order.
+
+A `%` that begins a token starts a comment running to the end of the line. This covers
+the specification's leading comment lines as well as the end-of-line and interleaved
+comments used by the reference examples and accepted by `viprchk`. A `%` inside a token
+is an ordinary character, so `x%y` is one token.
+
+Written as a structural recursion rather than a loop over mutable state, so that the
+tokenization a certificate receives can be read off the definition. -/
+def wsTokens : List Char → List String
+  | [] => []
+  | c :: cs =>
+      if c.isWhitespace then wsTokens cs
+      else if c == '%' then wsTokens (dropComment cs)
+      else
+        match _h : takeToken cs with
+        | (t, r) => String.ofList (c :: t) :: wsTokens r
+  termination_by cs => cs.length
+  decreasing_by
+  · simp
+  · exact Nat.lt_of_le_of_lt (dropComment_length_le cs) (by simp)
+  · have hr : (takeToken cs).2 = r := by rw [_h]
+    rw [← hr]
+    exact takeToken_length_lt c cs
 
 /-! ## Token consumers (Except-monad parser over `List String`) -/
 

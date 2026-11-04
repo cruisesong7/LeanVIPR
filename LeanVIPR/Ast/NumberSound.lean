@@ -1,60 +1,19 @@
 module
 
-public import LeanVIPR.Ast.Number
-public import Mathlib.Tactic.Ring
+public import LeanVIPR.Ast.NumberDenote
+import Mathlib.Tactic.Ring
 
 @[expose] public section
 
 /-!
-# What a VIPR number token denotes
+# The number reader agrees with the denotation
 
-The parser reads numbers with an accumulator loop. This module says, independently,
-*which rational a token denotes*, and proves the two agree in both directions.
-
-The point of the exercise is that a misread number is the one parser fault the
-soundness theorem cannot catch: a structurally damaged certificate usually fails to
-replay, but a token read as the wrong value silently substitutes a different
-mixed-integer problem, and `checkVipr_sound` would then establish a true claim about
-the wrong problem. So the denotation below is written positionally — each digit
-weighted by a power of ten, a fraction as `i + f / 10 ^ |f|` — rather than as the
-left-to-right fold the implementation uses.
-
-Sign handling mirrors the format rather than the implementation: a token carries at
-most one leading sign, so `--5` denotes nothing.
+Each theorem here is an `iff`, so the reader neither misreads a token nor rejects a
+well-formed one. `splitOnChar` is pinned down along the way by two facts: rejoining its
+parts recovers the input, and no part contains the separator.
 -/
 
 namespace LeanVIPR.Ast
-
-/-- Every character is an ASCII digit. -/
-def AllDigits (l : List Char) : Prop := ∀ c ∈ l, c.isDigit
-
-instance (l : List Char) : Decidable (AllDigits l) := by
-  unfold AllDigits; infer_instance
-
-/-- The value of a digit list read most significant first, each digit weighted by its
-positional power of ten. -/
-def digitsValue : List Char → Nat
-  | [] => 0
-  | c :: cs => (c.toNat - '0'.toNat) * 10 ^ cs.length + digitsValue cs
-
-/-- `UDenotes cs q`: the unsigned token `cs` denotes exactly the rational `q`. -/
-inductive UDenotes : List Char → ℚ → Prop
-  /-- A nonempty run of digits denotes its base-ten value. -/
-  | nat {ds : List Char} (hne : ds ≠ []) (hd : AllDigits ds) :
-      UDenotes ds (digitsValue ds)
-  /-- `i.f` denotes `i + f / 10 ^ |f|`; at least one side must be present. -/
-  | dec {i f : List Char} (hne : i ≠ [] ∨ f ≠ []) (hi : AllDigits i) (hf : AllDigits f) :
-      UDenotes (i ++ '.' :: f)
-        ((digitsValue i : ℚ) + (digitsValue f : ℚ) / (10 : ℚ) ^ f.length)
-
-/-- `Denotes cs q`: the token `cs`, with at most one leading sign, denotes `q`.
-
-The sign convention is shared with the implementation via `splitSign`: that a token
-carries at most one leading sign is part of the format, and `splitSign` is three
-pattern-matching lines. Everything that computes a *value* — positional digit weights
-and the fraction `f / 10 ^ |f|` — is stated independently above. -/
-def Denotes (cs : List Char) (q : ℚ) : Prop :=
-  ∃ u, UDenotes (splitSign cs).2 u ∧ q = (if (splitSign cs).1 then -u else u)
 
 /-! ## Digit lists -/
 
@@ -389,13 +348,6 @@ theorem parseRat?_eq_some_iff {s : String} {q : ℚ} :
     parseRat? s = some q ↔ Denotes s.toList q := parseRatChars?_eq_some_iff
 
 /-! ## Signed integers and `p/q` -/
-
-/-- `IntDenotes cs z`: the token `cs` denotes exactly the integer `z`. -/
-def IntDenotes (cs : List Char) (z : ℤ) : Prop :=
-  (splitSign cs).2 ≠ [] ∧ AllDigits (splitSign cs).2 ∧
-    z = (if (splitSign cs).1 then -(digitsValue (splitSign cs).2 : ℤ)
-         else (digitsValue (splitSign cs).2 : ℤ))
-
 theorem parseIntChars?_eq_some_iff {cs : List Char} {z : ℤ} :
     parseIntChars? cs = some z ↔ IntDenotes cs z := by
   unfold parseIntChars? IntDenotes
@@ -412,14 +364,6 @@ theorem parseIntChars?_eq_some_iff {cs : List Char} {z : ℤ} :
       constructor
       · intro h; exact ⟨hne, hd, by rw [← h, hnv]⟩
       · rintro ⟨-, -, rfl⟩; rw [hnv]
-
-/-- `NumDenotes cs q`: the number token `cs` denotes exactly `q`: either a signed
-decimal with no `/`, or a quotient of two signed integers with a nonzero denominator. -/
-def NumDenotes (cs : List Char) (q : ℚ) : Prop :=
-  ('/' ∉ cs ∧ Denotes cs q) ∨
-  (∃ a b za zb, cs = a ++ '/' :: b ∧ '/' ∉ a ∧ '/' ∉ b ∧
-    IntDenotes a za ∧ IntDenotes b zb ∧ zb ≠ 0 ∧ q = (za : ℚ) / (zb : ℚ))
-
 /-- **The number reader returns exactly the denoted rational.** -/
 theorem parseNumChars?_eq_some_iff {cs : List Char} {q : ℚ} :
     parseNumChars? cs = some q ↔ NumDenotes cs q := by
@@ -474,5 +418,4 @@ theorem parseNumChars?_eq_some_iff {cs : List Char} {q : ℚ} :
 
 theorem parseNum?_eq_some_iff {s : String} {q : ℚ} :
     parseNum? s = some q ↔ NumDenotes s.toList q := parseNumChars?_eq_some_iff
-
 end LeanVIPR.Ast

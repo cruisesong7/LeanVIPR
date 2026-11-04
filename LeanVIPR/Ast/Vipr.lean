@@ -151,18 +151,23 @@ def takeStrings : Nat → Toks → Except String (List String × Toks)
       let (rest, ts2) ← takeStrings n ts1
       Except.ok (s :: rest, ts2)
 
+/-- The kind of a weak-completion bound: a lower (`L`) or upper (`U`) variable bound. -/
+def weakKind? (t : String) : Option Char :=
+  match t.toList with
+  | ['L'] => some 'L'
+  | ['U'] => some 'U'
+  | _ => none
+
 /-- Read one `L/U variable-index row-index value` weak-completion bound. -/
 def takeWeakBound (ts : Toks) : Except String (ViprWeakBound × Toks) := do
   let (kindTok, ts1) ← takeTok ts
-  let kind ←
-    match kindTok.toList with
-    | ['L'] => Except.ok 'L'
-    | ['U'] => Except.ok 'U'
-    | _ => Except.error s!"expected weak-bound kind L/U, got '{kindTok}'"
-  let (varIdx, ts2) ← takeNat ts1
-  let (rowIdx, ts3) ← takeNat ts2
-  let (value, ts4) ← takeNum ts3
-  Except.ok (⟨kind, varIdx, rowIdx, value⟩, ts4)
+  match weakKind? kindTok with
+  | none => Except.error s!"expected weak-bound kind L/U, got '{kindTok}'"
+  | some kind => do
+      let (varIdx, ts2) ← takeNat ts1
+      let (rowIdx, ts3) ← takeNat ts2
+      let (value, ts4) ← takeNum ts3
+      Except.ok (⟨kind, varIdx, rowIdx, value⟩, ts4)
 
 def takeWeakBoundsN : Nat → Toks → Except String (List ViprWeakBound × Toks)
   | 0, ts => Except.ok ([], ts)
@@ -171,16 +176,16 @@ def takeWeakBoundsN : Nat → Toks → Except String (List ViprWeakBound × Toks
       let (rest, ts2) ← takeWeakBoundsN n ts1
       Except.ok (bound :: rest, ts2)
 
-/-- Read the inner `{ 0 }` or `{ n ... }` block of a v1.1 `lin weak` reason. -/
+/-- Read the inner `{ 0 }` or `{ n ... }` block of a v1.1 `lin weak` reason. The empty
+list is the `{ 0 }` spelling, since `takeWeakBoundsN n` returns exactly `n` bounds. -/
 def takeWeakBounds (ts : Toks) : Except String (ViprWeakBounds × Toks) := do
   let ts1 ← expectTok "{" ts
   let (n, ts2) ← takeNat ts1
   let (bounds, ts3) ← takeWeakBoundsN n ts2
   let ts4 ← expectTok "}" ts3
-  if n = 0 then
-    Except.ok (.global, ts4)
-  else
-    Except.ok (.local bounds, ts4)
+  match bounds with
+  | [] => Except.ok (.global, ts4)
+  | _ => Except.ok (.local bounds, ts4)
 
 /-- Read a constraint body: `p i₁ a₁ … iₚ aₚ` (returns the form) or `OBJ`. -/
 def takeBody (ts : Toks) : Except String ((LinForm × Bool) × Toks) := do
@@ -258,6 +263,19 @@ def takeReason (name : String) (ts : Toks) : Except String (ViprReason × Toks) 
       Except.ok (ViprReason.uns i1 l1 i2 l2, ts7)
   | _ => Except.error s!"{name}: unknown reason '{kw}'"
 
+/-- Read the optional v1.1 scope keyword that may follow a `DER` row's final-use index.
+A global one-variable derivation may tighten the bounds used by a later
+`lin weak { 0 }` completion.
+
+The keyword is optional and unbracketed, so it is matched greedily: a row *named*
+`global` or `local` immediately after a flagless row would be read as that row's flag.
+`LeanVIPR.Thm.Vipr.Grammar.IsDers` states this rule, so the exclusion is visible in the
+grammar rather than hidden here. -/
+def takeScope : Toks → Bool × Toks
+  | "global" :: rest => (true, rest)
+  | "local" :: rest => (false, rest)
+  | ts => (false, ts)
+
 def takeDer (ts : Toks) : Except String (ViprDer × Toks) := do
   let (name, ts1) ← takeTok ts
   let (sense, ts2) ← takeSense ts1
@@ -265,15 +283,10 @@ def takeDer (ts : Toks) : Except String (ViprDer × Toks) := do
   let ((form, usesObj), ts4) ← takeBody ts3
   let (reason, ts5) ← takeReason name ts4
   let (idx, ts6) ← takeInt ts5
-  -- A global one-variable derivation may tighten the bounds used by a later
-  -- `lin weak { 0 }` completion.
-  let (isGlobal, ts7) := match ts6 with
-    | "global" :: rest => (true, rest)
-    | "local"  :: rest => (false, rest)
-    | _ => (false, ts6)
+  let scope := takeScope ts6
   Except.ok ({ name := name, sense := sense, rhs := rhs, form := form,
                usesObj := usesObj, reason := reason, idx := idx,
-               isGlobal := isGlobal }, ts7)
+               isGlobal := scope.1 }, scope.2)
 
 def takeDers : Nat → Toks → Except String (List ViprDer × Toks)
   | 0,     ts => Except.ok ([], ts)
@@ -386,10 +399,26 @@ def validateVipr (v : Vipr) : Except String Unit := do
     | _ => pure ()
   checkFinalUse v
 
+/-- Read the `RTP` (relation-to-prove) section: `RTP infeas`, or `RTP range lb ub`. -/
+def takeRtp (ts : Toks) : Except String (ViprRtp × Toks) := do
+  let ts1 ← expectTok "RTP" ts
+  let (rtpkind, ts2) ← takeTok ts1
+  if rtpkind == "infeas" then
+    Except.ok (ViprRtp.infeas, ts2)
+  else if rtpkind == "range" then do
+    let (lb, tsa) ← takeTok ts2
+    let (ub, tsb) ← takeTok tsa
+    let lower ← takeBound "-inf" lb
+    let upper ← takeBound "inf" ub
+    Except.ok (ViprRtp.range lower upper, tsb)
+  else
+    Except.error s!"unknown RTP kind '{rtpkind}'"
+
 /-! ## Top-level parser -/
 
-def parseVipr (content : String) : Except String Vipr := do
-  let ts0 := wsTokens content.toList
+/-- Parse a tokenized certificate. Separated from `parseVipr` so that the grammar
+correspondence in `LeanVIPR.Thm.Vipr` is stated where the grammar lives: on tokens. -/
+def parseViprToks (ts0 : Toks) : Except String Vipr := do
   let ts1 ← expectTok "VER" ts0
   let (ver, ts2) ← takeTok ts1
   let ts3 ← expectTok "VAR" ts2
@@ -406,42 +435,34 @@ def parseVipr (content : String) : Except String Vipr := do
   let (ncon, ts14) ← takeNat ts13
   let (nbound, ts15) ← takeNat ts14
   let (cons, ts16) ← takeCons ncon ts15
-  let ts17 ← expectTok "RTP" ts16
-  let (rtpkind, ts18) ← takeTok ts17
-  let (rtp, ts19) ←
-    if rtpkind == "infeas" then
-      (Except.ok (ViprRtp.infeas, ts18) : Except String (ViprRtp × Toks))
-    else if rtpkind == "range" then do
-      let (lb, tsa) ← takeTok ts18
-      let (ub, tsb) ← takeTok tsa
-      let lower ← takeBound "-inf" lb
-      let upper ← takeBound "inf" ub
-      Except.ok (ViprRtp.range lower upper, tsb)
-    else
-      Except.error s!"unknown RTP kind '{rtpkind}'"
+  let (rtp, ts19) ← takeRtp ts16
   let ts20 ← expectTok "SOL" ts19
   let (nsol, ts21) ← takeNat ts20
   let (sols, ts22) ← takeSols nsol ts21
   let ts23 ← expectTok "DER" ts22
   let (nder, ts24) ← takeNat ts23
   let (ders, ts25) ← takeDers nder ts24
-  if let t :: _ := ts25 then
-    throw s!"unexpected token after DER section: '{t}'"
-  let v : Vipr := {
-    version := ver,
-    varNames := names.toArray,
-    intVars := ints,
-    objSense := objsense,
-    objTerms := objterms,
-    numCon := ncon,
-    numBounds := nbound,
-    cons := cons.toArray,
-    rtp := rtp,
-    numSol := nsol,
-    sols := sols.toArray,
-    ders := ders.toArray }
-  validateVipr v
-  return v
+  match ts25 with
+  | t :: _ => Except.error s!"unexpected token after DER section: '{t}'"
+  | [] =>
+      let v : Vipr := {
+        version := ver,
+        varNames := names.toArray,
+        intVars := ints,
+        objSense := objsense,
+        objTerms := objterms,
+        numCon := ncon,
+        numBounds := nbound,
+        cons := cons.toArray,
+        rtp := rtp,
+        numSol := nsol,
+        sols := sols.toArray,
+        ders := ders.toArray }
+      validateVipr v
+      Except.ok v
+
+def parseVipr (content : String) : Except String Vipr :=
+  parseViprToks (wsTokens content.toList)
 
 /-! ## Objective references -/
 

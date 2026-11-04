@@ -133,10 +133,36 @@ feasible point (minimization: `lb ≤ obj(x)` for all feasible `x`). The classic
 statement that every optimal value lies in `[lb, ub]` is the corollary
 `Vipr.ClaimValid.optimal_within`.
 
-The current artifact does not kernel-check that the emitted AST is the parse of the
-exact source bytes. Therefore the parser/compiler/runtime and OS/file plumbing remain
-a frontend trust boundary for that binding. Parser verification is intentionally
-deferred; it is not included in the certificate-replay benchmark below.
+## Parser verification
+
+The reader is verified against an independent grammar rather than trusted. Two
+specifications are stated without reference to any parser function — the number grammar
+in [`LeanVIPR/Thm/Number/Grammar.lean`](LeanVIPR/Thm/Number/Grammar.lean) and the
+certificate grammar in
+[`LeanVIPR/Thm/Vipr/Grammar.lean`](LeanVIPR/Thm/Vipr/Grammar.lean) — and the reader is
+proved to agree with both in each direction:
+
+```lean
+theorem parseNum_eq_some_iff  : parseNumChars? cs = some q ↔ IsNumValue cs q
+theorem parseVipr_eq_ok_iff   : parseVipr content = .ok v ↔
+                                  IsVipr (wsTokens content.toList) v ∧
+                                  validateVipr v = .ok ()
+```
+
+Soundness is the direction that closes a gap: `checkVipr_sound` proves a claim about the
+AST it is handed, so a token read as the wrong rational would let it establish a true
+claim about a *different* mixed-integer problem. Completeness is what makes a rejection
+meaningful, rather than possibly an artefact of a narrow reader. `isNumValue_unique` and
+`isVipr_unique` record that neither grammar is ambiguous.
+
+Two things are deliberately still outside this result. `validateVipr` appears in the
+statement as a function, not as a declarative predicate: it is a semantic check on
+indices (in range, each variable at most once per sparse vector, no derivation used
+after its own final-use index), and stating it declaratively needs a sort with a
+specification, which `Array.qsort` does not have. And the artifact does not
+*kernel-check*, on each run, that the AST emitted into the generated proof is the parse
+of the exact source bytes; the compiled CLI and the AST printer remain a frontend trust
+boundary for that per-run binding. Neither is included in the benchmark below.
 
 ## VIPR-only benchmark
 

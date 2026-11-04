@@ -345,7 +345,7 @@ last value, while summing them is also natural), so they are rejected.
 
 Sorting with `mergeSort` rather than `qsort` keeps this `O(n log n)` while leaving it
 provable: `List.pairwise_mergeSort` and `List.mergeSort_perm` are what
-`LeanVIPR.Thm.Valid` needs to show the adjacent-duplicate scan decides `List.Nodup`. -/
+`LeanVIPR.Thm.Parser.Valid` needs to show the adjacent-duplicate scan decides `List.Nodup`. -/
 def checkDistinct (what : String) (idxs : List Nat) : Except String Unit :=
   match firstAdjacentDup (idxs.mergeSort (fun a b => decide (a ≤ b))) with
   | some i => Except.error s!"{what}: duplicate index {i}"
@@ -427,7 +427,7 @@ def takeRtp (ts : Toks) : Except String (ViprRtp × Toks) := do
 /-! ## Top-level parser -/
 
 /-- Parse a tokenized certificate. Separated from `parseVipr` so that the grammar
-correspondence in `LeanVIPR.Thm.Parser` is stated where the grammar lives: on tokens. -/
+correspondence in `LeanVIPR.Thm.Parser.Certificate` is stated where the grammar lives: on tokens. -/
 def parseViprToks (ts0 : Toks) : Except String Vipr := do
   let ts1 ← expectTok "VER" ts0
   let (ver, ts2) ← takeTok ts1

@@ -1,7 +1,7 @@
 module
 
 public import LeanVIPR.Thm.Checker.Sound
-public import LeanVIPR.Thm.Rule.Complete
+public import LeanVIPR.Thm.System.RuleComplete
 
 @[expose] public section
 
@@ -194,9 +194,5 @@ theorem checkVipr_complete {v : Vipr} (h : Vipr.ProofValid v) : checkVipr v = tr
   refine ⟨solSectionB_complete hsols, ?_⟩
   rw [replay_complete hder]
   exact finalValidB_complete hfinal
-
-/-- **The checker decides the declarative VIPR proof system exactly.** -/
-theorem checkVipr_iff_proofValid (v : Vipr) : checkVipr v = true ↔ Vipr.ProofValid v :=
-  ⟨checkVipr_refines, checkVipr_complete⟩
 
 end LeanVIPR.Checker

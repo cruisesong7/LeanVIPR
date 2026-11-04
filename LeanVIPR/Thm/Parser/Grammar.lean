@@ -1,17 +1,189 @@
 module
 
 public import LeanVIPR.Parser.Ast
-public import LeanVIPR.Thm.Number.Grammar
-public import LeanVIPR.Thm.Tokens.Grammar
 
 @[expose] public section
 
 /-!
-# The grammar of a VIPR certificate
+# What LeanVIPR accepts
 
-**This file is the review surface for the certificate grammar.** It says which token
+**This is the review surface.** It is the whole specification of the format LeanVIPR
+reads: which character sequences are certificates, which certificate each one denotes,
+and which certificates describe a usable problem. Nothing here mentions a tokenizer, a
+parser, or a validator — no splitting function, no `Option`, no `Except`, and no
+remainder. A grammar says which renderings exist; the existential quantifiers supply the
+split, and values are pure functions of the fields.
+
+`LeanVIPR.Thm.Parser.Certificate` proves the reader agrees with all of this in both directions, so
+accepting these definitions makes reading the reader unnecessary. The directions do
+different jobs: soundness is what rules out reading a token as the wrong value, which
+replay cannot catch, and completeness is what makes a rejection a statement about the
+file rather than about the reader.
+
+Four layers, in the order a file passes through them:
+
+| | |
+|---|---|
+| `IsNumValue` | a numeric token denotes an exact rational |
+| `IsTokenization` | characters become tokens |
+| `IsVipr`, `IsViprText` | tokens become a certificate |
+| `IsValid` | the certificate describes a usable problem |
+
+A misread number is the one reader fault soundness cannot catch. A structurally damaged
+certificate usually fails to replay, but a token read as the wrong value silently
+substitutes a different mixed-integer problem, and `checkVipr_sound` would then
+establish a true claim about the wrong problem. So digit runs are given positional
+value here, each digit weighted by a power of ten, rather than as the left-to-right fold
+the reader uses.
+-/
+
+namespace LeanVIPR.Parser
+
+open LeanVIPR.Semantics
+
+/-! ## Numeric tokens
+
+Which rational a numeric token denotes. It gives the grammar of a
+number token and the value each derivation denotes, and nothing else: no proofs, and
+no reference to how the parser works. `LeanVIPR.Thm.Parser.Number` proves the reader agrees
+with it in both directions, so a reader who accepts these definitions need not read
+the parser.
+
+Each production is a *concatenation equation* whose fields are supplied existentially
+by `IsWfNum` / `IsNumValue`. The existential supplies the split, so no list surgery
+(`splitOnChar`, `splitSign`) and no `Option` appears here: a token is well formed
+exactly when it *can* be cut into fields satisfying the field predicates, which is what
+a grammar says. Values are then pure functions of the fields.
+
+A misread number is the one parser fault soundness cannot catch. A structurally damaged
+certificate usually fails to replay, but a token read as the wrong value silently
+substitutes a different mixed-integer problem, and `checkVipr_sound` would then
+establish a true claim about the wrong problem. So the value of a digit run is given
+positionally, each digit weighted by a power of ten, rather than as the left-to-right
+fold the implementation uses. -/
+
+/-! ## Fields -/
+
+/-- Every character is an ASCII digit. -/
+def AllDigits (l : List Char) : Prop := ∀ c ∈ l, c.isDigit
+
+instance (l : List Char) : Decidable (AllDigits l) := by
+  unfold AllDigits; infer_instance
+
+/-- `Digits ::= Digit⁺`. -/
+def IsDigits (l : List Char) : Prop := l ≠ [] ∧ AllDigits l
+
+/-- `Sign ::= '-' | '+' | ε`. -/
+def IsWfSign (s : List Char) : Prop := s = [] ∨ s = ['-'] ∨ s = ['+']
+
+/-! ## Values -/
+
+/-- The value of a digit list read most significant first, each digit weighted by its
+positional power of ten. -/
+def digitsValue : List Char → Nat
+  | [] => 0
+  | c :: cs => (c.toNat - '0'.toNat) * 10 ^ cs.length + digitsValue cs
+
+/-- The multiplier a sign field contributes. -/
+def signOf (s : List Char) : ℚ := if s = ['-'] then -1 else 1
+
+/-- `Sign Digits` denotes a signed base-ten integer. -/
+def intValue (sign ds : List Char) : ℤ :=
+  if sign = ['-'] then -(digitsValue ds : ℤ) else (digitsValue ds : ℤ)
+
+/-- `Sign Digits* '.' Digits*` denotes `± (i + f / 10 ^ |f|)`. -/
+def decValue (sign i f : List Char) : ℚ :=
+  signOf sign * ((digitsValue i : ℚ) + (digitsValue f : ℚ) / (10 : ℚ) ^ f.length)
+
+/-- A quotient of two signed integers. -/
+def quotValue (sn nd sd dd : List Char) : ℚ := (intValue sn nd : ℚ) / (intValue sd dd : ℚ)
+
+/-! ## Productions -/
+
+/-- `Integer ::= Sign Digits`. -/
+def IntProduction (cs sign ds : List Char) : Prop :=
+  cs = sign ++ ds ∧ IsWfSign sign ∧ IsDigits ds
+
+/-- `Decimal ::= Sign Digit* '.' Digit*`, with at least one digit present. -/
+def DecProduction (cs sign i f : List Char) : Prop :=
+  cs = sign ++ (i ++ '.' :: f) ∧ IsWfSign sign ∧ AllDigits i ∧ AllDigits f ∧
+    (i ≠ [] ∨ f ≠ [])
+
+/-- `Quotient ::= Integer '/' Integer`, with a nonzero denominator. -/
+def QuotProduction (cs sn nd sd dd : List Char) : Prop :=
+  cs = sn ++ (nd ++ '/' :: (sd ++ dd)) ∧
+    IsWfSign sn ∧ IsDigits nd ∧ IsWfSign sd ∧ IsDigits dd ∧ digitsValue dd ≠ 0
+
+/-! ## Well-formedness and denotation -/
+
+/-- `IsWfInt cs`: `cs` is a well-formed integer token. -/
+def IsWfInt (cs : List Char) : Prop := ∃ sign ds, IntProduction cs sign ds
+
+/-- `IsIntValue cs z`: the integer token `cs` denotes exactly `z`. -/
+def IsIntValue (cs : List Char) (z : ℤ) : Prop :=
+  ∃ sign ds, IntProduction cs sign ds ∧ z = intValue sign ds
+
+/-- `Number ::= Integer | Decimal | Quotient`. The three alternatives are disjoint:
+a decimal contains `'.'` and a quotient contains `'/'`, neither of which a sign or a
+digit run admits, so a token has at most one derivation. -/
+def IsWfNum (cs : List Char) : Prop :=
+  (∃ sign ds, IntProduction cs sign ds) ∨
+  (∃ sign i f, DecProduction cs sign i f) ∨
+  (∃ sn nd sd dd, QuotProduction cs sn nd sd dd)
+
+/-- `IsNumValue cs q`: the number token `cs` denotes exactly the rational `q`. -/
+def IsNumValue (cs : List Char) (q : ℚ) : Prop :=
+  (∃ sign ds, IntProduction cs sign ds ∧ q = (intValue sign ds : ℚ)) ∨
+  (∃ sign i f, DecProduction cs sign i f ∧ q = decValue sign i f) ∨
+  (∃ sn nd sd dd, QuotProduction cs sn nd sd dd ∧ q = quotValue sn nd sd dd)
+
+/-! ## Tokenization
+
+Which token list a character list tokenizes to. It says which token lists a
+character list may be read as, and nothing else: no proofs, and no reference to how the
+tokenizer works. `LeanVIPR.Thm.Parser.Tokens` proves the tokenizer agrees with it in both
+directions, so a reader who accepts this definition need not read the tokenizer.
+
+Without this, the parser's correctness theorem would quantify over
+`wsTokens content.toList` — an implementation function in its own specification — and
+would say nothing about how characters become tokens. A tokenizer that silently dropped
+or merged tokens would still satisfy it.
+
+Three rules, in the order the first character decides between them: whitespace
+separates, a `%` *beginning* a token runs a comment to the end of the line, and anything
+else begins a token that extends to the next whitespace. A `%` inside a token is an
+ordinary character, so `x%y` is one token. -/
+
+/-- No character of a token is whitespace. -/
+def NoWhitespace (t : List Char) : Prop := ∀ c ∈ t, ¬ c.isWhitespace
+
+/-- A token ending here cannot be extended: the input is exhausted, or what follows is
+whitespace. This is what makes tokens maximal, and so the tokenization unique. -/
+def AtTokenEnd (cs : List Char) : Prop := ∀ c ∈ cs.head?, c.isWhitespace
+
+/-- `IsTokenization cs ts`: the characters `cs` tokenize to exactly `ts`. -/
+inductive IsTokenization : List Char → Toks → Prop
+  /-- The empty input has no tokens. -/
+  | nil : IsTokenization [] []
+  /-- Whitespace separates tokens and contributes none. -/
+  | space {c : Char} {cs : List Char} {ts : Toks} (hw : c.isWhitespace)
+      (h : IsTokenization cs ts) : IsTokenization (c :: cs) ts
+  /-- A `%` beginning a token comments out the rest of its line. -/
+  | commentLine {body rest : List Char} {ts : Toks} (hn : '\n' ∉ body)
+      (h : IsTokenization rest ts) : IsTokenization ('%' :: (body ++ '\n' :: rest)) ts
+  /-- A comment on the last line, with no terminating newline, ends the input. -/
+  | commentEnd {body : List Char} (hn : '\n' ∉ body) : IsTokenization ('%' :: body) []
+  /-- Any other maximal run of non-whitespace characters is one token. -/
+  | token {t rest : List Char} {ts : Toks} (hne : t ≠ []) (hnw : NoWhitespace t)
+      (hpct : t.head? ≠ some '%') (hend : AtTokenEnd rest)
+      (h : IsTokenization rest ts) :
+      IsTokenization (t ++ rest) (String.ofList t :: ts)
+
+/-! ## Certificates
+
+Which certificate a token list derives. It says which token
 sequences are well formed and what they denote, and nothing else: no proofs, and no
-reference to how the parser works. `LeanVIPR.Thm.Parser` proves the parser agrees with
+reference to how the parser works. `LeanVIPR.Thm.Parser.Certificate` proves the parser agrees with
 it in both directions, so a reader who accepts these definitions need not read the
 parser.
 
@@ -19,21 +191,16 @@ Nothing here mentions a remainder, an `Except`, or a split. A terminal is a pred
 on one token; a non-terminal is a *concatenation equation* on token lists whose fields
 are supplied existentially. The existential supplies the split, which is what a grammar
 says; the parser's left-to-right discipline is its own business, discharged in
-`LeanVIPR.Thm.Parser.Lemmas`.
+`LeanVIPR.Thm.Parser.CertificateLemmas`.
 
 The format is count-prefixed throughout — `VAR n`, `CON m b`, `DER d`, and `p i a …`
 inside a row — so every production is determined by its input and admits no ambiguity
-to resolve.
--/
-
-namespace LeanVIPR.Parser
-
-open LeanVIPR.Semantics
+to resolve. -/
 
 /-! ## Terminals
 
 Each is a predicate on a single token, built from the numeric grammar of
-`LeanVIPR.Thm.Number.Grammar`. -/
+`LeanVIPR.Thm.Parser.Grammar`. -/
 
 /-- A natural number: a nonempty run of digits, denoting its base-ten value. -/
 def IsNatTok (t : String) (n : Nat) : Prop :=
@@ -223,5 +390,57 @@ def IsVipr (ts : Toks) (v : Vipr) : Prop :=
 derives `v`. Characters in, certificate out, with no parser function in between. -/
 def IsViprText (cs : List Char) (v : Vipr) : Prop :=
   ∃ ts, IsTokenization cs ts ∧ IsVipr ts v
+
+/-! ## Usable problems
+
+Which certificates are usable beyond being well formed. It says which certificates are
+well formed beyond their syntax, and nothing else: no proofs, and no reference to how
+the checks are implemented. `LeanVIPR.Thm.Parser.Valid` proves `validateVipr` decides exactly
+this, so a reader who accepts these definitions need not read the validator.
+
+This is deliberately separate from the grammar. `LeanVIPR.Thm.Parser.Grammar` says what a
+certificate *is*; these conditions say whether what it denotes is a problem the checker
+can replay — every index names a declared variable, no sparse vector mentions a variable
+twice, and no derivation uses a constraint the format already allowed a verifier to
+discard. Nothing here is required for soundness; the first two keep the denotation
+single-valued, and the last is conformance with the specification's `DER` rule.
+
+`reasonRefs`, `reasonMultipliers`, `finalUseHint` and `usedAfterFinal` live in
+`LeanVIPR.Parser.Types` because they state what the AST's index fields *mean* — which
+constraints a reason cites, and what a `DER` row's trailing field declares. They are
+part of the format, used by this specification and by the validator alike, in the same
+way `digitsValue` is shared by the number grammar and the number reader. -/
+
+/-- A sparse vector's indices name declared variables, and none is repeated.
+
+Duplicates are rejected rather than resolved: they have no agreed meaning, since the
+reference checker keeps the last value while summing them is equally natural. -/
+def IndicesOk (nvar : Nat) (idxs : List Nat) : Prop :=
+  (∀ i ∈ idxs, i < nvar) ∧ idxs.Nodup
+
+/-- A solution vector names declared variables and assigns each at most one value. A
+repeated index is allowed when the values agree, since then the vector still denotes
+one point. -/
+def SolutionOk (nvar : Nat) (vals : List (Nat × ℚ)) : Prop :=
+  (∀ p ∈ vals, p.1 < nvar) ∧ ∀ p ∈ vals, ∀ q ∈ vals, p.1 = q.1 → p.2 = q.2
+
+/-- No derivation cites a constraint past that constraint's declared final use. The
+position of a derivation in the `DER` list is its constraint index, offset by the number
+of `CON` rows, which is why the rule is stated over a split of the list. -/
+def FinalUseOk (v : Vipr) : Prop :=
+  ∀ before d after, v.ders.toList = before ++ d :: after →
+    ∀ k ∈ reasonRefs d.reason, ¬ usedAfterFinal v (v.cons.size + before.length) k
+
+/-- `IsValid v`: every sparse vector that contributes to the claimed problem or to a
+stated derived row is well formed, and the final-use rule holds. -/
+def IsValid (v : Vipr) : Prop :=
+  (∀ i ∈ v.intVars, i < v.varNames.size) ∧
+  IndicesOk v.varNames.size (v.objTerms.map Prod.fst) ∧
+  (∀ c ∈ v.cons.toList, IndicesOk v.varNames.size (c.form.map (·.idx))) ∧
+  (∀ s ∈ v.sols.toList, SolutionOk v.varNames.size s.2) ∧
+  (∀ d ∈ v.ders.toList,
+    IndicesOk v.varNames.size (d.form.map (·.idx)) ∧
+      (reasonMultipliers d.reason).Nodup) ∧
+  FinalUseOk v
 
 end LeanVIPR.Parser

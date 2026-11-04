@@ -8,8 +8,8 @@ public import LeanVIPR.Semantics.LinCon
 # The parsed certificate
 
 The shape a VIPR certificate is read into. Kept separate from the reader
-(`LeanVIPR.Parser.Read`) so that the grammars in `LeanVIPR.Thm.Parser.Grammar` and
-`LeanVIPR.Thm.Valid.Grammar` can be stated without reference to any parser function.
+(`LeanVIPR.Parser`) so that the grammars in `LeanVIPR.Thm.Parser.Grammar` and
+`LeanVIPR.Thm.Parser.Grammar` can be stated without reference to any parser function.
 
 It also holds the few functions that say what the AST's index fields *mean* — which
 constraints a reason cites, and what a `DER` row's trailing field declares. Those are
@@ -111,7 +111,7 @@ structure Vipr where
 
 These are not parser functions: they say what a reason refers to and what a `DER` row's
 trailing field declares, which is part of the format and is used both by the validator
-and by its specification in `LeanVIPR.Thm.Valid.Grammar`. -/
+and by its specification in `LeanVIPR.Thm.Parser.Grammar`. -/
 
 /-- The constraint indices a reason refers to. A `lin weak` reason also refers to the
 rows naming its local variable bounds, since completion may use them. -/

@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Thm.Rule.Sound
+public import LeanVIPR.Thm.System.RuleSound
 
 @[expose] public section
 

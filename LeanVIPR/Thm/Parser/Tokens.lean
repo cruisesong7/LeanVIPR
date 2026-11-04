@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Parser.Read
-public import LeanVIPR.Thm.Tokens.Grammar
+public import LeanVIPR.Parser
+public import LeanVIPR.Thm.Parser.Grammar
 
 @[expose] public section
 
@@ -9,7 +9,7 @@ public import LeanVIPR.Thm.Tokens.Grammar
 # The tokenizer implements the tokenization grammar
 
 `isTokenization_iff` says the tokenizer produces the one tokenization the grammar of
-`LeanVIPR.Thm.Tokens.Grammar` allows, so `IsTokenization` can replace `wsTokens` in the
+`LeanVIPR.Thm.Parser.Grammar` allows, so `IsTokenization` can replace `wsTokens` in the
 statement of the parser's correctness. That substitution is the point: a theorem phrased
 in terms of `wsTokens` would take the tokenizer's own output as the definition of
 tokenization and so could not detect a tokenizer that dropped, merged, or truncated

@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Thm.Number.Lemmas
+public import LeanVIPR.Thm.Parser.NumberLemmas
 
 @[expose] public section
 
@@ -8,7 +8,7 @@ public import LeanVIPR.Thm.Number.Lemmas
 # The number reader implements the number grammar
 
 The reader of `LeanVIPR.Parser.Number` agrees with the grammar of
-`LeanVIPR.Thm.Number.Grammar` in both directions:
+`LeanVIPR.Thm.Parser.Grammar` in both directions:
 
 * `parseNum_sound` — it never returns a value the grammar does not assign, so a token
   is never misread;

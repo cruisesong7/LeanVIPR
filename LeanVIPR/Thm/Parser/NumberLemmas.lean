@@ -1,6 +1,7 @@
 module
 
-public import LeanVIPR.Thm.Number.Grammar
+public import LeanVIPR.Parser.Number
+public import LeanVIPR.Thm.Parser.Grammar
 import Mathlib.Tactic.Ring
 
 @[expose] public section
@@ -8,8 +9,8 @@ import Mathlib.Tactic.Ring
 /-!
 # Bridging lemmas for the number reader
 
-Proof scaffolding only; the statements that matter are in `LeanVIPR.Thm.Number`, and
-the grammar they are stated against is in `LeanVIPR.Thm.Number.Grammar`.
+Proof scaffolding only; the statements that matter are in `LeanVIPR.Thm.Parser.Number`, and
+the grammar they are stated against is in `LeanVIPR.Thm.Parser.Grammar`.
 
 The reader works by splitting (`splitOnChar`, `splitSign`), so the proof goes through
 relations shaped like the reader — `UDenotes`, `Denotes`, `IntDenotes`, `NumDenotes`

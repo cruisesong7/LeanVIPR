@@ -302,8 +302,8 @@ def checkFileNative (path : String) (useSlice : Bool := false) : IO UInt32 := do
       if useSlice then
         IO.println (s!"slice: {v.cons.size} → {checked.cons.size} constraints, "
           ++ s!"{v.ders.size} → {checked.ders.size} steps")
-      -- `checkViprSliceB_sound`: acceptance of the slice refutes the original.
-      let accepted := if useSlice then checkViprSliceB v checked else checkVipr checked
+      -- `checkViprSlice_sound`: acceptance of the slice refutes the original.
+      let accepted := if useSlice then checkViprSlice v checked else checkVipr checked
       if accepted then
         IO.println "NATIVE PRECHECK PASS  (verified array-backed checker; untrusted compiled/runtime result)"
         return 0

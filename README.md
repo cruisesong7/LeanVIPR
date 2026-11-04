@@ -123,22 +123,30 @@ this form either.
 
 ```
 LeanVIPR/
-  Parser/        Ast.lean  Number.lean  Read.lean
-  Semantics/     LinCon.lean  LinForm.lean  Rows.lean  Claim.lean  Lower.lean
-  Checker.lean
-  Thm/           Tokens.lean  Number.lean  Parser.lean  Valid.lean
-                 System.lean  Rule/  Checker/  Completeness.lean
-LeanVIPRMain.lean    -- the `viprcheck` command line
+  Parser.lean          -- tokenizer, parser, validator
+  Parser/              Ast.lean  Number.lean
+  Semantics/           LinCon.lean  LinForm.lean  Rows.lean  Claim.lean  Lower.lean
+  Checker.lean         -- the array-backed executable checker
+  Thm/
+    Parser.lean        -- the reader's results: sound, complete, the iff
+    Parser/            Grammar.lean  -- the specification
+                       Tokens.lean  Number.lean  Certificate.lean  Valid.lean
+    System.lean        -- the proof system's results: the rules are valid
+    System/            Sound.lean  RuleSound.lean  RuleComplete.lean
+                       Completeness.lean
+    Checker.lean       -- the checker's results: decides the system, and it is sound
+    Checker/           Sound.lean  Complete.lean
+LeanVIPRMain.lean      -- the `viprcheck` command line
 ```
 
-`Parser/` reads a file into the AST. `Semantics/` says what the AST means, including
-the declarative proof system and the lowering (`Lower.lean`) from parsed rows to the
-rows the checker replays. `Checker.lean` is the array-backed executable checker.
+`Parser.lean` and `Checker.lean` are the two ends of the pipeline. `Semantics/` sits
+between them: it says what the AST means, holds the declarative proof system, and lowers
+parsed rows to the rows the checker replays (`Lower.lean`).
 
-`Thm/` holds every proof, mirroring the code it is about. Each subdirectory with a
-specification has a `Grammar.lean` stated without reference to any executable function;
-those are the files to read to know what LeanVIPR accepts. `Lemmas.lean` is scaffolding,
-and the file named after the directory holds the theorems worth citing.
+`Thm/` holds every proof, one directory per layer, and each layer's results are collected
+in a file beside its directory — `Thm/Parser.lean`, `Thm/System.lean`,
+`Thm/Checker.lean`. Those three plus `Thm/Parser/Grammar.lean`, the specification they
+are stated against, are the files meant to be read. The rest is how they are proved.
 
 ## What is trusted
 
@@ -156,17 +164,18 @@ statement that every optimal value lies in `[lb, ub]` is the corollary
 
 ## Parser verification
 
-The reader is verified against an independent specification rather than trusted. Four
-grammars are stated without reference to any parser function:
+The reader is verified against an independent specification rather than trusted. That
+specification is one file — [`Thm/Parser/Grammar.lean`](LeanVIPR/Thm/Parser/Grammar.lean),
+about 450 lines — stated without reference to any parser function:
 
-| specification | covers |
+| section of that file | covers |
 |---|---|
-| [`Thm/Tokens/Grammar.lean`](LeanVIPR/Thm/Tokens/Grammar.lean) | characters to tokens |
-| [`Thm/Number/Grammar.lean`](LeanVIPR/Thm/Number/Grammar.lean) | a numeric token to an exact rational |
-| [`Thm/Parser/Grammar.lean`](LeanVIPR/Thm/Parser/Grammar.lean) | tokens to a certificate |
-| [`Thm/Valid/Grammar.lean`](LeanVIPR/Thm/Valid/Grammar.lean) | when a certificate denotes a usable problem |
+| `IsNumValue` | a numeric token to an exact rational |
+| `IsTokenization` | characters to tokens |
+| `IsVipr`, `IsViprText` | tokens to a certificate |
+| `IsValid` | when a certificate denotes a usable problem |
 
-and the reader is proved to agree with them in both directions:
+and the reader is proved to agree with it in both directions:
 
 ```lean
 theorem parseVipr_eq_ok_iff : parseVipr content = .ok v ↔
@@ -178,11 +187,11 @@ Both sides of that `↔` matter. **Soundness** closes a gap replay cannot:
 wrong rational would let it establish a true claim about a *different* mixed-integer
 problem. **Completeness** is what makes a rejection a statement about the file rather
 than possibly an artefact of a narrow reader. `isVipr_unique`, `isTokenization_unique`
-and `isNumValue_unique` record that no grammar is ambiguous.
+and `isNumValue_unique` record that no part of the grammar is ambiguous.
 
 The specification contains no implementation function. Nothing on the right-hand side
 of that `↔` reduces to `wsTokens`, `parseViprToks` or `validateVipr`; it mentions only
-the four grammars above and the AST type definitions. That is the property that makes
+that one grammar file and the AST type definitions. That is the property that makes
 the theorem worth proving — a correctness statement phrased in terms of `wsTokens`
 would take the tokenizer's own output as the definition of tokenization and so could
 not detect a tokenizer that dropped, merged or truncated tokens.

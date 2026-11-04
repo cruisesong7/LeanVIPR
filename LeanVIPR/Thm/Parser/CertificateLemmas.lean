@@ -1,16 +1,16 @@
 module
 
-public import LeanVIPR.Parser.Read
-public import LeanVIPR.Thm.Tokens
+public import LeanVIPR.Parser
+public import LeanVIPR.Thm.Parser.Tokens
 public import LeanVIPR.Thm.Parser.Grammar
-public import LeanVIPR.Thm.Number
+public import LeanVIPR.Thm.Parser.Number
 
 @[expose] public section
 
 /-!
 # Bridging lemmas for the certificate parser
 
-Proof scaffolding only; the statements that matter are in `LeanVIPR.Thm.Parser`, and the
+Proof scaffolding only; the statements that matter are in `LeanVIPR.Thm.Parser.Certificate`, and the
 grammar they are stated against is in `LeanVIPR.Thm.Parser.Grammar`.
 
 Every consumer gets the same pair of lemmas, and nothing else is needed of it:

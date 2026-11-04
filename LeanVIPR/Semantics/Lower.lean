@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Parser.Read
+public import LeanVIPR.Parser
 public import LeanVIPR.Semantics.Rows
 
 @[expose] public section

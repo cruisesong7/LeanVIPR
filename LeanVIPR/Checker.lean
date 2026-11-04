@@ -114,4 +114,12 @@ def checkVipr (v : Vipr) : Bool :=
   | none => false
   | some last? => finalValidB v last?
 
+/-- Checker for a backward-sliced infeasibility certificate: accept `sliced` as a
+refutation of `original`. The slicer itself is untrusted, so this re-establishes every
+side condition of `checkViprInfeasibleSubset_sound` at run time. The slicer keeps rows
+in their original order, so a sublist test suffices. -/
+def checkViprSlice (original sliced : Vipr) : Bool :=
+  decide (sliced.rtp = .infeas) && decide (sliced.intVars = original.intVars) &&
+    (conSLes sliced).isSublist (conSLes original) && checkVipr sliced
+
 end LeanVIPR.Checker

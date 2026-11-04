@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Thm.System
+public import LeanVIPR.Thm.System.Sound
 public import LeanVIPR.Semantics.Lower
 
 @[expose] public section

@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.LinCon
+public import LeanVIPR.Spec.Semantics.LinCon
 public import Mathlib.Data.Rat.Floor
 
 @[expose] public section
@@ -10,8 +10,8 @@ public import Mathlib.Data.Rat.Floor
 
 Shared vocabulary for VIPR rows: scaling and combining sparse linear forms, the
 normalized form, and the refutation trees the proof system is phrased over. Definitions
-only; the algebraic facts about them are in `LeanVIPR.Thm.LinForm`, and the executable
-tests that decide them are in `LeanVIPR.Impl.Form`.
+only; the algebraic facts about them are in `LeanVIPR.Thm.System.LinForm`, and the executable
+tests that decide them are in `LeanVIPR.Impl.Checker.Form`.
 -/
 
 namespace LeanVIPR.Semantics

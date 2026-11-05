@@ -1,7 +1,7 @@
 module
 
 public import LeanVIPR.Impl.Checker
-public import LeanVIPR.Thm.Claim
+public import LeanVIPR.Thm.System.Claim
 public import LeanVIPR.Thm.System
 
 @[expose] public section

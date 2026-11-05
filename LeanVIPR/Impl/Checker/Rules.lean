@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Spec.Row
-public import LeanVIPR.Impl.Form
+public import LeanVIPR.Spec.Semantics.Row
+public import LeanVIPR.Impl.Checker.Form
 
 @[expose] public section
 
@@ -11,7 +11,7 @@ public import LeanVIPR.Impl.Form
 The `Bool`-valued side-condition checks the checker runs for each VIPR rule: suitability
 of a combination, integrality for `rnd`, absurdity, domination, and the complementary
 bounds of `uns`. Each is proved to imply the corresponding declarative rule of
-`LeanVIPR.Spec.System` in `LeanVIPR.Thm.System.RuleSound`, and to be implied by it in
+`LeanVIPR.Spec.Semantics.System` in `LeanVIPR.Thm.System.RuleSound`, and to be implied by it in
 `LeanVIPR.Thm.System.RuleComplete` — so the checker neither admits a derivation the
 rulebook forbids nor loses one it permits.
 -/

@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Impl.Solution
+public import LeanVIPR.Impl.Checker.Solution
 public import LeanVIPR.Thm.System
 
 @[expose] public section
@@ -8,9 +8,9 @@ public import LeanVIPR.Thm.System
 /-!
 # The claim semantics is sound
 
-That the declarative proof system of `LeanVIPR.Spec.System` establishes the claim of
-`LeanVIPR.Spec.Claim`, and that the executable solution checks of
-`LeanVIPR.Impl.Solution` decide it. `ClaimValid.optimal_within` is the reading to quote:
+That the declarative proof system of `LeanVIPR.Spec.Semantics.System` establishes the claim of
+`LeanVIPR.Spec.Semantics.Claim`, and that the executable solution checks of
+`LeanVIPR.Impl.Checker.Solution` decide it. `ClaimValid.optimal_within` is the reading to quote:
 every optimal value lies within the claimed range.
 -/
 

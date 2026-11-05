@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.LinCon
+public import LeanVIPR.Spec.Semantics.LinCon
 
 @[expose] public section
 

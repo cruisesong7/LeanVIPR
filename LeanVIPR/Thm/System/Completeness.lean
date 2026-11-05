@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.Completeness
+public import LeanVIPR.Spec.Semantics.Completeness
 public import LeanVIPR.Thm.System
 
 @[expose] public section
@@ -8,7 +8,7 @@ public import LeanVIPR.Thm.System
 /-!
 # What is proved towards completeness
 
-The statements are in `LeanVIPR.Spec.Completeness`; this file proves the one ingredient
+The statements are in `LeanVIPR.Spec.Semantics.Completeness`; this file proves the one ingredient
 that is provable here. Every exact rational Farkas witness compiles to a one-step closed
 VIPR refutation, so any rational Farkas completeness theorem immediately yields
 completeness of the VIPR LP fragment. The finite mixed-integer branch-and-cut existence

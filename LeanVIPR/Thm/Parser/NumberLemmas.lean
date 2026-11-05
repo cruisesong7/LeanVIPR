@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Impl.Number
-public import LeanVIPR.Spec.Grammar
+public import LeanVIPR.Impl.Parser.Utils
+public import LeanVIPR.Spec.Syntax.Grammar
 import Mathlib.Tactic.Ring
 
 @[expose] public section

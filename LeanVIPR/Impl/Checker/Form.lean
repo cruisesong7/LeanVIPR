@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.LinForm
+public import LeanVIPR.Spec.Semantics.LinForm
 
 @[expose] public section
 
@@ -8,8 +8,8 @@ public import LeanVIPR.Spec.LinForm
 # Executable tests on linear forms
 
 The `Bool`-valued decisions behind the declarative notions of
-`LeanVIPR.Spec.LinForm`. Each is proved to agree with the notion it decides in
-`LeanVIPR.Thm.LinForm`.
+`LeanVIPR.Spec.Semantics.LinForm`. Each is proved to agree with the notion it decides in
+`LeanVIPR.Thm.System.LinForm`.
 -/
 
 namespace LeanVIPR.Semantics

@@ -5,9 +5,17 @@ public import Mathlib.Data.Rat.Defs
 @[expose] public section
 
 /-!
-# Exact numeric parsing for VIPR
+# Reader utilities
 
-Small total helpers for natural numbers and exact finite decimal rationals.
+Character-level helpers the reader is built from: splitting a list on a separator, and
+the exact readers for naturals, signed integers, finite decimals and `p/q` rationals.
+All total, all returning `Option`.
+
+None of these is a library function in disguise. VIPR's numeric syntax differs from
+Lean's at two points, in opposite directions — `String.toNat?` accepts `1_000` and VIPR
+does not, `String.toInt?` rejects a leading `+` and VIPR allows it — and the library has
+no reader for `ℚ` or for `p/q` at all. `String.splitOn` exists but carries no lemmas,
+so `splitOnChar` is what makes `LeanVIPR.Thm.Parser.Number` provable.
 -/
 
 namespace LeanVIPR.Parser

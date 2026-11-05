@@ -3,6 +3,8 @@ module
 public import LeanVIPR.Thm.System.Sound
 public import LeanVIPR.Thm.System.RuleSound
 public import LeanVIPR.Thm.System.RuleComplete
+public import LeanVIPR.Thm.System.LinForm
+public import LeanVIPR.Thm.System.Row
 
 @[expose] public section
 

@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Spec.System
-public import LeanVIPR.Spec.Lower
+public import LeanVIPR.Spec.Semantics.System
+public import LeanVIPR.Spec.Semantics.Lower
 
 @[expose] public section
 
@@ -20,7 +20,7 @@ than at every feasible point — `SolReasonValid` is where that asymmetry lives.
 `ClaimValid` is the top-level statement: every listed solution is feasible, the primal
 witness bound holds, and the derived objective bound holds at every feasible point. The
 textbook reading — that every optimal value lies within the claimed range — is the
-corollary `ClaimValid.optimal_within` in `LeanVIPR.Thm.Claim`.
+corollary `ClaimValid.optimal_within` in `LeanVIPR.Thm.System.Claim`.
 -/
 
 namespace LeanVIPR.Parser.Vipr

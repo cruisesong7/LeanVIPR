@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.Ast
+public import LeanVIPR.Spec.Syntax.Ast
 
 @[expose] public section
 

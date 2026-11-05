@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Spec.Claim
-public import LeanVIPR.Impl.Rules
+public import LeanVIPR.Spec.Semantics.Claim
+public import LeanVIPR.Impl.Checker.Rules
 
 @[expose] public section
 
@@ -9,9 +9,9 @@ public import LeanVIPR.Impl.Rules
 # Executable checks on the `SOL` section
 
 The `Bool`-valued decisions behind the solution-related notions of
-`LeanVIPR.Spec.Claim`: that a listed solution is feasible, that the section as a whole
+`LeanVIPR.Spec.Semantics.Claim`: that a listed solution is feasible, that the section as a whole
 is, and that a `{ sol }` row is justified by one. Proved to agree with those notions in
-`LeanVIPR.Thm.Claim`.
+`LeanVIPR.Thm.System.Claim`.
 -/
 
 namespace LeanVIPR.Parser.Vipr

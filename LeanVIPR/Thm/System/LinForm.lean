@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Impl.Form
+public import LeanVIPR.Impl.Checker.Form
 
 @[expose] public section
 
@@ -8,7 +8,7 @@ public import LeanVIPR.Impl.Form
 # Facts about linear forms
 
 Algebra over the sparse representation, and the agreement of the executable tests in
-`LeanVIPR.Impl.Form` with the notions of `LeanVIPR.Spec.LinForm`. Infrastructure: these
+`LeanVIPR.Impl.Checker.Form` with the notions of `LeanVIPR.Spec.Semantics.LinForm`. Infrastructure: these
 are used throughout the soundness development rather than cited on their own.
 -/
 

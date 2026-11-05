@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Impl.Solution
+public import LeanVIPR.Impl.Checker.Solution
 
 @[expose] public section
 

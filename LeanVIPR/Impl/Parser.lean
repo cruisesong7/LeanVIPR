@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Impl.Number
-public import LeanVIPR.Spec.Ast
+public import LeanVIPR.Impl.Parser.Utils
+public import LeanVIPR.Spec.Syntax.Ast
 
 @[expose] public section
 

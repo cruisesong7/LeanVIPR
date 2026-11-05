@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.Row
+public import LeanVIPR.Spec.Semantics.Row
 public import Mathlib.Basic.Real.Basic
 
 @[expose] public section

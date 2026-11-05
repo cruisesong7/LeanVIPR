@@ -1,7 +1,7 @@
 module
 
 public import LeanVIPR.Impl.Parser
-public import LeanVIPR.Spec.Grammar
+public import LeanVIPR.Spec.Syntax.Grammar
 import Mathlib.Data.List.Sort
 
 @[expose] public section

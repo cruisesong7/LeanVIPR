@@ -123,20 +123,26 @@ this form either.
 
 ```
 LeanVIPR/
-  Spec.lean   Spec/   Ast  Grammar  LinCon  LinForm  Row  Lower  System  Claim
-                      Completeness
-  Impl.lean   Impl/   Number  Parser  Form  Rules  Solution  Checker
-  Thm.lean    Thm/    Parser(+/)  System(+/)  Checker(+/)  Claim  LinForm  Row
-LeanVIPRMain.lean     -- the `viprcheck` command line
+  Spec.lean       Spec/Syntax.lean      Syntax/     Ast  Grammar
+                  Spec/Semantics.lean   Semantics/  LinCon  LinForm  Row  Lower
+                                                    System  Claim  Completeness
+  Impl.lean       Impl/Parser.lean      Parser/     Utils
+                  Impl/Checker.lean     Checker/    Form  Rules  Solution
+  Thm.lean        Thm/Parser.lean       Parser/     Grammar-agreement + lemmas
+                  Thm/System.lean       System/     Sound  RuleSound  RuleComplete
+                                                    LinForm  Row  Claim  Completeness
+                  Thm/Checker.lean      Checker/    Sound  Complete
+LeanVIPRMain.lean  -- the `viprcheck` command line
 ```
 
 Three parts, and the division is the point of the development:
 
-* **`Spec/`** — what a certificate is and what it claims. Nothing here refers to an
-  executable function: no reader, no checker, no `Bool`, no `Except`. Accept these
-  definitions and you know what `ACCEPT` means without reading the implementation.
-* **`Impl/`** — the reader and the checker. The only artifacts whose correctness is in
-  question, and nothing here is trusted.
+* **`Spec/`** — what a certificate is (`Syntax/`) and what it means (`Semantics/`).
+  Nothing here refers to an executable function: no reader, no checker, no `Bool`, no
+  `Except`. Accept these definitions and you know what `ACCEPT` means without reading
+  the implementation.
+* **`Impl/`** — the reader (`Parser/`) and the checker (`Checker/`). The only artifacts
+  whose correctness is in question, and nothing here is trusted.
 * **`Thm/`** — the proofs that `Impl` meets `Spec`, with one results file per layer
   (`Thm/Parser.lean`, `Thm/System.lean`, `Thm/Checker.lean`) beside the directory that
   proves it.
@@ -145,8 +151,9 @@ The dependency order is enforced, not just intended: `Spec/` imports nothing fro
 `Impl/` or `Thm/`, and `Impl/` imports only `Spec/`. So no correctness statement can be
 satisfied by an implementation that merely agrees with itself.
 
-Each directory has a header file — `LeanVIPR.Spec`, `LeanVIPR.Impl`, `LeanVIPR.Thm` —
-saying what is in it and what to read first.
+Every directory has a header file beside it saying what is in it and what to read first,
+so `Spec.lean`, `Spec/Syntax.lean` and `Spec/Semantics.lean` are each an index to the
+directory of the same name.
 
 ## What is trusted
 

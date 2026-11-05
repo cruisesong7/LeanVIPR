@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.LinForm
+public import LeanVIPR.Spec.Semantics.LinForm
 public import Mathlib.Data.Finset.Erase
 public import Mathlib.Data.Finset.Insert
 public import Mathlib.Data.Finset.Lattice.Basic
@@ -18,7 +18,7 @@ sense, so an equality row stays one row instead of two, and pool indices then ma
 certificate's own indices.
 
 Definitions only. The executable checks that decide these notions are in
-`LeanVIPR.Impl.Rules`; what the rules *mean* is `LeanVIPR.Spec.System`.
+`LeanVIPR.Impl.Checker.Rules`; what the rules *mean* is `LeanVIPR.Spec.Semantics.System`.
 -/
 
 namespace LeanVIPR.Semantics

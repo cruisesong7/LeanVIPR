@@ -1,10 +1,8 @@
 module
 
-public import LeanVIPR.Thm.LinForm
-public import LeanVIPR.Thm.Row
 public import LeanVIPR.Thm.Parser
-public import LeanVIPR.Thm.Claim
 public import LeanVIPR.Thm.System
+public import LeanVIPR.Thm.System.Claim
 public import LeanVIPR.Thm.System.Completeness
 public import LeanVIPR.Thm.Checker
 
@@ -22,7 +20,8 @@ and each sits beside the directory that proves it:
 | `Thm.System` | a derivation the rulebook admits really does refute the problem |
 | `Thm.Checker` | the checker accepts exactly the derivations the rulebook admits |
 
-`Thm.Claim`, `Thm.LinForm` and `Thm.Row` are infrastructure those rest on.
+`Thm.System.Claim`, `Thm.System.LinForm` and `Thm.System.Row` are infrastructure those
+rest on; they are grouped with `System` because they are about the semantics layer.
 
 Each result comes in both directions, and the two do different jobs. Soundness is what
 makes an `ACCEPT` mean something about the problem. Completeness is what makes a

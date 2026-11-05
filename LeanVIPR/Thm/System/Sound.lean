@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Spec.System
-public import LeanVIPR.Thm.Row
+public import LeanVIPR.Spec.Semantics.System
+public import LeanVIPR.Thm.System.Row
 
 @[expose] public section
 
@@ -9,7 +9,7 @@ public import LeanVIPR.Thm.Row
 # The proof system is sound
 
 Working file: the machinery behind `proofSystem_sound`, which is stated in
-`LeanVIPR.Thm.System`. The rulebook itself is `LeanVIPR.Spec.System`.
+`LeanVIPR.Thm.System`. The rulebook itself is `LeanVIPR.Spec.Semantics.System`.
 
 The argument is a replay invariant. Every row the declarative replay puts in the pool
 holds at any valuation satisfying the base rows with the integer variables integral

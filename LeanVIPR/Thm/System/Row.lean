@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Impl.Rules
-public import LeanVIPR.Thm.LinForm
+public import LeanVIPR.Impl.Checker.Rules
+public import LeanVIPR.Thm.System.LinForm
 
 @[expose] public section
 

@@ -1,6 +1,6 @@
 module
 
-public import LeanVIPR.Spec.System
+public import LeanVIPR.Spec.Semantics.System
 
 @[expose] public section
 

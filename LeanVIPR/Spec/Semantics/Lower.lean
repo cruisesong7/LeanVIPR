@@ -1,7 +1,7 @@
 module
 
-public import LeanVIPR.Spec.Ast
-public import LeanVIPR.Spec.Row
+public import LeanVIPR.Spec.Syntax.Ast
+public import LeanVIPR.Spec.Semantics.Row
 
 @[expose] public section
 

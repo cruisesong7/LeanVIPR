@@ -255,4 +255,18 @@ theorem wsTokens_no_ws (cs : List Char) :
     ∀ t ∈ wsTokens cs, ∀ c ∈ t.toList, ¬ c.isWhitespace :=
   (wsTokens_isTokenization cs).no_ws
 
+/-- A tokenizer never emits a token beginning with the comment marker. -/
+theorem IsTokenization.no_pct {cs : List Char} {ts : Toks} (h : IsTokenization cs ts) :
+    ∀ t ∈ ts, t.toList.head? ≠ some '%' := by
+  induction h with
+  | nil => simp
+  | space _ _ ih => exact ih
+  | commentLine _ _ ih => exact ih
+  | commentEnd => simp
+  | @token t rest ts hne hnw hpct hend h ih =>
+      intro s hs
+      rcases List.mem_cons.mp hs with rfl | hs
+      · simpa using hpct
+      · exact ih s hs
+
 end LeanVIPR.Parser

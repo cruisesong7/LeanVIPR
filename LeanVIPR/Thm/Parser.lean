@@ -43,9 +43,31 @@ possibly an artefact of a narrow reader.
 `parseVipr_complete` consumes it; declaring it here would make `Thm.Parser.Certificate`
 depend on this file and close a cycle.
 
-Not proved: a printer and a round-trip `parseVipr (render v) = .ok v`. There is no
-printer yet, so there is no round-trip theorem to state. `parseVipr_complete` is the
-half of it that does not need one.
+**Round trip.** `LeanVIPR.Impl.Parser.Render` writes a certificate back to text and
+`LeanVIPR.Thm.Parser.Render` proves reading it back returns what was written:
+
+```lean
+parseVipr_render : IsVipr ts v → IsValid v → Renderable (verbatimToks v) →
+                     parseVipr (render v) = .ok v
+```
+
+The three hypotheses are not slack in the proof — no printer could drop them. A `Vipr`
+value carries arbitrary `String` fields, so a variable could be named `""`, `"a b"` or
+`"%x"`, none of which survives tokenization; `Renderable (verbatimToks v)` says the
+strings it copies verbatim are themselves tokens. `IsVipr ts v` supplies what the
+grammar demands and the datatype does not — a sense being one of `E`, `L`, `G`,
+`numCon` agreeing with the array it counts, a `lin weak` block listing no bounds being
+the `global` spelling. All three hold of any certificate that came from a parse.
+
+Deriving them from `parseVipr content = .ok v`, to get a hypothesis-free
+`parseVipr content = .ok v → parseVipr (render v) = .ok v`, needs one further lemma:
+that the verbatim strings occur as tokens of the stream they were read from.
+
+Two printer choices are forced by the grammar rather than by taste: rationals are
+written `num/den`, since every rational has that form while only some have a finite
+decimal one; and a derivation with no scope flag is written with an explicit `local`,
+because the flag is matched greedily and omitting it would make the next row's name
+ambiguous when that name is `global` or `local`.
 -/
 
 namespace LeanVIPR.Parser

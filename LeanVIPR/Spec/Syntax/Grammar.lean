@@ -157,6 +157,9 @@ ordinary character, so `x%y` is one token. -/
 /-- No character of a token is whitespace. -/
 def NoWhitespace (t : List Char) : Prop := ∀ c ∈ t, ¬ c.isWhitespace
 
+instance (t : List Char) : Decidable (NoWhitespace t) := by
+  unfold NoWhitespace; infer_instance
+
 /-- A token ending here cannot be extended: the input is exhausted, or what follows is
 whitespace. This is what makes tokens maximal, and so the tokenization unique. -/
 def AtTokenEnd (cs : List Char) : Prop := ∀ c ∈ cs.head?, c.isWhitespace

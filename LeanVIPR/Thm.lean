@@ -1,7 +1,6 @@
 module
 
 public import LeanVIPR.Thm.Parser
-public import LeanVIPR.Thm.Parser.Render
 public import LeanVIPR.Thm.System
 public import LeanVIPR.Thm.System.Claim
 public import LeanVIPR.Thm.System.Completeness

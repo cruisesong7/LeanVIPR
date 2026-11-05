@@ -4,6 +4,7 @@ public import LeanVIPR.Thm.Parser.Tokens
 public import LeanVIPR.Thm.Parser.Number
 public import LeanVIPR.Thm.Parser.Valid
 public import LeanVIPR.Thm.Parser.Certificate
+public import LeanVIPR.Thm.Parser.Printer
 
 @[expose] public section
 
@@ -15,7 +16,8 @@ here or named here; the files in `LeanVIPR.Thm.Parser.*` are how they are proved
 not meant to be read.
 
 ```lean
-parseVipr content = .ok v ↔ (IsViprText content.toList v ∧ IsValid v)
+parseVipr content = .ok v ↔ (IsViprText content.toList v ∧ IsValid v)   -- reading
+parseVipr (toString v) = .ok v                                          -- and writing
 ```
 
 Neither side mentions a reader. `IsViprText` and `IsValid` come from
@@ -38,29 +40,34 @@ possibly an artefact of a narrow reader.
 | `isTokenization_iff`, `isTokenization_unique` — tokenization is exactly `wsTokens` | `Thm.Parser.Tokens` |
 | `parseNum_eq_some_iff`, `isNumValue_unique` — numeric tokens | `Thm.Parser.Number` |
 | `validateVipr_eq_ok_iff` — validation decides exactly `IsValid` | `Thm.Parser.Valid` |
+| `toString_roundtrip` — reading back what the printer writes returns what was written | below |
+| `printVipr_isVipr` — the grammar derives everything the printer writes | `Thm.Parser.Printer` |
+| `unwords_isTokenization` — joining tokens and re-tokenizing is the identity | `Thm.Parser.Printer` |
 
 `validateVipr_eq_ok_iff` is proved where it is rather than restated here because
 `parseVipr_complete` consumes it; declaring it here would make `Thm.Parser.Certificate`
 depend on this file and close a cycle.
 
-**Round trip.** `LeanVIPR.Impl.Parser.Render` writes a certificate back to text and
-`LeanVIPR.Thm.Parser.Render` proves reading it back returns what was written:
+**Round trip.** `LeanVIPR.Impl.Parser.Printer` writes a certificate back to text and
+`LeanVIPR.Thm.Parser.Printer` proves reading it back returns what was written. It is
+stated in this namespace alongside the reading results, since it is a theorem about the
+parser; only the printer itself lives in `LeanVIPR.Impl`.
 
 ```lean
-parseVipr_render : IsVipr ts v → IsValid v → Renderable (verbatimToks v) →
-                     parseVipr (render v) = .ok v
+toString_roundtrip : IsVipr ts v → IsValid v → Printable (verbatimToks v) →
+                       parseVipr (toString v) = .ok v
 ```
 
 The three hypotheses are not slack in the proof — no printer could drop them. A `Vipr`
 value carries arbitrary `String` fields, so a variable could be named `""`, `"a b"` or
-`"%x"`, none of which survives tokenization; `Renderable (verbatimToks v)` says the
+`"%x"`, none of which survives tokenization; `Printable (verbatimToks v)` says the
 strings it copies verbatim are themselves tokens. `IsVipr ts v` supplies what the
 grammar demands and the datatype does not — a sense being one of `E`, `L`, `G`,
 `numCon` agreeing with the array it counts, a `lin weak` block listing no bounds being
 the `global` spelling. All three hold of any certificate that came from a parse.
 
 Deriving them from `parseVipr content = .ok v`, to get a hypothesis-free
-`parseVipr content = .ok v → parseVipr (render v) = .ok v`, needs one further lemma:
+`parseVipr content = .ok v → parseVipr (toString v) = .ok v`, needs one further lemma:
 that the verbatim strings occur as tokens of the stream they were read from.
 
 Two printer choices are forced by the grammar rather than by taste: rationals are
@@ -71,6 +78,8 @@ ambiguous when that name is `global` or `local`.
 -/
 
 namespace LeanVIPR.Parser
+
+open LeanVIPR.Impl
 
 /-- **Soundness.** A certificate the parser accepts is derived by the grammar from the
 characters of the file, and the value returned is the one the grammar assigns to them. -/
@@ -98,5 +107,19 @@ theorem isVipr_unique {ts : Toks} {v v' : Vipr} (hv : IsValid v) (hv' : IsValid 
   have h1 := parseViprToks_complete h hv
   rw [parseViprToks_complete h' hv'] at h1
   exact (Except.ok.inj h1).symm
+
+/-- **The round trip.** Reading back what the printer writes gives the certificate it
+was given.
+
+The two hypotheses are not slack in the proof; no printer could drop them. A `Vipr`
+value carries arbitrary `String` fields, so a variable could be named `""`, `"a b"` or
+`"%x"` — none of which survives tokenization — and `IsVipr ts v` is what supplies the
+rest of what the grammar demands and the datatype does not, such as a sense being one of
+`E`, `L`, `G` and `numCon` agreeing with the array it counts. Both hold of any
+certificate that came from a parse. -/
+theorem toString_roundtrip {ts : Toks} {v : Vipr} (hg : IsVipr ts v)
+    (hvalid : IsValid v) (hv : Printable (verbatimToks v)) :
+    parseVipr (toString v) = .ok v :=
+  parseVipr_complete (print_isViprText hg hv) hvalid
 
 end LeanVIPR.Parser

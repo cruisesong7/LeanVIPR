@@ -212,6 +212,23 @@ in the compiled CLI, and proof generation. The generated theorem is checked with
 `decide +kernel`, not `native_decide`, and `ACCEPT` additionally requires its
 reported axioms to be among `propext`, `Classical.choice`, and `Quot.sound`.
 
+Two pieces of machinery in the default path are deliberately outside the trusted
+set, because a theorem covers each of them:
+
+- **The slicer.** `sliceVipr` is an untrusted heuristic. Nothing is taken on its
+  word: `checkViprSlice_sound` requires the slice to carry the same `RTP` and the
+  same integer variables and to have rows that are a sublist of the original's,
+  and all three are re-tested at run time. A slice the checker rejects falls back
+  to complete replay rather than becoming a rejection.
+- **The task count.** `checkViprPar_eq` proves the parallel replay returns what
+  the sequential one returns for every value of `VIPRCHECK_TASKS`, so the split
+  cannot change a verdict. The proof needs no reasoning about concurrency:
+  `Task.spawn fn` is `{ get := fn () }` in Lean's logic, so the parallelism is an
+  evaluation strategy the logic cannot observe. Kernel mode reduces it
+  sequentially.
+
+Neither is a soundness boundary, and neither adds an axiom.
+
 For `RTP range`, `Vipr.ClaimValid` states that every listed solution is feasible,
 the primal witness bound holds, and the derived objective bound holds at every
 feasible point (minimization: `lb ≤ obj(x)` for all feasible `x`). The classical

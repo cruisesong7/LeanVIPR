@@ -185,25 +185,23 @@ def sliceVipr (input : Vipr) : Vipr := Id.run do
       ders := ders.push { d with reason := mapViprReason remap d.reason }
   return { v with numCon := keptCon, numBounds := numBounds, cons := cons, ders := ders }
 
-def emitViprData (sourceText : String) (cert : Vipr) : String :=
+def emitViprData (cert : Vipr) : String :=
   "import LeanVIPR.Spec.Semantics.Lower\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"
   ++ "open LeanVIPR.Parser\n\n"
   ++ emittedOptionRatDivision
-  ++ s!"def sourceText : String := {String.quote sourceText}\n\n"
   ++ s!"def cert : Vipr := {renderVipr cert}\n\n"
   ++ "end LeanVIPR.Generated\n"
 
-def emitViprReconstructionData (sourceText : String) (original sliced : Vipr) : String :=
+def emitViprReconstructionData (original sliced : Vipr) : String :=
   "import LeanVIPR.Spec.Semantics.Lower\n\n"
   ++ "set_option maxHeartbeats 0\n"
   ++ "set_option maxRecDepth 1000000\n\n"
   ++ "namespace LeanVIPR.Generated\n\n"
   ++ "open LeanVIPR.Parser\n\n"
   ++ emittedOptionRatDivision
-  ++ s!"def sourceText : String := {String.quote sourceText}\n\n"
   ++ s!"def original : Vipr := {renderVipr original}\n\n"
   ++ s!"def sliced : Vipr := {renderVipr sliced}\n\n"
   ++ "end LeanVIPR.Generated\n"
@@ -428,7 +426,7 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
           if !checkVipr complete then
             IO.eprintln "REJECT  (native precheck found checkVipr = false)"
             return 2
-          dataSource := emitViprData sourceText complete
+          dataSource := emitViprData complete
           proofSource := emitViprProof
       | .infeas =>
           match mode with
@@ -437,7 +435,7 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
             if !checkVipr complete then
               IO.eprintln "REJECT  (native precheck found checkVipr = false)"
               return 2
-            dataSource := emitViprData sourceText complete
+            dataSource := emitViprData complete
             proofSource := emitViprProof
           | .reconstruct =>
               let sliced := sliceVipr v
@@ -446,12 +444,12 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
                   ++ s!"{v.ders.size} → {sliced.ders.size} steps")
                 -- The reconstruction theorem reads only the original rows and integer
                 -- declarations (`Feasible.withDers`), so the derivations are not emitted.
-                dataSource := emitViprReconstructionData sourceText { v with ders := #[] } sliced
+                dataSource := emitViprReconstructionData { v with ders := #[] } sliced
                 proofSource := emitViprReconstructionProof
               else if checkVipr v then
                 IO.println "slice precheck failed; falling back to complete replay"
                 effectiveMode := .full
-                dataSource := emitViprData sourceText (materializeWeakVipr v)
+                dataSource := emitViprData (materializeWeakVipr v)
                 proofSource := emitViprProof
               else
                 IO.eprintln "REJECT  (native prechecks found no valid replay)"

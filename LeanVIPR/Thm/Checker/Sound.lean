@@ -78,20 +78,20 @@ theorem stepValidB_sound {v : Vipr} {pool : CheckerPool} {s : SStep}
   cases hr : s.reason with
   | asm => trivial
   | lin comb =>
-      simp only [hr] at h
+      simp only [ruleCheckB, hr] at h
       apply Rule.linCheck_valid_real
       simpa only [resolveRefs_eq] using h.2
   | rnd comb =>
-      simp only [hr] at h
+      simp only [ruleCheckB, hr] at h
       apply Rule.rndCheck_valid_real
       simpa only [resolveRefs_eq] using h.2
   | uns i1 l1 i2 l2 =>
-      simp only [hr, Bool.and_eq_true] at h
+      simp only [ruleCheckB, hr, Bool.and_eq_true] at h
       exact ⟨Rule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.1),
         Rule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.2),
         Rule.unsBoundsB_valid_real (by simpa [poolRow_eq] using h.2.2)⟩
   | sol =>
-      simp only [hr] at h
+      simp only [ruleCheckB, hr] at h
       exact solReasonB_sound h.2
 
 theorem replaySteps_refines (v : Vipr) :

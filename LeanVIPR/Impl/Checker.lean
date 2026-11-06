@@ -57,8 +57,14 @@ def referencesPastB (pool : CheckerPool) : SReason → Bool
       decide (i2 < pool.size) && decide (l2 < pool.size)
   | .sol => true
 
-def stepValidB (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
-  referencesPastB pool s.reason &&
+/-- The rule-specific half of a step check: everything except the index-bound test.
+
+This reads rows out of the pool, and never assumption sets and never `pool.size`. So for
+a step all of whose references point into the past, it gives the same answer against the
+finished pool as against the shorter pool the sequential replay would have built by the
+time it reached that step. `LeanVIPR.Thm.Checker` turns that into the equality with the
+parallel checker. -/
+def ruleCheckB (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
   match s.reason with
   | .asm => true
   | .lin comb => linCheck s.stated (resolveRefs pool comb)
@@ -68,6 +74,9 @@ def stepValidB (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
       domSLe (poolRow pool i2) s.stated &&
       unsBoundsB v.intVars (poolRow pool l1) (poolRow pool l2)
   | .sol => solReasonB v s.stated
+
+def stepValidB (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
+  referencesPastB pool s.reason && ruleCheckB v pool s
 
 def initialPool (v : Vipr) : CheckerPool :=
   v.cons.map fun c => (conToSLe v c, (∅ : SAsm))
@@ -107,6 +116,71 @@ def finalValidB (v : Vipr) (last? : Option CheckerEntry) : Bool :=
         | some upper => closedDominatesB (objectiveUpperRow v upper) last?
       else false
 
+/-! ## Parallel replay
+
+Measured on `alu16_5`, 91% of replay is `ruleCheckB` and 2% is the assumption-set fold,
+so the arithmetic is where the time is -- and it is independent across steps. Every row in
+the pool comes straight from the certificate (`entryOf` always states `s.stated`), so the
+pool can be built without validating anything, and then each step's rule check run against
+the finished pool.
+
+`Task` is pure in Lean's logic -- `Task.spawn fn = { get := fn () }` -- so the parallel
+checker is provably equal to the sequential one and introduces no axioms, and kernel mode
+reduces it sequentially. `LeanVIPR.Thm.Checker.checkViprPar_eq` is that equality. -/
+
+/-- Build the pool without validating. Rows come from the certificate, so this is what the
+sequential replay would produce if every check passed. -/
+def buildPool (v : Vipr) (pool : CheckerPool) : List SStep → CheckerPool
+  | [] => pool
+  | s :: ss => buildPool v (pool.push (entryOf pool s)) ss
+
+/-- `referencesPastB` against a pool of the given size. -/
+def refsBelowB (size : Nat) : SReason → Bool
+  | .asm => true
+  | .lin comb => comb.all fun p => decide (p.2 < size)
+  | .rnd comb => comb.all fun p => decide (p.2 < size)
+  | .uns i1 l1 i2 l2 =>
+      decide (i1 < size) && decide (l1 < size) &&
+      decide (i2 < size) && decide (l2 < size)
+  | .sol => true
+
+/-- The index-bound half of replay: cheap, and the only half that must run in order. -/
+def boundsOkB (size : Nat) : List SStep → Bool
+  | [] => true
+  | s :: ss => refsBelowB size s.reason && boundsOkB (size + 1) ss
+
+/-- Split into runs of at most `n`, keeping the order. -/
+def chunk (n : Nat) : List SStep → List (List SStep)
+  | [] => []
+  | s :: ss =>
+      (s :: ss).take (max n 1) :: chunk n ((s :: ss).drop (max n 1))
+  termination_by xs => xs.length
+  decreasing_by
+    simp only [List.length_drop, List.length_cons]
+    omega
+
+/-- `xs.all p`, evaluated one chunk per task. -/
+def parAll (n : Nat) (p : SStep → Bool) (xs : List SStep) : Bool :=
+  ((chunk n xs).map (fun c => Task.spawn (fun _ => c.all p))).all Task.get
+
+/-- Steps per task, given how many tasks to aim for. One chunk per core measured best:
+more chunks than that cost more in contention over the shared pool than they recover in
+parallelism. The count is a parameter rather than a constant because the right value is
+the core count, which only the `IO` layer can ask for -- and because the equality with
+`checkVipr` holds for every value, so nothing about soundness depends on it. -/
+def parChunkSize (tasks steps : Nat) : Nat := max 1 (steps / max tasks 1)
+
+/-- Parallel production checker. Equal to `checkVipr` by
+`LeanVIPR.Thm.Checker.checkViprPar_eq`. -/
+def checkViprPar (tasks : Nat) (v : Vipr) : Bool :=
+  solSectionB v &&
+  (let steps := viprSteps v
+   let start := initialPool v
+   let final := buildPool v start steps
+   boundsOkB start.size steps &&
+   parAll (parChunkSize tasks steps.length) (fun s => ruleCheckB v final s) steps &&
+   finalValidB v final.back?)
+
 /-- Production checker for both infeasibility and objective-range VIPR claims. -/
 def checkVipr (v : Vipr) : Bool :=
   solSectionB v &&
@@ -121,5 +195,11 @@ in their original order, so a sublist test suffices. -/
 def checkViprSlice (original sliced : Vipr) : Bool :=
   decide (sliced.rtp = .infeas) && decide (sliced.intVars = original.intVars) &&
     (conSLes sliced).isSublist (conSLes original) && checkVipr sliced
+
+/-- `checkViprSlice` with the replay run in parallel. Equal to it by
+`LeanVIPR.Thm.Checker.checkViprSlicePar_eq`. -/
+def checkViprSlicePar (tasks : Nat) (original sliced : Vipr) : Bool :=
+  decide (sliced.rtp = .infeas) && decide (sliced.intVars = original.intVars) &&
+    (conSLes sliced).isSublist (conSLes original) && checkViprPar tasks sliced
 
 end LeanVIPR.Checker

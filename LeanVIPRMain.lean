@@ -287,6 +287,15 @@ def runKernelModules (proofDir : String) (moduleNames : List String) :
     return .ok (out.stdout ++ out.stderr)
   return .error s!"kernel runner exit {out.exitCode}:\n{out.stdout}{out.stderr}"
 
+/-- How many tasks to split the replay into. One per core measured best; Lean exposes no
+core count, so this reads `VIPRCHECK_TASKS` and otherwise takes a conservative default.
+The value cannot affect the verdict -- `LeanVIPR.Thm.Checker.checkViprPar_eq` holds for
+every task count -- so it is a tuning knob and nothing more. -/
+def taskCount : IO Nat := do
+  match ← IO.getEnv "VIPRCHECK_TASKS" with
+  | some s => return (s.toNat?.getD 8).max 1
+  | none => return 8
+
 def checkFileNative (path : String) (useSlice : Bool := false) : IO UInt32 := do
   match ← parseFile path with
   | .error e =>
@@ -301,7 +310,9 @@ def checkFileNative (path : String) (useSlice : Bool := false) : IO UInt32 := do
         IO.println (s!"slice: {v.cons.size} → {checked.cons.size} constraints, "
           ++ s!"{v.ders.size} → {checked.ders.size} steps")
       -- `checkViprSlice_sound`: acceptance of the slice refutes the original.
-      let accepted := if useSlice then checkViprSlice v checked else checkVipr checked
+      let tasks ← taskCount
+      let accepted :=
+        if useSlice then checkViprSlicePar tasks v checked else checkViprPar tasks checked
       if accepted then
         IO.println "NATIVE PRECHECK PASS  (verified array-backed checker; untrusted compiled/runtime result)"
         return 0
@@ -423,7 +434,7 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
           -- Emit the `lin weak`-completed certificate so the kernel does not rerun the
           -- completer; `ClaimValid.withDers` shows the claim is unchanged.
           let complete := materializeWeakVipr v
-          if !checkVipr complete then
+          if !checkViprPar (← taskCount) complete then
             IO.eprintln "REJECT  (native precheck found checkVipr = false)"
             return 2
           dataSource := emitViprData complete
@@ -432,7 +443,7 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
           match mode with
           | .full =>
             let complete := materializeWeakVipr v
-            if !checkVipr complete then
+            if !checkViprPar (← taskCount) complete then
               IO.eprintln "REJECT  (native precheck found checkVipr = false)"
               return 2
             dataSource := emitViprData complete

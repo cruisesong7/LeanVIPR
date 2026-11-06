@@ -5,20 +5,25 @@ import LeanVIPR
 
 Usage:
 
-* `viprcheck <certificate.vipr> [--proof-dir <dir>]`
-* `viprcheck --native-precheck <certificate.vipr>`
+* `viprcheck <certificate.vipr>`
 * `viprcheck --native-mode <full|slice> <certificate.vipr>`
 * `viprcheck --kernel-mode <full|reconstruct> <certificate.vipr>
     [--proof-dir <dir>]`
 
-The normal mode parses a VIPR v1.0 file, emits the parsed certificate as Lean data,
-and asks Lean's kernel to reduce the array-backed `checkVipr`, including
-`SOL`, `{ sol }`, final objective-bound checking, and infeasibility results.
-`RTP infeas` retains the optional reconstruction optimization. SCIP is not
-invoked; the certificate file is the input.
+The default mode parses a VIPR v1.0 file and runs the array-backed `checkVipr` as
+compiled code, covering `SOL`, `{ sol }`, final objective-bound checking, and
+infeasibility results. It trusts the Lean compiler and runtime, and says so in its
+verdict line. SCIP is not invoked; the certificate file is the input.
 
-`--native-precheck` executes the same Boolean checker as compiled code, but is only
-an explicitly untrusted performance/preflight mode.
+`--kernel-mode` instead emits the parsed certificate as Lean data and asks Lean's
+kernel to reduce the checker over it, which yields a machine-checked theorem and
+the axioms it rests on. It costs minutes per certificate and only small ones
+finish, so it is the proof-of-concept for the trusted path rather than the way to
+check a solver run. `RTP infeas` retains the optional reconstruction optimization.
+
+Native replay is split across `VIPRCHECK_TASKS` tasks (default 8, `1` for
+sequential). The count cannot change a verdict:
+`LeanVIPR.Thm.Checker.checkViprPar_eq` holds for every task count.
 
 The checker is proved sound directly against the declarative VIPR proof system.
 
@@ -314,10 +319,10 @@ def checkFileNative (path : String) (useSlice : Bool := false) : IO UInt32 := do
       let accepted :=
         if useSlice then checkViprSlicePar tasks v checked else checkViprPar tasks checked
       if accepted then
-        IO.println "NATIVE PRECHECK PASS  (verified array-backed checker; untrusted compiled/runtime result)"
+        IO.println "NATIVE ACCEPT  (verified array-backed checker; trusts the Lean compiler and runtime)"
         return 0
       else
-        IO.eprintln "NATIVE PRECHECK REJECT  (result checker = false)"
+        IO.eprintln "NATIVE REJECT  (checker returned false)"
         return 2
 
 def reportInvalidReason (v : Vipr) (pool : CheckerPool)
@@ -500,7 +505,6 @@ def main (args : List String) : IO UInt32 := do
       | .ok log =>
           if !log.isEmpty then IO.println log
           return 0
-  | ["--native-precheck", path] => checkFileNative path
   | ["--native-mode", "full", path] => checkFileNative path false
   | ["--native-mode", "slice", path] => checkFileNative path true
   | ["--debug-first-invalid", path] => debugFirstInvalid path
@@ -509,12 +513,25 @@ def main (args : List String) : IO UInt32 := do
       runKernelMode mode path s!"/tmp/viprcheck_{mode}"
   | ["--kernel-mode", mode, path, "--proof-dir", proofDir] =>
       runKernelMode mode path proofDir
-  | [path] => checkFileKernel path "/tmp/viprcheck_proof" .reconstruct
-  | [path, "--proof-dir", proofDir] => checkFileKernel path proofDir .reconstruct
+  | [path] => checkFileNative path false
   | _ =>
-      IO.eprintln "Usage: viprcheck <certificate.vipr> [--proof-dir <dir>]"
-      IO.eprintln "       viprcheck --native-precheck <certificate.vipr>"
+      IO.eprintln "Usage: viprcheck <certificate.vipr>"
+      IO.eprintln "         Check with the compiled checker. Trusts the Lean compiler and"
+      IO.eprintln "         runtime; prints NATIVE ACCEPT or NATIVE REJECT."
       IO.eprintln "       viprcheck --native-mode <full|slice> <certificate.vipr>"
-      IO.eprintln "       viprcheck --debug-first-invalid <certificate.vipr>"
+      IO.eprintln "         full: replay the whole certificate. slice: for RTP infeas,"
+      IO.eprintln "         backward-slice first and check the slice."
       IO.eprintln "       viprcheck --kernel-mode <full|reconstruct> <certificate.vipr>"
+      IO.eprintln "                 [--proof-dir <dir>]"
+      IO.eprintln "         Emit a Lean proof and have the kernel reduce the checker."
+      IO.eprintln "         Minutes per certificate, and only small ones finish."
+      IO.eprintln "       viprcheck --debug-first-invalid <certificate.vipr>"
+      IO.eprintln "       viprcheck --dump-materialized <certificate.vipr>"
+      IO.eprintln ""
+      IO.eprintln "Environment:"
+      IO.eprintln "  VIPRCHECK_TASKS=N  tasks for the parallel replay (default 8, N=1 for"
+      IO.eprintln "                     sequential). Cannot change a verdict; see"
+      IO.eprintln "                     LeanVIPR.Thm.Checker.checkViprPar_eq."
+      IO.eprintln ""
+      IO.eprintln "Exit codes: 0 accept, 1 usage or parse error, 2 reject."
       return 1

@@ -38,73 +38,100 @@ def basisValuation (idx : Nat) : Valuation :=
 def alKeys (al : List (Nat × ℚ)) : List Nat :=
   al.map Prod.fst
 
-theorem mem_alKeys_addTerm (al : List (Nat × ℚ)) (i j : Nat) (c : ℚ) :
-    j ∈ alKeys (addTerm al i c) ↔ j = i ∨ j ∈ alKeys al := by
-  induction al with
-  | nil =>
-      simp [alKeys, addTerm]
-  | cons head tail ih =>
-      obtain ⟨k, d⟩ := head
-      by_cases hik : i = k
-      · subst i
-        simp [alKeys, addTerm]
-      · rw [show addTerm ((k, d) :: tail) i c =
-          (k, d) :: addTerm tail i c by simp [addTerm, hik]]
-        constructor
-        · intro hj
-          rcases List.mem_cons.mp
-              (show j ∈ alKeys ((k, d) :: addTerm tail i c) from hj) with
-            hj | hj
-          · exact Or.inr (by
-              apply List.mem_cons.mpr
-              exact Or.inl hj)
-          · rcases (ih).mp hj with hj | hj
-            · exact Or.inl hj
-            · exact Or.inr (by
-                apply List.mem_cons.mpr
-                exact Or.inr hj)
-        · rintro (hj | hj)
-          · apply List.mem_cons.mpr
-            right
-            exact (ih).mpr (Or.inl hj)
-          · rcases List.mem_cons.mp hj with hj | hj
-            · exact List.mem_cons.mpr (Or.inl hj)
-            · exact List.mem_cons.mpr (Or.inr ((ih).mpr (Or.inr hj)))
+/-! ### Distinct keys
 
-theorem alKeys_addTerm_nodup {al : List (Nat × ℚ)} {i : Nat} {c : ℚ}
-    (h : (alKeys al).Nodup) :
-    (alKeys (addTerm al i c)).Nodup := by
-  induction al with
-  | nil =>
-      simp [alKeys, addTerm]
-  | cons head tail ih =>
-      obtain ⟨k, d⟩ := head
-      simp only [alKeys, List.map_cons, List.nodup_cons] at h ⊢
-      by_cases hik : i = k
-      · subst i
-        simpa [addTerm] using h
-      · rw [show addTerm ((k, d) :: tail) i c =
-          (k, d) :: addTerm tail i c by simp [addTerm, hik]]
-        simp only [List.map_cons, List.nodup_cons]
-        constructor
-        · intro hk
-          rcases (mem_alKeys_addTerm tail i k c).mp hk with hk | hk
-          · exact hik hk.symm
-          · exact h.1 hk
-        · exact ih h.2
+`normForm` sorts by key and then merges adjacent equal keys, so its keys are strictly
+increasing and in particular distinct. The basis-valuation argument below needs that to
+read one coefficient off a normalized form at a time. -/
 
-theorem foldl_addTerm_nodup (f : LinForm) (al : List (Nat × ℚ))
-    (h : (alKeys al).Nodup) :
-    (alKeys (f.foldl (fun acc t => addTerm acc t.idx t.coeff) al)).Nodup := by
-  induction f generalizing al with
-  | nil => exact h
-  | cons term tail ih =>
-      simp only [List.foldl_cons]
-      exact ih _ (alKeys_addTerm_nodup h)
+private theorem combineAdj_keys_subset : ∀ (l : List (Nat × ℚ)) {k : Nat},
+    k ∈ alKeys (combineAdj l) → k ∈ alKeys l
+  | [], k, h => by rw [combineAdj] at h; exact h
+  | [_], k, h => by rw [combineAdj] at h; exact h
+  | (i, c) :: (j, d) :: rest, k, h => by
+      rw [combineAdj] at h
+      split at h
+      case isTrue hij =>
+          subst hij
+          have := combineAdj_keys_subset ((i, c + d) :: rest) h
+          simp only [alKeys, List.map_cons, List.mem_cons] at this ⊢
+          rcases this with rfl | hk
+          · exact Or.inl rfl
+          · exact Or.inr (Or.inr hk)
+      case isFalse =>
+          simp only [alKeys, List.map_cons, List.mem_cons] at h ⊢
+          rcases h with rfl | hk
+          · exact Or.inl rfl
+          · have := combineAdj_keys_subset ((j, d) :: rest) (by simpa [alKeys] using hk)
+            simp only [alKeys, List.map_cons, List.mem_cons] at this
+            exact Or.inr this
+  termination_by l => l.length
 
-theorem normForm_keys_nodup (f : LinForm) :
-    (alKeys (normForm f)).Nodup := by
-  exact foldl_addTerm_nodup f [] (by simp [alKeys])
+private theorem alKeys_cons (a : Nat) (c : ℚ) (t : List (Nat × ℚ)) :
+    alKeys ((a, c) :: t) = a :: alKeys t := rfl
+
+private theorem combineAdj_keys_nodup : ∀ (l : List (Nat × ℚ)),
+    (alKeys l).Pairwise (· ≤ ·) → (alKeys (combineAdj l)).Nodup
+  | [], _ => by rw [combineAdj]; simp [alKeys]
+  | [_], _ => by rw [combineAdj]; simp [alKeys]
+  | (i, c) :: (j, d) :: rest, hp => by
+      rw [alKeys_cons, alKeys_cons] at hp
+      obtain ⟨hi, hp'⟩ := List.pairwise_cons.mp hp
+      have hpt : (alKeys ((j, d) :: rest)).Pairwise (· ≤ ·) := by
+        rw [alKeys_cons]; exact hp'
+      have hij : i ≤ j := hi j (List.mem_cons_self ..)
+      rw [combineAdj]
+      split
+      case isTrue heq =>
+          subst heq
+          exact combineAdj_keys_nodup ((i, c + d) :: rest) (by rw [alKeys_cons]; exact hp')
+      case isFalse hne =>
+          rw [alKeys_cons]
+          refine List.nodup_cons.mpr ⟨?_, combineAdj_keys_nodup ((j, d) :: rest) hpt⟩
+          intro hmem
+          have hk := combineAdj_keys_subset ((j, d) :: rest) hmem
+          rw [alKeys_cons] at hk
+          rcases List.mem_cons.mp hk with rfl | hk'
+          · exact hne rfl
+          · have := (List.pairwise_cons.mp hp').1 i hk'
+            omega
+  termination_by l => l.length
+
+/-- `collectNZ` counts indices down and prepends, so its keys come out strictly
+increasing. -/
+private theorem collectNZ_keys_lt : ∀ (arr : Array ℚ) (k : Nat) (acc : List (Nat × ℚ)),
+    (∀ j ∈ alKeys acc, k ≤ j) → (alKeys acc).Pairwise (· < ·) →
+    (alKeys (collectNZ arr k acc)).Pairwise (· < ·)
+  | _, 0, _, _, hp => by rw [collectNZ]; exact hp
+  | arr, k + 1, acc, hge, hp => by
+      rw [collectNZ]
+      split
+      case isTrue =>
+          exact collectNZ_keys_lt arr k acc (fun j hj => le_of_lt (hge j hj)) hp
+      case isFalse =>
+          refine collectNZ_keys_lt arr k ((k, arr[k]!) :: acc) ?_ ?_
+          · intro j hj
+            rw [alKeys_cons] at hj
+            rcases List.mem_cons.mp hj with rfl | hj
+            · exact le_refl _
+            · exact le_of_lt (hge j hj)
+          · rw [alKeys_cons]
+            refine List.pairwise_cons.mpr ⟨?_, hp⟩
+            intro b hb
+            exact hge b hb
+
+theorem normFormDense_keys_nodup (f : LinForm) :
+    (alKeys (collectNZ (denseAccum (formWidth f) f) (formWidth f) [])).Nodup :=
+  ((collectNZ_keys_lt _ _ [] (by simp [alKeys]) (by simp [alKeys])).imp
+    (fun h => ne_of_lt h)).nodup
+
+theorem normForm_keys_nodup (f : LinForm) : (alKeys (normForm f)).Nodup := by
+  rw [normForm]
+  split
+  · exact normFormDense_keys_nodup f
+  · refine combineAdj_keys_nodup _ ?_
+    simpa [alKeys, List.pairwise_map, KeySorted] using
+      sortKV_sorted (f.map (fun t => (t.idx, t.coeff)))
 
 theorem evalAL_basis_zero {al : List (Nat × ℚ)} {idx : Nat}
     (hidx : idx ∉ alKeys al) :
@@ -306,8 +333,8 @@ theorem linCheck_complete {stated : SLe} {comb : List (ℚ × SLe)}
     linCheck stated comb = true := by
   rcases h with habsurd | ⟨hform, hdir⟩
   · simp [linCheck, linAbsurd_complete habsurd]
-  · simp only [linCheck, alIsZero_alExtend_normForm, Bool.or_eq_true]
-    right
+  · simp only [linCheck, Bool.or_eq_true]
+    left
     rw [Bool.and_eq_true]
     refine ⟨formEq_complete_real hform, ?_⟩
     rcases hdir with ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩ | ⟨hE, hle, hge, hrhs⟩
@@ -320,7 +347,7 @@ theorem rndCheck_complete {intVars : List Nat} {stated : SLe}
     (h : RndValid intVars stated comb) :
     rndCheck intVars stated comb = true := by
   obtain ⟨hform, hint, hdir⟩ := h
-  simp only [rndCheck, alIsZero_alExtend_normForm, alIntB_normForm, Bool.and_eq_true]
+  simp only [rndCheck, alIntB_normForm, Bool.and_eq_true]
   constructor
   · exact ⟨formEq_complete_real hform, formIntB_complete_real hint⟩
   rcases hdir with ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩

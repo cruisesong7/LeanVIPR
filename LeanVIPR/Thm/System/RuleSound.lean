@@ -26,43 +26,126 @@ private def evalALReal (al : List (Nat × ℚ)) (a : RealValuation) : ℝ :=
     evalALReal (p :: tl) a = (p.2 : ℝ) * a p.1 + evalALReal tl a := by
   simp [evalALReal]
 
-private theorem addTerm_eval_real (al : List (Nat × ℚ)) (i : Nat) (c : ℚ)
-    (a : RealValuation) :
-    evalALReal (addTerm al i c) a = evalALReal al a + (c : ℝ) * a i := by
-  induction al with
-  | nil => simp [addTerm, evalALReal]
-  | cons hd tl ih =>
-      obtain ⟨j, d⟩ := hd
-      by_cases heq : i = j
-      · subst heq
-        simp only [addTerm, beq_self_eq_true, ite_true, evalALReal_cons]
+/-! The sort-and-merge normalization over the reals, mirroring
+`LeanVIPR.Semantics.normForm_eval`: sorting is a permutation and the sum is invariant
+under it, and merging two entries with the same key uses `c * x + d * x = (c + d) * x`. -/
+
+private theorem evalALReal_combineAdj : ∀ (l : List (Nat × ℚ)) (a : RealValuation),
+    evalALReal (combineAdj l) a = evalALReal l a
+  | [], _ => by rw [combineAdj]
+  | [_], _ => by rw [combineAdj]
+  | (i, c) :: (j, d) :: rest, a => by
+      rw [combineAdj]
+      split
+      case isTrue hij =>
+          subst hij
+          rw [evalALReal_combineAdj ((i, c + d) :: rest) a]
+          simp only [evalALReal_cons, Rat.cast_add]
+          ring
+      case isFalse =>
+          rw [evalALReal_cons, evalALReal_combineAdj ((j, d) :: rest) a]
+          exact (evalALReal_cons _ _ _).symm
+  termination_by l _ => l.length
+
+private theorem evalALReal_perm {l₁ l₂ : List (Nat × ℚ)} (h : l₁.Perm l₂)
+    (a : RealValuation) : evalALReal l₁ a = evalALReal l₂ a := by
+  unfold evalALReal
+  exact (h.map _).sum_eq
+
+private theorem evalALReal_map_form (f : LinForm) (a : RealValuation) :
+    evalALReal (f.map (fun t => (t.idx, t.coeff))) a = evalReal f a := by
+  unfold evalALReal evalReal
+  rw [List.map_map]
+  rfl
+
+/-! The dense normalization over the reals, mirroring
+`LeanVIPR.Thm.System.LinForm.normFormDense_eval`. The array facts it rests on —
+`size_denseAccum`, `getBang_set_self`, `getBang_set_ne`, `lt_formWidth` — say nothing
+about values and are shared with the rational version. -/
+
+/-- Value over the reals of the first `k` slots of a coefficient array. -/
+private def arrSumReal (arr : Array ℚ) (a : RealValuation) : Nat → ℝ
+  | 0 => 0
+  | i + 1 => (arr[i]! : ℝ) * a i + arrSumReal arr a i
+
+private theorem evalALReal_collectNZ : ∀ (arr : Array ℚ) (k : Nat)
+    (acc : List (Nat × ℚ)) (a : RealValuation), k ≤ arr.size →
+    evalALReal (collectNZ arr k acc) a = arrSumReal arr a k + evalALReal acc a
+  | _, 0, _, _, _ => by rw [collectNZ, arrSumReal]; ring
+  | arr, k + 1, acc, a, hk => by
+      rw [collectNZ, evalALReal_collectNZ arr k _ a (by omega), arrSumReal]
+      split
+      case isTrue hz =>
+          have hzz : arr[k]! = 0 := by simpa using hz
+          rw [hzz]; push_cast; ring
+      case isFalse => rw [evalALReal_cons]; ring
+
+private theorem arrSumReal_set : ∀ (arr : Array ℚ) (a : RealValuation) (i : Nat) (c : ℚ)
+    (k : Nat), i < arr.size → k ≤ arr.size →
+    arrSumReal (arr.set! i (arr[i]! + c)) a k
+      = arrSumReal arr a k + (if i < k then (c : ℝ) * a i else 0)
+  | _, _, _, _, 0, _, _ => by simp [arrSumReal]
+  | arr, a, i, c, k + 1, hi, hk => by
+      rw [arrSumReal, arrSumReal, arrSumReal_set arr a i c k hi (by omega)]
+      by_cases hik : i = k
+      · subst hik
+        rw [getBang_set_self hi]
+        simp only [lt_irrefl, ite_false, Nat.lt_succ_self, ite_true]
         push_cast
         ring
-      · have hcond : ¬ ((i == j) = true) := by
-          rw [beq_iff_eq]
-          exact heq
-        simp only [addTerm, ite_eq_right hcond, evalALReal_cons, ih]
-        ring
+      · rw [getBang_set_ne (by omega) (fun h => hik h.symm)]
+        by_cases hlt : i < k
+        · simp only [hlt, ite_true, show i < k + 1 from by omega]
+          ring
+        · have hnk : ¬ i < k + 1 := by omega
+          simp only [hlt, ite_false, hnk]
+          ring
 
-private theorem normForm_foldl_eval_real (f : LinForm) (al : List (Nat × ℚ))
-    (a : RealValuation) :
-    evalALReal (f.foldl (fun acc t => addTerm acc t.idx t.coeff) al) a =
-      evalALReal al a + evalReal f a := by
-  induction f generalizing al with
-  | nil => simp [evalReal]
-  | cons t ts ih =>
-      simp only [List.foldl_cons]
-      rw [ih (addTerm al t.idx t.coeff), addTerm_eval_real]
-      have hcons :
-          evalReal (t :: ts) a = (t.coeff : ℝ) * a t.idx + evalReal ts a := by
+private theorem arrSumReal_denseAccum : ∀ (g : LinForm) (arr : Array ℚ) (n : Nat)
+    (a : RealValuation), arr.size = n → (∀ t ∈ g, t.idx < n) →
+    arrSumReal (g.foldl (fun b t => b.set! t.idx (b[t.idx]! + t.coeff)) arr) a n
+      = arrSumReal arr a n + evalReal g a
+  | [], arr, n, a, _, _ => by simp [evalReal]
+  | t :: ts, arr, n, a, hn, hb => by
+      have hlt : t.idx < arr.size := by rw [hn]; exact hb t (by simp)
+      rw [List.foldl_cons,
+        arrSumReal_denseAccum ts _ n a (by rw [Array.size_set!, hn])
+          (fun u hu => hb u (by simp [hu])),
+        arrSumReal_set arr a t.idx t.coeff n hlt (le_of_eq hn.symm)]
+      have hcons : evalReal (t :: ts) a = (t.coeff : ℝ) * a t.idx + evalReal ts a := by
         simp [evalReal]
       rw [hcons]
+      simp only [show t.idx < n from by rw [← hn]; exact hlt, ite_true]
       ring
+
+private theorem arrSumReal_replicate_zero (n : Nat) (a : RealValuation) :
+    ∀ k ≤ n, arrSumReal (Array.replicate n (0 : ℚ)) a k = 0
+  | 0, _ => by rw [arrSumReal]
+  | k + 1, hk => by
+      rw [arrSumReal, arrSumReal_replicate_zero n a k (by omega),
+        getBang_lt (by simpa using (by omega : k < n)), Array.getElem_replicate]
+      push_cast
+      ring
+
+private theorem normFormDense_eval_real (f : LinForm) (a : RealValuation) :
+    evalALReal (normFormDense f) a = evalReal f a := by
+  rw [normFormDense]
+  rw [evalALReal_collectNZ _ _ _ a (by rw [size_denseAccum]), denseAccum,
+    arrSumReal_denseAccum f _ (formWidth f) a (by simp) (fun t ht => lt_formWidth ht),
+    arrSumReal_replicate_zero _ a _ (le_refl _)]
+  simp [evalALReal]
+
+private theorem normFormSort_eval_real (f : LinForm) (a : RealValuation) :
+    evalALReal (normFormSort f) a = evalReal f a := by
+  rw [normFormSort, evalALReal_combineAdj, evalALReal_perm (sortKV_perm _) a,
+    evalALReal_map_form]
 
 private theorem normForm_eval_real (f : LinForm) (a : RealValuation) :
     evalALReal (normForm f) a = evalReal f a := by
-  have h := normForm_foldl_eval_real f [] a
-  simpa [normForm, evalALReal] using h
+  rw [normForm]
+  split
+  · exact normFormDense_eval_real f a
+  · exact normFormSort_eval_real f a
 
 private theorem evalALReal_zero_of_all (al : List (Nat × ℚ)) (a : RealValuation)
     (h : ∀ p ∈ al, p.2 = 0) : evalALReal al a = 0 := by
@@ -132,8 +215,9 @@ private theorem linAbsurd_sound_real {cs : List (ℚ × SLe)}
 
 theorem linCheck_valid_real {stated : SLe} {cs : List (ℚ × SLe)}
     (h : linCheck stated cs = true) : LinValid stated cs := by
-  simp only [linCheck, alIsZero_alExtend_normForm, Bool.or_eq_true] at h
-  rcases h with habs | hnormal
+  simp only [linCheck, Bool.or_eq_true] at h
+  rcases h with hnormal | habs
+  swap
   · exact Or.inl (linAbsurd_sound_real habs)
   · rw [Bool.and_eq_true] at hnormal
     obtain ⟨hform, hrest⟩ := hnormal
@@ -150,7 +234,7 @@ theorem linCheck_valid_real {stated : SLe} {cs : List (ℚ × SLe)}
 theorem rndCheck_valid_real {intVars : List Nat} {stated : SLe}
     {cs : List (ℚ × SLe)} (h : rndCheck intVars stated cs = true) :
     RndValid intVars stated cs := by
-  simp only [rndCheck, alIsZero_alExtend_normForm, alIntB_normForm, Bool.and_eq_true] at h
+  simp only [rndCheck, alIntB_normForm, Bool.and_eq_true] at h
   obtain ⟨⟨hform, hInt⟩, hrest⟩ := h
   refine ⟨formEq_sound_real hform, formIntB_sound_real hInt, ?_⟩
   split_ifs at hrest with hL hG

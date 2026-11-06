@@ -128,8 +128,111 @@ def addTerm : List (Nat × ℚ) → Nat → ℚ → List (Nat × ℚ)
   | [], i, c => [(i, c)]
   | (j, d) :: rest, i, c => if i == j then (j, d + c) :: rest else (j, d) :: addTerm rest i c
 
-/-- Normalize a linear form to per-index coefficient sums. -/
-def normForm (f : LinForm) : List (Nat × ℚ) :=
+/-- Normalize a linear form by accumulating each term into an association list.
+
+Not what the checker runs — `normForm` is — but it is the obvious way to write the
+normalization, so `LeanVIPR.Thm.System.LinForm.normForm_eval_eq_assoc` cross-checks the
+one against the other. It is quadratic in the number of terms, which on a certificate
+whose objective mentions 280k variables costs hours. -/
+def normFormAssoc (f : LinForm) : List (Nat × ℚ) :=
   f.foldl (fun acc t => addTerm acc t.idx t.coeff) []
+
+/-- Fold runs of equal keys in a key-sorted list. -/
+def combineAdj : List (Nat × ℚ) → List (Nat × ℚ)
+  | [] => []
+  | [p] => [p]
+  | (i, a) :: (j, b) :: rest =>
+      if i = j then combineAdj ((i, a + b) :: rest)
+      else (i, a) :: combineAdj ((j, b) :: rest)
+  termination_by l => l.length
+
+/-! ### Sorting association lists by key
+
+`List.mergeSort` would do, but it is defined by well-founded recursion and the Lean
+kernel cannot reduce it, so kernel mode gets stuck on any certificate with a `lin` or
+`rnd` step. The sort below is structurally recursive on a fuel argument, which both the
+compiler and the kernel can run. Soundness never appeals to the fuel being sufficient:
+`sortKV` permutes its input for every fuel, and only the distinct-keys argument in
+`LeanVIPR.Thm.System.RuleComplete` needs the output to be sorted. -/
+
+/-- Merge two key-sorted association lists. -/
+def mergeKV : Nat → List (Nat × ℚ) → List (Nat × ℚ) → List (Nat × ℚ)
+  | 0, xs, ys => xs ++ ys
+  | _ + 1, [], ys => ys
+  | _ + 1, x :: xs, [] => x :: xs
+  | n + 1, x :: xs, y :: ys =>
+      if x.1 ≤ y.1 then x :: mergeKV n xs (y :: ys) else y :: mergeKV n (x :: xs) ys
+
+/-- Deal a list alternately into two lists of nearly equal length. -/
+def splitAlt : List (Nat × ℚ) → List (Nat × ℚ) × List (Nat × ℚ)
+  | [] => ([], [])
+  | [a] => ([a], [])
+  | a :: b :: rest => (a :: (splitAlt rest).1, b :: (splitAlt rest).2)
+
+/-- Merge sort by key, with `fuel` bounding the recursion depth. -/
+def msortKV : Nat → List (Nat × ℚ) → List (Nat × ℚ)
+  | 0, l => l
+  | _ + 1, [] => []
+  | _ + 1, [a] => [a]
+  | n + 1, a :: b :: rest =>
+      let s := splitAlt (a :: b :: rest)
+      mergeKV (s.1.length + s.2.length) (msortKV n s.1) (msortKV n s.2)
+
+/-- Sort an association list by key. The list's own length is enough fuel. -/
+def sortKV (l : List (Nat × ℚ)) : List (Nat × ℚ) := msortKV l.length l
+
+/-! ### Normalizing by dense accumulation
+
+Summing coefficients per index needs no comparisons at all when the indices are dense:
+one array slot per variable, one addition per term, then a scan. That is `O(m + n)` for
+`m` terms spanning `n` indices, against `O(m log m)` for the sort, and it allocates once
+rather than per element. On the benchmark corpus it is 4x to 12x faster.
+
+It is only better while `n` stays within a constant of `m`. A form with two terms whose
+indices are 280000 apart would have the scan dominate everything, so `normForm` keeps the
+sort for that case and picks between them. -/
+
+/-- One past the largest index appearing in `f`. -/
+def formWidth (f : LinForm) : Nat := f.foldl (fun w t => max w (t.idx + 1)) 0
+
+/-- Add every term of `f` into a dense array of coefficients indexed by variable. -/
+def denseAccum (n : Nat) (f : LinForm) : Array ℚ :=
+  f.foldl (fun a t => a.set! t.idx (a[t.idx]! + t.coeff)) (Array.replicate n (0 : ℚ))
+
+/-- The nonzero entries of a coefficient array, by ascending index. Counts down so the
+result is built in ascending order without a reversal. -/
+def collectNZ (arr : Array ℚ) : Nat → List (Nat × ℚ) → List (Nat × ℚ)
+  | 0, acc => acc
+  | i + 1, acc => collectNZ arr i (if arr[i]! == 0 then acc else (i, arr[i]!) :: acc)
+
+/-- Normalize a linear form to per-index coefficient sums.
+
+Dense accumulation when the indices are dense enough to pay for the scan, otherwise sort
+and fold runs of equal indices. The two return different lists — dense drops entries that
+cancel to zero, and the sort keeps them — and nothing may depend on which is used. What
+the checker asks of either is proved of both: they agree on the value of the form
+(`LeanVIPR.Thm.System.LinForm.normForm_eval`) and both leave the keys distinct
+(`LeanVIPR.Thm.System.RuleComplete.normForm_keys_nodup`). Every test the checker runs on
+the result — all coefficients zero, all coefficients integral, the value at a valuation —
+is invariant under permutation and under dropping zeros. -/
+def normFormDense (f : LinForm) : List (Nat × ℚ) :=
+  let n := formWidth f
+  collectNZ (denseAccum n f) n []
+
+/-- Normalize by sorting on the index and folding runs of equal indices.
+
+Slower than `normFormDense` when compiled, but it is plain structural list recursion,
+which is also what the Lean kernel reduces cheaply: the kernel has neither in-place
+writes nor contiguous random access, so `normFormDense` degrades to `O(m * n)` there.
+`normForm` therefore costs kernel mode something, which measured as roughly 25% on two of
+three kernel-mode examples. Giving each mode its own normalization would need the checker
+parameterized by one, which it is not. -/
+def normFormSort (f : LinForm) : List (Nat × ℚ) :=
+  combineAdj (sortKV (f.map (fun t => (t.idx, t.coeff))))
+
+/-- The normalization the compiled checker runs: dense accumulation where the index range
+pays for itself, the sort otherwise. -/
+def normForm (f : LinForm) : List (Nat × ℚ) :=
+  if formWidth f ≤ 8 * f.length + 64 then normFormDense f else normFormSort f
 
 end LeanVIPR.Semantics

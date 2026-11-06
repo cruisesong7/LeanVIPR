@@ -51,23 +51,28 @@ def linAbsurd (cs : List (ℚ × SLe)) (combined : Le) (normalized : List (Nat �
   (suitGeB cs && alIsZero normalized && decide (0 < combined.rhs))
 
 /-- **`lin` step check.** Accepts either normal rhs-domination or an absurd combination.
-The combination is computed once and shared by every test. -/
+
+Domination is tested first, and the absurdity test second, because `||` short-circuits
+and each test needs a *different* form normalized: domination needs the combination minus
+the stated row, absurdity needs the combination alone. Testing absurdity first would
+normalize both on every step; this way a step that dominates normally — all but a
+handful in any real certificate — normalizes once. The order does not change the result,
+only which normalizations are forced. -/
 def linCheck (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
   let combined := scomb cs
-  let normalized := normForm combined.form
-  linAbsurd cs combined normalized ||
-  (alIsZero (alExtend normalized (sNegForm stated.form)) &&
+  (formEq combined.form stated.form &&
     (if stated.sense = 'L' then suitLeB cs && decide (combined.rhs ≤ stated.rhs)
      else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ combined.rhs)
      else if stated.sense = 'E' then
        suitLeB cs && suitGeB cs && decide (combined.rhs = stated.rhs)
-     else false))
+     else false)) ||
+  linAbsurd cs combined (normForm combined.form)
 
 /-- **`rnd` step check.** -/
 def rndCheck (intVars : List Nat) (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
   let combined := scomb cs
   let normalized := normForm combined.form
-  alIsZero (alExtend normalized (sNegForm stated.form)) && alIntB intVars normalized &&
+  formEq combined.form stated.form && alIntB intVars normalized &&
   (if stated.sense = 'L' then
       suitLeB cs && decide (((⌊combined.rhs⌋ : ℤ) : ℚ) ≤ stated.rhs)
    else if stated.sense = 'G' then

@@ -301,23 +301,35 @@ def taskCount : IO Nat := do
   | some s => return (s.toNat?.getD 8).max 1
   | none => return 8
 
-def checkFileNative (path : String) (useSlice : Bool := false) : IO UInt32 := do
+/-- Check with the compiled checker.
+
+`useSlice` backward-slices an `RTP infeas` certificate and checks the slice. That
+concludes the same thing about the original -- `checkViprSlice_sound` re-establishes every
+side condition at run time -- for much less work, so it is the default. The slicer itself
+is untrusted and could in principle emit a slice the checker rejects, so a failed slice
+falls back to complete replay rather than rejecting; acceptance is therefore never lost
+by slicing. Range certificates are always replayed completely. -/
+def checkFileNative (path : String) (useSlice : Bool := true) : IO UInt32 := do
   match ← parseFile path with
   | .error e =>
       IO.eprintln s!"parse error: {e}"
       return 1
   | .ok (_, v) =>
       reportCertificate path v
-      -- Range certificates are always replayed completely, as in kernel mode.
-      let useSlice := useSlice && v.rtp == .infeas
-      let checked := if useSlice then sliceVipr v else v
-      if useSlice then
-        IO.println (s!"slice: {v.cons.size} → {checked.cons.size} constraints, "
-          ++ s!"{v.ders.size} → {checked.ders.size} steps")
-      -- `checkViprSlice_sound`: acceptance of the slice refutes the original.
       let tasks ← taskCount
-      let accepted :=
-        if useSlice then checkViprSlicePar tasks v checked else checkViprPar tasks checked
+      let useSlice := useSlice && v.rtp == .infeas
+      let accepted ← do
+        if useSlice then
+          let sliced := sliceVipr v
+          IO.println (s!"slice: {v.cons.size} → {sliced.cons.size} constraints, "
+            ++ s!"{v.ders.size} → {sliced.ders.size} steps")
+          if checkViprSlicePar tasks v sliced then
+            pure true
+          else
+            IO.println "slice check failed; falling back to complete replay"
+            pure (checkViprPar tasks v)
+        else
+          pure (checkViprPar tasks v)
       if accepted then
         IO.println "NATIVE ACCEPT  (verified array-backed checker; trusts the Lean compiler and runtime)"
         return 0
@@ -455,14 +467,14 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
             proofSource := emitViprProof
           | .reconstruct =>
               let sliced := sliceVipr v
-              if checkVipr sliced then
+              if checkViprPar (← taskCount) sliced then
                 IO.println (s!"slice: {v.cons.size} → {sliced.cons.size} constraints, "
                   ++ s!"{v.ders.size} → {sliced.ders.size} steps")
                 -- The reconstruction theorem reads only the original rows and integer
                 -- declarations (`Feasible.withDers`), so the derivations are not emitted.
                 dataSource := emitViprReconstructionData { v with ders := #[] } sliced
                 proofSource := emitViprReconstructionProof
-              else if checkVipr v then
+              else if checkViprPar (← taskCount) v then
                 IO.println "slice precheck failed; falling back to complete replay"
                 effectiveMode := .full
                 dataSource := emitViprData (materializeWeakVipr v)
@@ -505,22 +517,25 @@ def main (args : List String) : IO UInt32 := do
       | .ok log =>
           if !log.isEmpty then IO.println log
           return 0
-  | ["--native-mode", "full", path] => checkFileNative path false
   | ["--native-mode", "slice", path] => checkFileNative path true
+  | ["--native-mode", "full", path] => checkFileNative path false
   | ["--debug-first-invalid", path] => debugFirstInvalid path
   | ["--dump-materialized", path] => dumpMaterialized path
   | ["--kernel-mode", mode, path] =>
       runKernelMode mode path s!"/tmp/viprcheck_{mode}"
   | ["--kernel-mode", mode, path, "--proof-dir", proofDir] =>
       runKernelMode mode path proofDir
-  | [path] => checkFileNative path false
+  | [path] => checkFileNative path true
   | _ =>
       IO.eprintln "Usage: viprcheck <certificate.vipr>"
-      IO.eprintln "         Check with the compiled checker. Trusts the Lean compiler and"
-      IO.eprintln "         runtime; prints NATIVE ACCEPT or NATIVE REJECT."
-      IO.eprintln "       viprcheck --native-mode <full|slice> <certificate.vipr>"
-      IO.eprintln "         full: replay the whole certificate. slice: for RTP infeas,"
-      IO.eprintln "         backward-slice first and check the slice."
+      IO.eprintln "         Default. Compiled checker on a backward slice of the"
+      IO.eprintln "         certificate, falling back to complete replay if the slice"
+      IO.eprintln "         fails. Trusts the Lean compiler and runtime; prints"
+      IO.eprintln "         NATIVE ACCEPT or NATIVE REJECT."
+      IO.eprintln "       viprcheck --native-mode <slice|full> <certificate.vipr>"
+      IO.eprintln "         slice: the default. full: replay every step. `full` proves"
+      IO.eprintln "         nothing `slice` does not and is slower, so use it only to"
+      IO.eprintln "         measure or to debug."
       IO.eprintln "       viprcheck --kernel-mode <full|reconstruct> <certificate.vipr>"
       IO.eprintln "                 [--proof-dir <dir>]"
       IO.eprintln "         Emit a Lean proof and have the kernel reduce the checker."

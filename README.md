@@ -68,39 +68,55 @@ lake exe viprcheck examples/valid_max_range.vipr
 
 ## Modes and parameters
 
-`viprcheck` has two modes, and they make different claims. The default is the
-compiled checker, which is what the benchmarks measure; the kernel mode is the
-one that produces a machine-checked theorem.
+The default is the compiled checker on a backward slice. Everything else is an
+option on top of it: more tasks, complete replay instead of slicing, or the
+kernel.
 
 | Invocation | What runs | What it claims |
 |---|---|---|
-| `viprcheck CERT.vipr` | compiled checker, whole certificate | Checker returned `true`. Trusts the Lean compiler and runtime. |
-| `viprcheck --native-mode full CERT.vipr` | same as the default | same |
-| `viprcheck --native-mode slice CERT.vipr` | backward-slice, then check the slice | same, plus the run-time row-subset test of `checkViprSlice_sound` |
-| `viprcheck --kernel-mode full CERT.vipr` | emits Lean source, kernel reduces the checker | Kernel-checked theorem; prints the axioms it rests on |
-| `viprcheck --kernel-mode reconstruct CERT.vipr` | slices, then kernel-checks the slice and the subset theorem | same |
+| `viprcheck CERT.vipr` | **default** — compiled checker on a backward slice | Checker returned `true` on a slice, and `checkViprSlice_sound` carries that to the original. Trusts the Lean compiler and runtime. |
+| `viprcheck --native-mode slice CERT.vipr` | same as the default | same |
+| `viprcheck --native-mode full CERT.vipr` | compiled checker, every step | Checker returned `true`. Same trust, strictly more work. |
+| `viprcheck --kernel-mode reconstruct CERT.vipr` | slices, then the kernel reduces the checker on the slice and the subset theorem | Machine-checked theorem; prints the axioms it rests on |
+| `viprcheck --kernel-mode full CERT.vipr` | kernel reduces the checker on the whole certificate | same |
 
 Both native modes print `NATIVE ACCEPT` or `NATIVE REJECT`. Kernel modes print
-`ACCEPT (kernel-checked ...)` together with the theorem name and
-`#print axioms`. Exit codes: `0` accept, `1` usage or parse error, `2` reject.
+`ACCEPT (kernel-checked ...)` with the theorem name and `#print axioms`. Exit
+codes: `0` accept, `1` usage or parse error, `2` reject.
 
-Slicing applies to `RTP infeas` only; range certificates are always replayed
-completely. The slicer is untrusted — acceptance of a slice is turned into a
-statement about the original certificate by `checkViprSlice_sound`, whose side
-conditions are re-established at run time.
+### Why slicing is the default
 
-Extra parameters:
+Slicing concludes the same thing about the same certificate. `checkViprSlice_sound`
+turns acceptance of a slice into a statement about the original, and the three side
+conditions it needs — same `RTP`, same integer variables, rows a sublist of the
+original's — are re-established at run time, so the untrusted slicer buys no trust
+and costs none. It is simply less work: on `alu4_1`, 2.33s complete against 0.54s
+sliced.
+
+`--native-mode full` therefore proves nothing extra. It is kept for measuring
+against the slice and for debugging, not because it is safer.
+
+Slicing applies to `RTP infeas` only; range certificates are replayed completely
+either way. If the slicer emits a slice the checker rejects, both the native and
+kernel paths fall back to complete replay and say so, so slicing cannot cost an
+acceptance.
+
+### Parallelism
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `--proof-dir DIR` | `/tmp/viprcheck_<mode>` | Where kernel mode writes the generated Lean module. Kernel modes only. |
 | `VIPRCHECK_TASKS=N` | `8` | Tasks the replay is split into. `1` is sequential. Native modes only. |
+| `--proof-dir DIR` | `/tmp/viprcheck_<mode>` | Where kernel mode writes the generated Lean module. Kernel modes only. |
 
 `VIPRCHECK_TASKS` is a tuning knob and nothing else: `checkViprPar_eq` proves the
 parallel checker returns what the sequential one returns for *every* task count,
 so no value of `N` can change a verdict. One task per core measures best — more
 chunks lose more to contention over the shared pool than they recover. Lean
 exposes no core count, hence the conservative default.
+
+It buys wall clock, not work: on step-heavy certificates the replay runs about 2.8x
+faster while using roughly 4x the total CPU, because the tasks share the pool and
+its reference counts have to be updated atomically.
 
 Two diagnostics, neither of which claims anything: `--debug-first-invalid`
 reports the first step the checker rejects, and `--dump-materialized` prints the

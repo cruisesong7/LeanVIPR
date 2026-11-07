@@ -141,6 +141,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slice-all", action="store_true",
                    help="also run slice mode on non-infeas certificates (Lean falls back "
                         "to the full check there)")
+    p.add_argument("--lean-tasks", type=int, default=1,
+                   help="VIPRCHECK_TASKS for the Lean checker. Defaults to 1 so that the "
+                        "table compares like with like against sequential viprchk; set it "
+                        "to the core count to measure the parallel replay, and then "
+                        "compare against viprchk_parallel rather than viprchk.")
     p.add_argument("--no-warmup", action="store_true")
     p.add_argument("--keep", action="store_true", help="keep decompressed files")
     p.add_argument("--stop-file", type=Path,
@@ -265,17 +270,24 @@ def parse_rusage(path: Path) -> Dict[str, str]:
 
 
 def measure(command: List[str], log: Path, timeout: float,
-            mem_limit: int, footprint_limit: int) -> Dict[str, str]:
+            mem_limit: int, footprint_limit: int,
+            env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     """Run `command` under /usr/bin/time with timeout and memory watchdog."""
     time_path = log.with_suffix(".time")
     time_path.unlink(missing_ok=True)
     full = ["/usr/bin/time", "-l", "-p", "-o", str(time_path), *command]
+    child_env = None
+    if env:
+        child_env = dict(os.environ)
+        child_env.update(env)
     with log.open("w") as out:
         out.write("$ " + " ".join(command) + "\n")
+        if env:
+            out.write("# env " + " ".join(f"{k}={v}" for k, v in env.items()) + "\n")
         out.flush()
         start = time.perf_counter()
         proc = subprocess.Popen(full, stdout=out, stderr=subprocess.STDOUT,
-                                start_new_session=True)
+                                start_new_session=True, env=child_env)
         peak, peak_fp, killed = 0, 0, ""
         while True:
             try:
@@ -341,14 +353,15 @@ def run_cpp(cpp: Path, cert: Path, log: Path, args: argparse.Namespace,
 def run_lean(lean: Path, cert: Path, mode: str, log: Path,
              args: argparse.Namespace, mem_limit: int) -> Dict[str, str]:
     r = measure([str(lean), "--native-mode", mode, str(cert)], log, args.timeout,
-                mem_limit, args.footprint_limit)
+                mem_limit, args.footprint_limit,
+                env={"VIPRCHECK_TASKS": str(args.lean_tasks)})
     text = log.read_text(errors="replace")
     row: Dict[str, str] = {k: v for k, v in r.items() if k != "killed"}
     if r["killed"]:
         row["status"] = r["killed"]
-    elif r["returncode"] == "0" and "NATIVE PRECHECK PASS" in text:
+    elif r["returncode"] == "0" and "NATIVE ACCEPT" in text:
         row["status"] = "pass"
-    elif "NATIVE PRECHECK REJECT" in text or "parse error" in text:
+    elif "NATIVE REJECT" in text or "parse error" in text:
         row["status"] = "reject"
     elif ABNORMAL in text:
         row["status"] = "crash"
@@ -366,7 +379,7 @@ def run_lean(lean: Path, cert: Path, mode: str, log: Path,
         row.update(checked_constraints=row["lean_constraints"],
                    checked_steps=row["lean_steps"])
     verdict = [l for l in text.splitlines()
-               if l.startswith(("NATIVE PRECHECK", "parse error", "INTERNAL PANIC",
+               if l.startswith(("NATIVE ACCEPT", "NATIVE REJECT", "parse error", "INTERNAL PANIC",
                                 "uncaught exception", "time: "))]
     row["verdict"] = verdict[-1][:200] if verdict else ""
     return row

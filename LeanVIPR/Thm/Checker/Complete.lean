@@ -105,23 +105,23 @@ theorem stepValidB_complete {v : Vipr} {pool : CheckerPool} {s : SStep}
   rw [stepValidB, Bool.and_eq_true]
   refine ⟨referencesPastB_complete hrefs, ?_⟩
   cases hr : s.reason with
-  | asm => rfl
+  | asm => simp [ruleCheckB, hr]
   | lin comb =>
-      simp only [hr] at hrule ⊢
+      simp only [ruleCheckB, hr] at hrule ⊢
       rw [resolveRefs_eq]
       exact linCheck_complete hrule
   | rnd comb =>
-      simp only [hr] at hrule ⊢
+      simp only [ruleCheckB, hr] at hrule ⊢
       rw [resolveRefs_eq]
       exact rndCheck_complete hrule
   | uns i1 l1 i2 l2 =>
-      simp only [hr] at hrule ⊢
+      simp only [ruleCheckB, hr] at hrule ⊢
       obtain ⟨hdom1, hdom2, hbounds⟩ := hrule
       simp only [poolRow_eq, Bool.and_eq_true]
       exact ⟨⟨domSLe_complete hdom1, domSLe_complete hdom2⟩,
         unsBoundsB_complete hbounds⟩
   | sol =>
-      simp only [hr] at hrule ⊢
+      simp only [ruleCheckB, hr] at hrule ⊢
       exact solReasonB_complete hrule
 
 /-- A declaratively valid derivation replays successfully, producing the

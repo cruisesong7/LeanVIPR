@@ -89,6 +89,52 @@ def wsTokens : List Char → List String
     rw [← hr]
     exact takeToken_length_lt c cs
 
+/-! ### Tokenizing without materializing the character list
+
+`wsTokens` says what the tokens of a certificate are, by structural recursion over its
+characters, and that is the definition every theorem about tokenization is stated over.
+Running it means building `content.toList` first, which costs about 32 bytes per
+character — on a 10 MB certificate, 316 MB of cons cells, over two thirds of peak memory
+and the reason large certificates run out of it.
+
+`wsTokensOf` computes the same list with a `String.foldl`, which walks the string by
+position and allocates nothing per character. `LeanVIPR.Thm.Parser.wsTokensOf_eq` proves
+the two agree, so this is a change of implementation only: the character list remains
+what the specification talks about. -/
+
+/-- Tokenizer state: finished tokens and the token in progress, both reversed, and
+whether a `%` comment is running. A token in progress is never empty, so `cur = []`
+means "between tokens". -/
+structure TokState where
+  out : List String
+  cur : List Char
+  inComment : Bool
+
+/-- Close off the token in progress, if there is one. -/
+def TokState.flush (st : TokState) : List String :=
+  match st.cur with
+  | [] => st.out
+  | cs => String.ofList cs.reverse :: st.out
+
+def TokState.finish (st : TokState) : List String := st.flush.reverse
+
+/-- Consume one character. Mirrors the three branches of `wsTokens`, plus the comment
+state that `dropComment` expresses by recursion. -/
+def TokState.step (st : TokState) (c : Char) : TokState :=
+  if st.inComment then
+    if c == '\n' then { out := st.out, cur := [], inComment := false } else st
+  else if c.isWhitespace then
+    { out := st.flush, cur := [], inComment := false }
+  else if c == '%' && st.cur.isEmpty then
+    { out := st.out, cur := [], inComment := true }
+  else
+    { out := st.out, cur := c :: st.cur, inComment := false }
+
+/-- Whitespace-separated tokens of a string, computed without building its character
+list. Equal to `wsTokens s.toList`. -/
+def wsTokensOf (s : String) : List String :=
+  (s.foldl TokState.step { out := [], cur := [], inComment := false }).finish
+
 /-! ## Token consumers (Except-monad parser over `List String`) -/
 
 def takeTok : Toks → Except String (String × Toks)
@@ -472,6 +518,6 @@ def parseViprToks (ts0 : Toks) : Except String Vipr := do
       Except.ok v
 
 def parseVipr (content : String) : Except String Vipr :=
-  parseViprToks (wsTokens content.toList)
+  parseViprToks (wsTokensOf content)
 
 end LeanVIPR.Parser

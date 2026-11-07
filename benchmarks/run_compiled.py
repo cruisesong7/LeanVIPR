@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import re
 import subprocess
 import tempfile
@@ -81,7 +82,12 @@ def run_one(checker: Path, certificate: Path, mode: str) -> dict[str, str | int]
             mode,
             str(certificate),
         ]
-        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        # Pinned to one task so the timings stay comparable with sequential viprchk
+        # and with the numbers already committed under benchmarks/results/.
+        child_env = dict(os.environ)
+        child_env.setdefault("VIPRCHECK_TASKS", "1")
+        completed = subprocess.run(command, capture_output=True, text=True, check=False,
+                                   env=child_env)
         output = completed.stdout + completed.stderr
         report = REPORT_RE.search(output)
         reasons = REASONS_RE.search(output)

@@ -36,10 +36,6 @@ theorem suitGeB_sound {cs} (h : suitGeB cs = true) : ∀ p ∈ cs, 0 ≤ p.1 * s
 @[simp] theorem alIntB_normForm (intVars : List Nat) (f : LinForm) :
     alIntB intVars (normForm f) = formIntB intVars f := rfl
 
-@[simp] theorem alIsZero_alExtend_normForm (f g : LinForm) :
-    alIsZero (alExtend (normForm f) (sNegForm g)) = formEq f g := by
-  simp only [alExtend, normForm, formEq, formIsZero, alIsZero, List.foldl_append]
-
 theorem intEntryB_sound {intVars : List Nat} {p : Nat × ℚ}
     (h : intEntryB intVars p = true) :
     p.2 = 0 ∨ (IsIntVal p.2 ∧ p.1 ∈ intVars) := by

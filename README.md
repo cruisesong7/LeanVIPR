@@ -40,16 +40,23 @@ Official exact SCIP 10.0.3 produced
 lake exe viprcheck examples/uns_knapsack.vipr
 ```
 
-Expected: `ACCEPT`, with `vars 3  int 3  con 8  steps 32`, those reason counts,
-and a generated proof under `/tmp/viprcheck_proof/LeanVIPRGenerated/`.
-Exit code `0` on accept, `1` on usage/parse error, `2` on reject.
+Expected: `NATIVE ACCEPT`, with `vars 3  int 3  con 8  steps 32` and those
+reason counts. Exit code `0` on accept, `1` on usage/parse error, `2` on reject.
 
-Any other VIPR v1.0 `RTP infeas` file is the same command with a different path.
-Use `--proof-dir DIR` to retain a separate generated artifact:
+That is the compiled checker, which trusts the Lean compiler and runtime. For
+the kernel-checked theorem on the same file:
 
 ```bash
-lake exe viprcheck examples/uns_knapsack.vipr --proof-dir /tmp/vipr-knapsack
+lake exe viprcheck --kernel-mode reconstruct examples/uns_knapsack.vipr \
+  --proof-dir /tmp/vipr-knapsack
 ```
+
+That writes a Lean module under `/tmp/vipr-knapsack/LeanVIPRGenerated/`, has the
+kernel reduce the checker over it, and prints the theorem together with the
+axioms it rests on, and takes considerably longer than the default. Every mode is
+listed under [Modes and parameters](#modes-and-parameters).
+
+Any other VIPR v1.0 `RTP infeas` file is the same command with a different path.
 
 Two small range examples exercise minimization and maximization, including
 `{ sol }`:
@@ -59,28 +66,77 @@ lake exe viprcheck examples/valid_min_range.vipr
 lake exe viprcheck examples/valid_max_range.vipr
 ```
 
-For performance comparison only, the explicitly untrusted compiled path is:
+## Modes and parameters
+
+The default is the compiled checker on a backward slice. Everything else is an
+option on top of it: more tasks, complete replay instead of slicing, or the
+kernel.
+
+| Invocation | What runs | What it claims |
+|---|---|---|
+| `viprcheck CERT.vipr` | **default** — compiled checker on a backward slice | Checker returned `true` on a slice, and `checkViprSlice_sound` carries that to the original. Trusts the Lean compiler and runtime. |
+| `viprcheck --native-mode slice CERT.vipr` | same as the default | same |
+| `viprcheck --native-mode full CERT.vipr` | compiled checker, every step | Checker returned `true`. Same trust, strictly more work. |
+| `viprcheck --kernel-mode reconstruct CERT.vipr` | slices, then the kernel reduces the checker on the slice and the subset theorem | Machine-checked theorem; prints the axioms it rests on |
+| `viprcheck --kernel-mode full CERT.vipr` | kernel reduces the checker on the whole certificate | same |
+
+Both native modes print `NATIVE ACCEPT` or `NATIVE REJECT`. Kernel modes print
+`ACCEPT (kernel-checked ...)` with the theorem name and `#print axioms`. Exit
+codes: `0` accept, `1` usage or parse error, `2` reject.
+
+### Why slicing is the default
+
+Slicing concludes the same thing about the same certificate. `checkViprSlice_sound`
+turns acceptance of a slice into a statement about the original, and the three side
+conditions it needs — same `RTP`, same integer variables, rows a sublist of the
+original's — are re-established at run time, so the untrusted slicer buys no trust
+and costs none. It is simply less work: on `alu4_1`, 2.33s complete against 0.54s
+sliced.
+
+Slicing applies to `RTP infeas` only; range certificates are replayed completely
+either way. If the slicer emits a slice the checker rejects, both the native and
+kernel paths fall back to complete replay and say so, so slicing cannot cost an
+acceptance.
+
+### Complete replay, as an option
 
 ```bash
-lake exe viprcheck --native-precheck examples/uns_knapsack.vipr
+lake exe viprcheck --native-mode full CERT.vipr
 ```
 
-It never claims kernel certification.
+This replays every step instead of slicing first. **It does not add any trust.**
+Both modes run the same proved checker and both conclude about the same original
+certificate — `checkViprSlice_sound` is what carries acceptance of a slice back,
+and its side conditions are re-tested on every run. Complete replay is simply more
+work for the identical claim.
 
-The two kernel modes are:
+It is worth having for two things: comparing against `viprchk`, which has no
+slicing and always replays completely, and debugging, where seeing every step
+checked is easier to reason about. Neither is a safety argument.
 
-```bash
-lake exe viprcheck --kernel-mode full CERT.vipr --proof-dir /tmp/vipr-full
-lake exe viprcheck --kernel-mode reconstruct CERT.vipr --proof-dir /tmp/vipr-reconstruct
-```
+### Parallelism
 
-`full` kernel-checks the complete certificate with the array-backed checker.
-`reconstruct`, which is the default, backward-slices the certificate and runs
-the same checker on the slice for `RTP infeas`. The kernel checks both
-the sliced replay and a row-subset theorem
-transporting infeasibility back to the original certificate. If slicing fails,
-the command falls back to complete replay, so it does not lose acceptance
-completeness. Range certificates currently use complete replay.
+| Parameter | Default | Meaning |
+|---|---|---|
+| `VIPRCHECK_TASKS=N` | `8` | Tasks the replay is split into. `1` spawns no task at all. Native modes only. |
+| `--proof-dir DIR` | `/tmp/viprcheck_<mode>` | Where kernel mode writes the generated Lean module. Kernel modes only. |
+
+`VIPRCHECK_TASKS` cannot change a verdict: `checkViprPar_eq` proves the parallel
+checker returns what the sequential one returns for *every* task count. It is not
+free of consequence, though — see [What is trusted](#what-is-trusted) for the
+runtime machinery it brings in, and `N=1` for the setting that leaves it out.
+
+One task per core measures best — more chunks lose more to contention over the
+shared pool than they recover. Lean exposes no core count, hence the conservative
+default.
+
+It buys wall clock, not work: on step-heavy certificates the replay runs about 2.8x
+faster while using roughly 4x the total CPU, because the tasks share the pool and
+its reference counts have to be updated atomically.
+
+Two diagnostics, neither of which claims anything: `--debug-first-invalid`
+reports the first step the checker rejects, and `--dump-materialized` prints the
+certificate after `lin weak` completion.
 
 ## Optional: regenerate the certificate
 
@@ -163,6 +219,39 @@ in the compiled CLI, and proof generation. The generated theorem is checked with
 `decide +kernel`, not `native_decide`, and `ACCEPT` additionally requires its
 reported axioms to be among `propext`, `Classical.choice`, and `Quot.sound`.
 
+Two pieces of machinery in the default path are deliberately outside the trusted
+set, because a theorem covers each of them:
+
+- **The slicer.** `sliceVipr` is an untrusted heuristic. Nothing is taken on its
+  word: `checkViprSlice_sound` requires the slice to carry the same `RTP` and the
+  same integer variables and to have rows that are a sublist of the original's,
+  and all three are re-tested at run time. A slice the checker rejects falls back
+  to complete replay rather than becoming a rejection.
+- **The task count.** `checkViprPar_eq` proves the parallel replay returns what
+  the sequential one returns for every value of `VIPRCHECK_TASKS`, so the split
+  cannot change a verdict. The proof needs no reasoning about concurrency:
+  `Task.spawn fn` is `{ get := fn () }` in Lean's logic, so the parallelism is an
+  evaluation strategy the logic cannot observe.
+
+Neither is a soundness boundary and neither adds an axiom. Parallelism does,
+however, widen the *runtime* trusted base, and that deserves saying plainly.
+
+Native mode already trusts the Lean compiler and runtime to execute a pure
+function faithfully. Running the replay across tasks adds Lean's task scheduler,
+its multi-threaded reference counting, and the memory model under which worker
+threads observe the shared pool. Those are not covered by any theorem here;
+`checkViprPar_eq` is a statement about pure functions, and it would still hold if
+the scheduler were wrong. Concurrency bugs in a language runtime are a real class
+of bug, and this takes a dependency on that code not having any.
+
+Two things bound it. Kernel mode is untouched: the kernel unfolds `Task.spawn fn`
+to `{ get := fn () }` and reduces sequentially, so no thread is involved in
+producing a machine-checked theorem. And `VIPRCHECK_TASKS=1` yields a single chunk,
+which `parAll` evaluates directly instead of spawning — so the scheduler, the
+atomic reference counting and the memory model are left out of the run entirely,
+not merely reduced to one thread. If you want the narrowest runtime base from the
+compiled checker, that is the setting.
+
 For `RTP range`, `Vipr.ClaimValid` states that every listed solution is feasible,
 the primal witness bound holds, and the derived objective bound holds at every
 feasible point (minimization: `lb ≤ obj(x)` for all feasible `x`). The classical
@@ -223,9 +312,20 @@ The artifact includes 20 infeasibility certificates from the published ALU
 suite and 6 objective-range certificates from ALU/MIPLIB 3.0. All are genuine
 official exact-SCIP 10.0.3 output.
 
-Measured as one warmed sequential run on an Apple M3 Pro (12 cores, 36 GB),
-Lean 4.35.0, macOS 26.7.1. These are compiled CLI timings and are not kernel
-certification.
+Measured as one warmed run on an Apple M3 Pro (12 cores, 36 GB), Lean 4.35.0,
+macOS 26.7.1. These are compiled CLI timings and are not kernel certification.
+
+**The runners pin `VIPRCHECK_TASKS=1`.** Upstream `viprchk` is single-threaded,
+so a parallel LeanVIPR against a sequential `viprchk` would not be a comparison
+of checkers but of core counts. Every number in this section is therefore one
+core against one core. To measure the parallel replay instead, pass
+`--lean-tasks N` to `benchmarks/run_new.py`, and compare against
+`viprchk_parallel` rather than `viprchk` — upstream ships both.
+
+Note also that the parallel replay trades CPU for wall clock: it costs roughly
+4x the total CPU on step-heavy certificates, from atomic reference counting on
+the pool the tasks share. Wall-clock tables will flatter it and CPU-time tables
+will not, so say which is being reported.
 
 | Infeasibility family | Files | C++ pipeline | Lean full | Lean sliced |
 |---|---:|---:|---:|---:|

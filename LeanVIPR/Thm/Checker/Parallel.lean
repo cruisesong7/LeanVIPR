@@ -43,10 +43,16 @@ theorem chunk_flatten : ∀ (n : Nat) (xs : List SStep), (chunk n xs).flatten = 
 /-- Evaluating a conjunction one chunk per task gives the conjunction. -/
 theorem parAll_eq (n : Nat) (p : SStep → Bool) (xs : List SStep) :
     parAll n p xs = xs.all p := by
-  rw [parAll]
   conv_rhs => rw [← chunk_flatten n xs]
-  rw [List.all_flatten, List.all_map]
-  rfl
+  rw [List.all_flatten, parAll]
+  match chunk n xs with
+  | [] => simp
+  | [c] => simp
+  | c₁ :: c₂ :: cs =>
+      show (List.map (fun c => Task.spawn (fun _ => c.all p)) (c₁ :: c₂ :: cs)).all Task.get
+        = (c₁ :: c₂ :: cs).all (fun c => c.all p)
+      rw [List.all_map]
+      rfl
 
 /-! ## The pool only grows -/
 

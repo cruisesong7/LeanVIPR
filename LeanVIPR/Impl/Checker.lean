@@ -159,9 +159,17 @@ def chunk (n : Nat) : List SStep → List (List SStep)
     simp only [List.length_drop, List.length_cons]
     omega
 
-/-- `xs.all p`, evaluated one chunk per task. -/
+/-- `xs.all p`, evaluated one chunk per task.
+
+A single chunk is evaluated directly rather than spawned. That is what makes
+`VIPRCHECK_TASKS=1` a real escape hatch: it leaves the task scheduler, the atomic
+reference counting and the memory model out of the run entirely, rather than merely
+reducing the thread count to one. -/
 def parAll (n : Nat) (p : SStep → Bool) (xs : List SStep) : Bool :=
-  ((chunk n xs).map (fun c => Task.spawn (fun _ => c.all p))).all Task.get
+  match chunk n xs with
+  | [] => true
+  | [c] => c.all p
+  | cs => (cs.map (fun c => Task.spawn (fun _ => c.all p))).all Task.get
 
 /-- Steps per task, given how many tasks to aim for. One chunk per core measured best:
 more chunks than that cost more in contention over the shared pool than they recover in

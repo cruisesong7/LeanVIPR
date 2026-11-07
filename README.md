@@ -105,14 +105,17 @@ acceptance.
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `VIPRCHECK_TASKS=N` | `8` | Tasks the replay is split into. `1` is sequential. Native modes only. |
+| `VIPRCHECK_TASKS=N` | `8` | Tasks the replay is split into. `1` spawns no task at all. Native modes only. |
 | `--proof-dir DIR` | `/tmp/viprcheck_<mode>` | Where kernel mode writes the generated Lean module. Kernel modes only. |
 
-`VIPRCHECK_TASKS` is a tuning knob and nothing else: `checkViprPar_eq` proves the
-parallel checker returns what the sequential one returns for *every* task count,
-so no value of `N` can change a verdict. One task per core measures best — more
-chunks lose more to contention over the shared pool than they recover. Lean
-exposes no core count, hence the conservative default.
+`VIPRCHECK_TASKS` cannot change a verdict: `checkViprPar_eq` proves the parallel
+checker returns what the sequential one returns for *every* task count. It is not
+free of consequence, though — see [What is trusted](#what-is-trusted) for the
+runtime machinery it brings in, and `N=1` for the setting that leaves it out.
+
+One task per core measures best — more chunks lose more to contention over the
+shared pool than they recover. Lean exposes no core count, hence the conservative
+default.
 
 It buys wall clock, not work: on step-heavy certificates the replay runs about 2.8x
 faster while using roughly 4x the total CPU, because the tasks share the pool and
@@ -224,10 +227,26 @@ set, because a theorem covers each of them:
   the sequential one returns for every value of `VIPRCHECK_TASKS`, so the split
   cannot change a verdict. The proof needs no reasoning about concurrency:
   `Task.spawn fn` is `{ get := fn () }` in Lean's logic, so the parallelism is an
-  evaluation strategy the logic cannot observe. Kernel mode reduces it
-  sequentially.
+  evaluation strategy the logic cannot observe.
 
-Neither is a soundness boundary, and neither adds an axiom.
+Neither is a soundness boundary and neither adds an axiom. Parallelism does,
+however, widen the *runtime* trusted base, and that deserves saying plainly.
+
+Native mode already trusts the Lean compiler and runtime to execute a pure
+function faithfully. Running the replay across tasks adds Lean's task scheduler,
+its multi-threaded reference counting, and the memory model under which worker
+threads observe the shared pool. Those are not covered by any theorem here;
+`checkViprPar_eq` is a statement about pure functions, and it would still hold if
+the scheduler were wrong. Concurrency bugs in a language runtime are a real class
+of bug, and this takes a dependency on that code not having any.
+
+Two things bound it. Kernel mode is untouched: the kernel unfolds `Task.spawn fn`
+to `{ get := fn () }` and reduces sequentially, so no thread is involved in
+producing a machine-checked theorem. And `VIPRCHECK_TASKS=1` yields a single chunk,
+which `parAll` evaluates directly instead of spawning — so the scheduler, the
+atomic reference counting and the memory model are left out of the run entirely,
+not merely reduced to one thread. If you want the narrowest runtime base from the
+compiled checker, that is the setting.
 
 For `RTP range`, `Vipr.ClaimValid` states that every listed solution is feasible,
 the primal witness bound holds, and the derived objective bound holds at every

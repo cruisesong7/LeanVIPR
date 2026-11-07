@@ -234,10 +234,10 @@ theorem senseSign_cast (sense : Char) :
     · simp [senseSignReal, senseSign, hG]
     · simp [senseSignReal, senseSign, hL, hG]
 
-theorem suitLe_complete {comb : List (ℚ × SLe)}
+theorem suitableLe_complete {comb : List (ℚ × SLe)}
     (h : SuitableLe comb) :
-    suitLe comb = true := by
-  unfold suitLe
+    suitableLe comb = true := by
+  unfold suitableLe
   apply List.all_eq_true.mpr
   intro p hp
   rw [decide_eq_true_eq]
@@ -245,10 +245,10 @@ theorem suitLe_complete {comb : List (ℚ × SLe)}
   rw [senseSign_cast] at hpReal
   exact_mod_cast hpReal
 
-theorem suitGe_complete {comb : List (ℚ × SLe)}
+theorem suitableGe_complete {comb : List (ℚ × SLe)}
     (h : SuitableGe comb) :
-    suitGe comb = true := by
-  unfold suitGe
+    suitableGe comb = true := by
+  unfold suitableGe
   apply List.all_eq_true.mpr
   intro p hp
   rw [decide_eq_true_eq]
@@ -280,10 +280,10 @@ theorem not_isIntReal_half : ¬ IsIntReal ((1 / 2 : ℚ) : ℝ) := by
 
 /-- A semantically integer-valued form passes the normalized executable test:
 each normalized coefficient is isolated by a scaled basis valuation. -/
-theorem formInt_complete_real {intVars : List Nat} {form : LinForm}
+theorem formIsInt_complete_real {intVars : List Nat} {form : LinForm}
     (h : FormIntegralReal intVars form) :
-    formInt intVars form = true := by
-  unfold formInt
+    formIsInt intVars form = true := by
+  unfold formIsInt
   apply List.all_eq_true.mpr
   intro p hp
   have hbasis : form.eval (basisValuation p.1) = p.2 := by
@@ -297,7 +297,7 @@ theorem formInt_complete_real {intVars : List Nat} {form : LinForm}
       obtain ⟨z, hz⟩ := hs j hj
       exact ⟨z, by simp [ratToReal, hz]⟩)
     rwa [evalReal_ratToReal, eval_scale_valuation, hbasis] at hr
-  simp only [intEntry, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
+  simp only [entryIsInt, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
     decide_eq_true_eq]
   by_cases hidx : p.1 ∈ intVars
   · right
@@ -323,9 +323,9 @@ theorem linAbsurd_complete {comb : List (ℚ × SLe)}
     (h : LinAbsurd comb) :
     linAbsurd comb (scomb comb) (normForm (scomb comb).form) = true := by
   rcases h with ⟨hsuit, hzero, hnegative⟩ | ⟨hsuit, hzero, hpositive⟩
-  · simp [linAbsurd, suitLe_complete hsuit,
+  · simp [linAbsurd, suitableLe_complete hsuit,
       formIsZero_complete_real hzero, hnegative]
-  · simp [linAbsurd, suitGe_complete hsuit,
+  · simp [linAbsurd, suitableGe_complete hsuit,
       formIsZero_complete_real hzero, hpositive]
 
 theorem linCheck_complete {stated : SLe} {comb : List (ℚ × SLe)}
@@ -338,21 +338,21 @@ theorem linCheck_complete {stated : SLe} {comb : List (ℚ × SLe)}
     rw [Bool.and_eq_true]
     refine ⟨formEq_complete_real hform, ?_⟩
     rcases hdir with ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩ | ⟨hE, hle, hge, hrhs⟩
-    · simp [hL, suitLe_complete hsuit, hrhs]
-    · simp [hG, suitGe_complete hsuit, hrhs]
-    · simp [hE, suitLe_complete hle, suitGe_complete hge, hrhs]
+    · simp [hL, suitableLe_complete hsuit, hrhs]
+    · simp [hG, suitableGe_complete hsuit, hrhs]
+    · simp [hE, suitableLe_complete hle, suitableGe_complete hge, hrhs]
 
 theorem rndCheck_complete {intVars : List Nat} {stated : SLe}
     {comb : List (ℚ × SLe)}
     (h : RndValid intVars stated comb) :
     rndCheck intVars stated comb = true := by
   obtain ⟨hform, hint, hdir⟩ := h
-  simp only [rndCheck, alInt_normForm, Bool.and_eq_true]
+  simp only [rndCheck, alIsInt_normForm, Bool.and_eq_true]
   constructor
-  · exact ⟨formEq_complete_real hform, formInt_complete_real hint⟩
+  · exact ⟨formEq_complete_real hform, formIsInt_complete_real hint⟩
   rcases hdir with ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩
-  · simp [hL, suitLe_complete hsuit, hrhs]
-  · simp [hG, suitGe_complete hsuit, hrhs]
+  · simp [hL, suitableLe_complete hsuit, hrhs]
+  · simp [hG, suitableGe_complete hsuit, hrhs]
 
 theorem isAbsurd_complete {row : SLe} (h : Absurd row) :
     isAbsurd row = true := by
@@ -364,12 +364,12 @@ theorem isAbsurd_complete {row : SLe} (h : Absurd row) :
   · simp [hG, hpositive]
   · simp [hE, hne]
 
-theorem domSLe_complete {source target : SLe}
+theorem dominates_complete {source target : SLe}
     (h : Dominates source target) :
-    domSLe source target = true := by
+    dominates source target = true := by
   rcases h with habsurd | ⟨hform, hdir⟩
-  · simp [domSLe, isAbsurd_complete habsurd]
-  · rw [domSLe, Bool.or_eq_true]
+  · simp [dominates, isAbsurd_complete habsurd]
+  · rw [dominates, Bool.or_eq_true]
     right
     rw [Bool.and_eq_true]
     refine ⟨formEq_complete_real hform, ?_⟩
@@ -390,8 +390,8 @@ theorem unsBounds_complete {intVars : List Nat} {left right : SLe}
     ⟨hL, hG, hform, hformInt, hint, hrhs⟩ |
     ⟨hG, hL, hform, hformInt, hint, hrhs⟩
   · simp [unsBounds, hL, hG, formEq_complete_real hform,
-      formInt_complete_real hformInt, isIntVal_complete hint, hrhs]
+      formIsInt_complete_real hformInt, isIntVal_complete hint, hrhs]
   · simp [unsBounds, hL, hG, formEq_complete_real hform,
-      formInt_complete_real hformInt, isIntVal_complete hint, hrhs]
+      formIsInt_complete_real hformInt, isIntVal_complete hint, hrhs]
 
 end LeanVIPR.Semantics.RuleComplete

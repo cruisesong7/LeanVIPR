@@ -22,7 +22,7 @@ Three facts carry the proof.
 * Rows never change: `buildPool` only pushes, so an entry at an index already in the pool
   reads the same afterwards (`poolEntry_buildPool`).
 * Hence a step whose references all point into the past cannot tell the two pools apart
-  (`ruleCheck_congr`), which is where `boundsOk` earns its keep: it is what establishes
+  (`ruleCheck_congr`), which is where `allRefsBelow` earns its keep: it is what establishes
   that hypothesis, and it is the one half that must still run in order.
 -/
 
@@ -83,11 +83,11 @@ theorem poolRow_buildPool {v : Vipr} {pool : CheckerPool} {ss : List SStep} {j :
 
 /-! ## A step cannot tell the two pools apart
 
-`refsPast` reads nothing of the pool but its size, so it is `refsBelow` on that
+`referencesPast` reads nothing of the pool but its size, so it is `refsBelow` on that
 size; and `ruleCheck` reads nothing but rows. -/
 
-theorem refsPast_eq_refsBelow (pool : CheckerPool) (r : SReason) :
-    refsPast pool r = refsBelow pool.size r := by
+theorem referencesPast_eq_refsBelow (pool : CheckerPool) (r : SReason) :
+    referencesPast pool r = refsBelow pool.size r := by
   cases r <;> rfl
 
 private theorem resolveRefs_congr {p q : CheckerPool} {comb : List (ℚ × Nat)}
@@ -130,9 +130,9 @@ theorem ruleCheck_congr {v : Vipr} {p q : CheckerPool} {s : SStep}
 
 theorem replaySteps?_eq : ∀ (v : Vipr) (pool : CheckerPool) (ss : List SStep),
     replaySteps? v pool ss
-      = if boundsOk pool.size ss && ss.all (fun s => ruleCheck v (buildPool v pool ss) s)
+      = if allRefsBelow pool.size ss && ss.all (fun s => ruleCheck v (buildPool v pool ss) s)
         then some (buildPool v pool ss) else none
-  | _, _, [] => by rw [replaySteps?, buildPool, boundsOk]; simp
+  | _, _, [] => by rw [replaySteps?, buildPool, allRefsBelow]; simp
   | v, pool, s :: ss => by
       have hrow : ∀ j, j < pool.size →
           poolRow pool j = poolRow (buildPool v (pool.push (entryOf pool s)) ss) j := by
@@ -141,7 +141,7 @@ theorem replaySteps?_eq : ∀ (v : Vipr) (pool : CheckerPool) (ss : List SStep),
         rw [poolEntry_buildPool v _ ss j (by rw [Array.size_push]; omega),
           poolEntry_push hj]
       rw [replaySteps?, replaySteps?_eq v (pool.push (entryOf pool s)) ss, stepValid,
-        refsPast_eq_refsBelow, buildPool, boundsOk, Array.size_push,
+        referencesPast_eq_refsBelow, buildPool, allRefsBelow, Array.size_push,
         List.all_cons]
       by_cases hb : refsBelow pool.size s.reason = true
       · have hcongr : ruleCheck v pool s
@@ -161,7 +161,7 @@ theorem checkViprPar_eq (tasks : Nat) (v : Vipr) : checkViprPar tasks v = checkV
   simp only [checkViprPar, checkVipr, replay?, replaySteps?_eq, parAll_eq]
   by_cases hsol : v.solSection = true
   · rw [hsol]
-    by_cases hb : boundsOk (initialPool v).size (Lower.viprSteps v) = true
+    by_cases hb : allRefsBelow (initialPool v).size (Lower.viprSteps v) = true
     · by_cases hr : (Lower.viprSteps v).all
           (fun s => ruleCheck v (buildPool v (initialPool v) (Lower.viprSteps v)) s) = true
       · rw [hb, hr]; simp

@@ -22,11 +22,11 @@ open LeanVIPR.Parser.Vipr LeanVIPR.Semantics.System LeanVIPR.Semantics.RuleCompl
 
 /-! ## Solutions and `{ sol }` rows -/
 
-theorem satQ_complete_solution {c : SLe} {s : NamedSolution}
+theorem satRat_complete_solution {c : SLe} {s : NamedSolution}
     (h : satReal c (solutionValuation s)) :
-    satQ c (sparseValuation s.2) = true := by
+    satRat c (sparseValuation s.2) = true := by
   simp only [satReal, evalReal_solution] at h
-  simp only [satQ]
+  simp only [satRat]
   split_ifs at h ⊢ <;> exact decide_eq_true (by exact_mod_cast h)
 
 theorem solutionFeasible_complete {v : Vipr} {s : NamedSolution}
@@ -36,10 +36,10 @@ theorem solutionFeasible_complete {v : Vipr} {s : NamedSolution}
   · obtain ⟨z, hz⟩ := h.1 j hj
     change ((sparseValuation s.2 j : ℚ) : ℝ) = (z : ℝ) at hz
     exact isIntVal_complete ⟨z, by exact_mod_cast hz⟩
-  · exact satQ_complete_solution (h.2 c hc)
+  · exact satRat_complete_solution (h.2 c hc)
 
-theorem allSolutions_complete {v : Vipr} (h : AllSolutionsValid v) :
-    allSolutions v = true :=
+theorem allSolutionsFeasible_complete {v : Vipr} (h : AllSolutionsValid v) :
+    allSolutionsFeasible v = true :=
   List.all_eq_true.mpr fun s hs => solutionFeasible_complete (h s hs)
 
 theorem solSection_complete {v : Vipr} (h : SolSectionValid v) :
@@ -51,7 +51,7 @@ theorem solSection_complete {v : Vipr} (h : SolSectionValid v) :
   | range lb ub =>
       simp only [SolSectionValid, hr] at h
       obtain ⟨hall, hwitness⟩ := h
-      simp only [solSection, hr, allSolutions_complete hall, Bool.true_and]
+      simp only [solSection, hr, allSolutionsFeasible_complete hall, Bool.true_and]
       by_cases hmin : v.objSense = "min"
       · simp only [hmin, ite_true] at hwitness ⊢
         cases ub with
@@ -75,17 +75,17 @@ theorem solReason_complete {v : Vipr} {stated : SLe}
   by_cases hmin : v.objSense = "min"
   · simp only [hmin, ite_true] at h ⊢
     obtain ⟨s, hs, hdom⟩ := h
-    exact List.any_eq_true.mpr ⟨s, hs, domSLe_complete hdom⟩
+    exact List.any_eq_true.mpr ⟨s, hs, dominates_complete hdom⟩
   · by_cases hmax : v.objSense = "max"
     · simp only [hmax, ite_true] at h ⊢
       obtain ⟨s, hs, hdom⟩ := h
-      exact List.any_eq_true.mpr ⟨s, hs, domSLe_complete hdom⟩
+      exact List.any_eq_true.mpr ⟨s, hs, dominates_complete hdom⟩
     · simp [hmin, hmax] at h
 
 /-! ## Single steps and replay -/
 
-theorem refsPast_complete {pool : CheckerPool} {r : SReason}
-    (h : ReferencesPast pool.toList r) : refsPast pool r = true := by
+theorem referencesPast_complete {pool : CheckerPool} {r : SReason}
+    (h : ReferencesPast pool.toList r) : referencesPast pool r = true := by
   cases r with
   | asm => rfl
   | lin comb =>
@@ -95,7 +95,7 @@ theorem refsPast_complete {pool : CheckerPool} {r : SReason}
   | uns i1 l1 i2 l2 =>
       obtain ⟨h1, h2, h3, h4⟩ := h
       simp only [Array.length_toList] at h1 h2 h3 h4
-      simp [refsPast, h1, h2, h3, h4]
+      simp [referencesPast, h1, h2, h3, h4]
   | sol => rfl
 
 /-- Declarative step validity implies Boolean acceptance of the array-backed step. -/
@@ -103,7 +103,7 @@ theorem stepValid_complete {v : Vipr} {pool : CheckerPool} {s : SStep}
     (h : Vipr.StepValid v pool.toList s) : stepValid v pool s = true := by
   obtain ⟨hrefs, hrule⟩ := h
   rw [stepValid, Bool.and_eq_true]
-  refine ⟨refsPast_complete hrefs, ?_⟩
+  refine ⟨referencesPast_complete hrefs, ?_⟩
   cases hr : s.reason with
   | asm => simp [ruleCheck, hr]
   | lin comb =>
@@ -118,7 +118,7 @@ theorem stepValid_complete {v : Vipr} {pool : CheckerPool} {s : SStep}
       simp only [ruleCheck, hr] at hrule ⊢
       obtain ⟨hdom1, hdom2, hbounds⟩ := hrule
       simp only [poolRow_eq, Bool.and_eq_true]
-      exact ⟨⟨domSLe_complete hdom1, domSLe_complete hdom2⟩,
+      exact ⟨⟨dominates_complete hdom1, dominates_complete hdom2⟩,
         unsBounds_complete hbounds⟩
   | sol =>
       simp only [ruleCheck, hr] at hrule ⊢
@@ -176,7 +176,7 @@ theorem finalValid_complete {v : Vipr} (h : FinalValid v) :
         | some lower =>
             obtain ⟨e, hlast, hclosed, hdom⟩ := h
             simp [finalValid, hr, hmin, hlast, closedDominates, hclosed,
-              domSLe_complete hdom]
+              dominates_complete hdom]
       · by_cases hmax : v.objSense = "max"
         · simp only [hmax, ite_true] at h
           cases ub with
@@ -184,7 +184,7 @@ theorem finalValid_complete {v : Vipr} (h : FinalValid v) :
           | some upper =>
               obtain ⟨e, hlast, hclosed, hdom⟩ := h
               simp [finalValid, hr, hmax, hlast, closedDominates, hclosed,
-                domSLe_complete hdom]
+                dominates_complete hdom]
         · simp [hmin, hmax] at h
 
 /-- Every declaratively valid certificate is accepted by the checker. -/

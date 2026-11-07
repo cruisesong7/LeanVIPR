@@ -36,26 +36,26 @@ theorem resolveRefs_eq (pool : CheckerPool) (comb : List (ℚ × Nat)) :
     resolveRefs pool comb = resolve pool.toList comb := by
   simp [resolveRefs, resolve, poolRow_eq]
 
-theorem collectReferencedAsms_eq (pool : CheckerPool) (comb : List (ℚ × Nat)) :
-    collectReferencedAsms pool comb = collectAsms pool.toList comb := by
+theorem referencedAsms_eq (pool : CheckerPool) (comb : List (ℚ × Nat)) :
+    referencedAsms pool comb = collectAsms pool.toList comb := by
   induction comb with
   | nil => rfl
-  | cons p ps ih => simp [collectReferencedAsms, collectAsms, poolAsm_eq, ih]
+  | cons p ps ih => simp [referencedAsms, collectAsms, poolAsm_eq, ih]
 
 theorem entryOf_eq (pool : CheckerPool) (s : SStep) :
     entryOf pool s = sentryOf pool.toList s := by
   cases s with
   | mk stated reason =>
     cases reason <;> simp [entryOf, sentryOf, poolRow_eq, poolAsm_eq,
-      collectReferencedAsms_eq]
+      referencedAsms_eq]
 
 theorem back?_toList (pool : CheckerPool) :
     pool.back? = pool.toList.getLast? := by
   rw [Array.back?_eq_getElem?, List.getLast?_eq_getElem?]
   simp [Array.getElem?_toList]
 
-theorem refsPast_sound {pool : CheckerPool} {r : SReason}
-    (h : refsPast pool r = true) : ReferencesPast pool.toList r := by
+theorem referencesPast_sound {pool : CheckerPool} {r : SReason}
+    (h : referencesPast pool r = true) : ReferencesPast pool.toList r := by
   cases r with
   | asm => trivial
   | lin comb =>
@@ -65,7 +65,7 @@ theorem refsPast_sound {pool : CheckerPool} {r : SReason}
       intro p hp
       simpa using of_decide_eq_true ((List.all_eq_true.mp h) p hp)
   | uns i1 l1 i2 l2 =>
-      simp only [refsPast, Bool.and_eq_true, decide_eq_true_eq] at h
+      simp only [referencesPast, Bool.and_eq_true, decide_eq_true_eq] at h
       exact ⟨by simpa using h.1.1.1, by simpa using h.1.1.2,
         by simpa using h.1.2, by simpa using h.2⟩
   | sol => trivial
@@ -74,7 +74,7 @@ theorem refsPast_sound {pool : CheckerPool} {r : SReason}
 theorem stepValid_sound {v : Vipr} {pool : CheckerPool} {s : SStep}
     (h : stepValid v pool s = true) : Vipr.StepValid v pool.toList s := by
   rw [stepValid, Bool.and_eq_true] at h
-  refine ⟨refsPast_sound h.1, ?_⟩
+  refine ⟨referencesPast_sound h.1, ?_⟩
   cases hr : s.reason with
   | asm => trivial
   | lin comb =>
@@ -87,8 +87,8 @@ theorem stepValid_sound {v : Vipr} {pool : CheckerPool} {s : SStep}
       simpa only [resolveRefs_eq] using h.2
   | uns i1 l1 i2 l2 =>
       simp only [ruleCheck, hr, Bool.and_eq_true] at h
-      exact ⟨Rule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.1),
-        Rule.domSLe_valid_real (by simpa [poolRow_eq] using h.2.1.2),
+      exact ⟨Rule.dominates_valid_real (by simpa [poolRow_eq] using h.2.1.1),
+        Rule.dominates_valid_real (by simpa [poolRow_eq] using h.2.1.2),
         Rule.unsBounds_valid_real (by simpa [poolRow_eq] using h.2.2)⟩
   | sol =>
       simp only [ruleCheck, hr] at h
@@ -170,7 +170,7 @@ theorem finalValid_sound {v : Vipr} {last? : Option CheckerEntry}
                 simp only [he, closedDominates, Bool.and_eq_true,
                   decide_eq_true_eq] at h
                 exact ⟨e, by rw [← hlast, he], h.1,
-                  Rule.domSLe_valid_real h.2⟩
+                  Rule.dominates_valid_real h.2⟩
       · by_cases hmax : v.objSense = "max"
         · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
           cases ub with
@@ -184,7 +184,7 @@ theorem finalValid_sound {v : Vipr} {last? : Option CheckerEntry}
                   simp only [he, closedDominates, Bool.and_eq_true,
                     decide_eq_true_eq] at h
                   exact ⟨e, by rw [← hlast, he], h.1,
-                    Rule.domSLe_valid_real h.2⟩
+                    Rule.dominates_valid_real h.2⟩
         · simp [hmin, hmax] at h
 
 /-- The executable checker refines the declarative VIPR proof system. -/

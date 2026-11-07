@@ -181,12 +181,12 @@ private theorem evalALReal_isInt (al : List (Nat × ℚ)) (a : RealValuation)
       · exact ⟨m, by simp [hp]⟩
       · exact ⟨c * v + m, by rw [hc, hv]; push_cast; ring⟩
 
-private theorem formInt_sound_real {intVars : List Nat} {f : LinForm}
-    (h : formInt intVars f = true) : FormIntegralReal intVars f := by
+private theorem formIsInt_sound_real {intVars : List Nat} {f : LinForm}
+    (h : formIsInt intVars f = true) : FormIntegralReal intVars f := by
   intro a hint
   rw [← normForm_eval_real]
   refine evalALReal_isInt _ a fun p hp => ?_
-  exact (intEntry_sound ((List.all_eq_true.mp h) p hp)).imp_right
+  exact (entryIsInt_sound ((List.all_eq_true.mp h) p hp)).imp_right
     fun ⟨hq, hidx⟩ => ⟨hq, hint p.1 hidx⟩
 
 private theorem senseSign_cast (s : Char) :
@@ -194,24 +194,24 @@ private theorem senseSign_cast (s : Char) :
   simp only [senseSignReal, senseSign]
   split_ifs <;> norm_num
 
-private theorem suitLe_sound_real {cs : List (ℚ × SLe)} (h : suitLe cs = true) :
+private theorem suitableLe_sound_real {cs : List (ℚ × SLe)} (h : suitableLe cs = true) :
     SuitableLe cs := by
   intro p hp
   rw [senseSign_cast]
-  exact_mod_cast suitLe_sound h p hp
+  exact_mod_cast suitableLe_sound h p hp
 
-private theorem suitGe_sound_real {cs : List (ℚ × SLe)} (h : suitGe cs = true) :
+private theorem suitableGe_sound_real {cs : List (ℚ × SLe)} (h : suitableGe cs = true) :
     SuitableGe cs := by
   intro p hp
   rw [senseSign_cast]
-  exact_mod_cast suitGe_sound h p hp
+  exact_mod_cast suitableGe_sound h p hp
 
 private theorem linAbsurd_sound_real {cs : List (ℚ × SLe)}
     (h : linAbsurd cs (scomb cs) (normForm (scomb cs).form) = true) : LinAbsurd cs := by
   simp only [linAbsurd, Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq] at h
   rcases h with ⟨⟨hs, hz⟩, hrhs⟩ | ⟨⟨hs, hz⟩, hrhs⟩
-  · exact Or.inl ⟨suitLe_sound_real hs, formIsZero_sound_real hz, hrhs⟩
-  · exact Or.inr ⟨suitGe_sound_real hs, formIsZero_sound_real hz, hrhs⟩
+  · exact Or.inl ⟨suitableLe_sound_real hs, formIsZero_sound_real hz, hrhs⟩
+  · exact Or.inr ⟨suitableGe_sound_real hs, formIsZero_sound_real hz, hrhs⟩
 
 theorem linCheck_valid_real {stated : SLe} {cs : List (ℚ × SLe)}
     (h : linCheck stated cs = true) : LinValid stated cs := by
@@ -224,24 +224,24 @@ theorem linCheck_valid_real {stated : SLe} {cs : List (ℚ × SLe)}
     refine Or.inr ⟨formEq_sound_real hform, ?_⟩
     split_ifs at hrest with hL hG hE
     · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-      exact Or.inl ⟨hL, suitLe_sound_real hrest.1, hrest.2⟩
+      exact Or.inl ⟨hL, suitableLe_sound_real hrest.1, hrest.2⟩
     · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-      exact Or.inr (Or.inl ⟨hG, suitGe_sound_real hrest.1, hrest.2⟩)
+      exact Or.inr (Or.inl ⟨hG, suitableGe_sound_real hrest.1, hrest.2⟩)
     · simp only [Bool.and_eq_true, decide_eq_true_eq] at hrest
-      exact Or.inr (Or.inr ⟨hE, suitLe_sound_real hrest.1.1,
-        suitGe_sound_real hrest.1.2, hrest.2⟩)
+      exact Or.inr (Or.inr ⟨hE, suitableLe_sound_real hrest.1.1,
+        suitableGe_sound_real hrest.1.2, hrest.2⟩)
 
 theorem rndCheck_valid_real {intVars : List Nat} {stated : SLe}
     {cs : List (ℚ × SLe)} (h : rndCheck intVars stated cs = true) :
     RndValid intVars stated cs := by
-  simp only [rndCheck, alInt_normForm, Bool.and_eq_true] at h
+  simp only [rndCheck, alIsInt_normForm, Bool.and_eq_true] at h
   obtain ⟨⟨hform, hInt⟩, hrest⟩ := h
-  refine ⟨formEq_sound_real hform, formInt_sound_real hInt, ?_⟩
+  refine ⟨formEq_sound_real hform, formIsInt_sound_real hInt, ?_⟩
   split_ifs at hrest with hL hG
   · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    exact Or.inl ⟨hL, suitLe_sound_real hrest.1, hrest.2⟩
+    exact Or.inl ⟨hL, suitableLe_sound_real hrest.1, hrest.2⟩
   · rw [Bool.and_eq_true, decide_eq_true_eq] at hrest
-    exact Or.inr ⟨hG, suitGe_sound_real hrest.1, hrest.2⟩
+    exact Or.inr ⟨hG, suitableGe_sound_real hrest.1, hrest.2⟩
 
 theorem isAbsurd_sound_real {c : SLe} (h : isAbsurd c = true) : Absurd c := by
   simp only [isAbsurd, Bool.and_eq_true] at h
@@ -255,9 +255,9 @@ theorem isAbsurd_sound_real {c : SLe} (h : isAbsurd c = true) : Absurd c := by
   · rw [decide_eq_true_eq] at hcase
     exact Or.inr (Or.inr ⟨hE, hcase⟩)
 
-theorem domSLe_valid_real {c d : SLe} (h : domSLe c d = true) :
+theorem dominates_valid_real {c d : SLe} (h : dominates c d = true) :
     Dominates c d := by
-  simp only [domSLe, Bool.or_eq_true, Bool.and_eq_true] at h
+  simp only [dominates, Bool.or_eq_true, Bool.and_eq_true] at h
   rcases h with habs | ⟨hform, hrest⟩
   · exact Or.inl (isAbsurd_sound_real habs)
   · refine Or.inr ⟨formEq_sound_real hform, ?_⟩
@@ -277,9 +277,9 @@ theorem unsBounds_valid_real {intVars : List Nat} {b1 b2 : SLe}
     decide_eq_true_eq] at h
   rcases h with ⟨⟨⟨⟨⟨h1, h2⟩, hform⟩, hInt⟩, hb⟩, hrhs⟩ |
       ⟨⟨⟨⟨⟨h1, h2⟩, hform⟩, hInt⟩, hb⟩, hrhs⟩
-  · exact Or.inl ⟨h1, h2, formEq_sound_real hform, formInt_sound_real hInt,
+  · exact Or.inl ⟨h1, h2, formEq_sound_real hform, formIsInt_sound_real hInt,
       isIntVal_sound hb, hrhs⟩
-  · exact Or.inr ⟨h1, h2, formEq_sound_real hform, formInt_sound_real hInt,
+  · exact Or.inr ⟨h1, h2, formEq_sound_real hform, formIsInt_sound_real hInt,
       isIntVal_sound hb, hrhs⟩
 
 end LeanVIPR.Semantics.Rule

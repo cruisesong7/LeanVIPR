@@ -34,21 +34,21 @@ abbrev CheckerPool := Array CheckerEntry
 def resolveRefs (pool : CheckerPool) (comb : List (ℚ × Nat)) : List (ℚ × SLe) :=
   comb.map fun p => (p.1, poolRow pool p.2)
 
-def collectReferencedAsms (pool : CheckerPool) : List (ℚ × Nat) → SAsm
+def referencedAsms (pool : CheckerPool) : List (ℚ × Nat) → SAsm
   | [] => ∅
-  | p :: ps => poolAsm pool p.2 ∪ collectReferencedAsms pool ps
+  | p :: ps => poolAsm pool p.2 ∪ referencedAsms pool ps
 
 def entryOf (pool : CheckerPool) (s : SStep) : CheckerEntry :=
   match s.reason with
   | .asm => (s.stated, {s.stated})
-  | .lin comb => (s.stated, collectReferencedAsms pool comb)
-  | .rnd comb => (s.stated, collectReferencedAsms pool comb)
+  | .lin comb => (s.stated, referencedAsms pool comb)
+  | .rnd comb => (s.stated, referencedAsms pool comb)
   | .uns i1 l1 i2 l2 =>
       (s.stated, (poolAsm pool i1).erase (poolRow pool l1) ∪
         (poolAsm pool i2).erase (poolRow pool l2))
   | .sol => (s.stated, ∅)
 
-def refsPast (pool : CheckerPool) : SReason → Bool
+def referencesPast (pool : CheckerPool) : SReason → Bool
   | .asm => true
   | .lin comb => comb.all fun p => decide (p.2 < pool.size)
   | .rnd comb => comb.all fun p => decide (p.2 < pool.size)
@@ -70,13 +70,13 @@ def ruleCheck (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
   | .lin comb => linCheck s.stated (resolveRefs pool comb)
   | .rnd comb => rndCheck v.intVars s.stated (resolveRefs pool comb)
   | .uns i1 l1 i2 l2 =>
-      domSLe (poolRow pool i1) s.stated &&
-      domSLe (poolRow pool i2) s.stated &&
+      dominates (poolRow pool i1) s.stated &&
+      dominates (poolRow pool i2) s.stated &&
       unsBounds v.intVars (poolRow pool l1) (poolRow pool l2)
   | .sol => solReason v s.stated
 
 def stepValid (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
-  refsPast pool s.reason && ruleCheck v pool s
+  referencesPast pool s.reason && ruleCheck v pool s
 
 def initialPool (v : Vipr) : CheckerPool :=
   v.cons.map fun c => (conToSLe v c, (∅ : SAsm))
@@ -100,7 +100,7 @@ def closedAbsurd : Option CheckerEntry → Bool
 
 def closedDominates (target : SLe) : Option CheckerEntry → Bool
   | none => false
-  | some e => decide (e.2 = ∅) && domSLe e.1 target
+  | some e => decide (e.2 = ∅) && dominates e.1 target
 
 def finalValid (v : Vipr) (last? : Option CheckerEntry) : Bool :=
   match v.rtp with
@@ -134,7 +134,7 @@ def buildPool (v : Vipr) (pool : CheckerPool) : List SStep → CheckerPool
   | [] => pool
   | s :: ss => buildPool v (pool.push (entryOf pool s)) ss
 
-/-- `refsPast` against a pool of the given size. -/
+/-- `referencesPast` against a pool of the given size. -/
 def refsBelow (size : Nat) : SReason → Bool
   | .asm => true
   | .lin comb => comb.all fun p => decide (p.2 < size)
@@ -145,9 +145,9 @@ def refsBelow (size : Nat) : SReason → Bool
   | .sol => true
 
 /-- The index-bound half of replay: cheap, and the only half that must run in order. -/
-def boundsOk (size : Nat) : List SStep → Bool
+def allRefsBelow (size : Nat) : List SStep → Bool
   | [] => true
-  | s :: ss => refsBelow size s.reason && boundsOk (size + 1) ss
+  | s :: ss => refsBelow size s.reason && allRefsBelow (size + 1) ss
 
 /-- Split into runs of at most `n`, keeping the order. -/
 def chunk (n : Nat) : List SStep → List (List SStep)
@@ -185,7 +185,7 @@ def checkViprPar (tasks : Nat) (v : Vipr) : Bool :=
   (let steps := viprSteps v
    let start := initialPool v
    let final := buildPool v start steps
-   boundsOk start.size steps &&
+   allRefsBelow start.size steps &&
    parAll (parChunkSize tasks steps.length) (fun s => ruleCheck v final s) steps &&
    finalValid v final.back?)
 

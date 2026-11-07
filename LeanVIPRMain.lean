@@ -345,10 +345,10 @@ def reportInvalidReason (v : Vipr) (pool : CheckerPool)
       let resolved := resolveRefs pool comb
       let combined := scomb resolved
       IO.println s!"reason: lin ({comb.length} references)"
-      IO.println s!"references-past: {refsPast pool step.reason}"
+      IO.println s!"references-past: {referencesPast pool step.reason}"
       IO.println s!"linCheck: {linCheck step.stated resolved}"
       IO.println s!"formEq: {formEq combined.form step.stated.form}"
-      IO.println s!"suitLe: {suitLe resolved}  suitGe: {suitGe resolved}"
+      IO.println s!"suitableLe: {suitableLe resolved}  suitableGe: {suitableGe resolved}"
       IO.println s!"combined rhs: {combined.rhs}  stated rhs: {step.stated.rhs}"
       IO.println s!"combined form: {repr (normForm combined.form)}"
       IO.println s!"stated form: {repr (normForm step.stated.form)}"
@@ -362,13 +362,13 @@ def reportInvalidReason (v : Vipr) (pool : CheckerPool)
       | _ => pure ()
   | .rnd comb =>
       IO.println s!"reason: rnd ({comb.length} references)"
-      IO.println s!"references-past: {refsPast pool step.reason}"
+      IO.println s!"references-past: {referencesPast pool step.reason}"
       IO.println s!"rndCheck: {rndCheck v.intVars step.stated (resolveRefs pool comb)}"
   | .uns i1 l1 i2 l2 =>
       IO.println s!"reason: uns {i1} {l1} {i2} {l2}"
-      IO.println s!"references-past: {refsPast pool step.reason}"
-      IO.println s!"branch 1 dominates: {domSLe (poolRow pool i1) step.stated}"
-      IO.println s!"branch 2 dominates: {domSLe (poolRow pool i2) step.stated}"
+      IO.println s!"references-past: {referencesPast pool step.reason}"
+      IO.println s!"branch 1 dominates: {dominates (poolRow pool i1) step.stated}"
+      IO.println s!"branch 2 dominates: {dominates (poolRow pool i2) step.stated}"
       IO.println s!"complementary bounds: {
         unsBounds v.intVars (poolRow pool l1) (poolRow pool l2)}"
   | .sol => IO.println "reason: sol"

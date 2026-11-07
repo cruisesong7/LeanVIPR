@@ -332,10 +332,10 @@ theorem ClaimValid.optimal_within {v : Vipr} {lb ub : Option ℚ}
 
 /-! ### Refinement of executable solution checks to the declarative proof system -/
 
-theorem satQ_sound_solution {c : SLe} {s : NamedSolution}
-    (h : satQ c (sparseValuation s.2) = true) :
+theorem satRat_sound_solution {c : SLe} {s : NamedSolution}
+    (h : satRat c (sparseValuation s.2) = true) :
     satReal c (solutionValuation s) := by
-  simp only [satQ] at h
+  simp only [satRat] at h
   simp only [satReal]
   split_ifs at h ⊢ with hL hG hE
   · rw [evalReal_solution]
@@ -356,9 +356,9 @@ theorem solutionFeasible_sound {v : Vipr} {s : NamedSolution}
     change (sparseValuation s.2 j : ℝ) = (z : ℝ)
     exact_mod_cast hz
   · intro c hc
-    exact satQ_sound_solution ((List.all_eq_true.mp h.2) c hc)
+    exact satRat_sound_solution ((List.all_eq_true.mp h.2) c hc)
 
-theorem allSolutions_sound {v : Vipr} (h : allSolutions v = true) :
+theorem allSolutionsFeasible_sound {v : Vipr} (h : allSolutionsFeasible v = true) :
     AllSolutionsValid v := by
   intro s hs
   exact solutionFeasible_sound ((List.all_eq_true.mp h) s hs)
@@ -376,7 +376,7 @@ theorem solSection_sound {v : Vipr} (h : solSection v = true) :
   | range lb ub =>
       rw [SolSectionValid, hr]
       simp only [solSection, hr, Bool.and_eq_true] at h
-      refine ⟨allSolutions_sound h.1, ?_⟩
+      refine ⟨allSolutionsFeasible_sound h.1, ?_⟩
       by_cases hmin : v.objSense = "min"
       · simp only [ite_eq_left hmin] at h
         simp only [hmin]
@@ -402,11 +402,11 @@ theorem solReason_sound {v : Vipr} {stated : SLe}
   by_cases hmin : v.objSense = "min"
   · simp only [ite_eq_left hmin] at h ⊢
     obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-    exact ⟨s, hs, Rule.domSLe_valid_real hdom⟩
+    exact ⟨s, hs, Rule.dominates_valid_real hdom⟩
   · by_cases hmax : v.objSense = "max"
     · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
       obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-      exact ⟨s, hs, Rule.domSLe_valid_real hdom⟩
+      exact ⟨s, hs, Rule.dominates_valid_real hdom⟩
     · simp [hmin, hmax] at h
 
 end LeanVIPR.Parser.Vipr

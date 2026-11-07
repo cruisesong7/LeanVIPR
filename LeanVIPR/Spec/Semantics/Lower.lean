@@ -52,12 +52,12 @@ def formCoeff (form : LinForm) (idx : Nat) : ℚ :=
   form.foldl (fun coeff term => if term.idx = idx then coeff + term.coeff else coeff) 0
 
 /-- The normalized row contains no nonzero coefficient except possibly at `idx`. -/
-def onlyVar (form : LinForm) (idx : Nat) : Bool :=
+def isOnlyVar (form : LinForm) (idx : Nat) : Bool :=
   (normForm form).all (fun term => decide (term.1 = idx ∨ term.2 = 0))
 
 /-- Does a one-variable row with sense `sense` and nonzero coefficient `coeff` express a
 lower (`L`) or upper (`U`) bound on its variable? -/
-def boundKind (sense : Char) (coeff : ℚ) (kind : Char) : Bool :=
+def isBoundKind (sense : Char) (coeff : ℚ) (kind : Char) : Bool :=
   if kind = 'L' then
     (sense = 'G' && 0 < coeff) || (sense = 'L' && coeff < 0)
   else if kind = 'U' then
@@ -66,9 +66,9 @@ def boundKind (sense : Char) (coeff : ℚ) (kind : Char) : Bool :=
     false
 
 /-- Does `row` express a lower (`L`) or upper (`U`) bound on variable `idx`? -/
-def boundRow (row : SLe) (kind : Char) (idx : Nat) : Bool :=
+def isBoundRow (row : SLe) (kind : Char) (idx : Nat) : Bool :=
   let coeff := formCoeff row.form idx
-  onlyVar row.form idx && decide (coeff ≠ 0) && boundKind row.sense coeff kind
+  isOnlyVar row.form idx && decide (coeff ≠ 0) && isBoundKind row.sense coeff kind
 
 /-- The variable and coefficient of a row with exactly one nonzero normalized term. -/
 def singleVar? (form : LinForm) : Option (Nat × ℚ) :=
@@ -96,7 +96,7 @@ def globalBoundRef? (v : Vipr) (table : Array (Array (Nat × ℚ))) (derIdx : Na
     (kind : Char) (idx : Nat) : Option Nat :=
   let best := (table.getD idx #[]).foldl (fun best (rowIdx, coeff) =>
     let row := viprRow v rowIdx
-    if rowIdx < v.cons.size + derIdx && boundKind row.sense coeff kind then
+    if rowIdx < v.cons.size + derIdx && isBoundKind row.sense coeff kind then
       let value := row.rhs / coeff
       match best with
       | none => some (rowIdx, value)
@@ -121,7 +121,7 @@ def weakBoundRef? (v : Vipr) (table : Array (Array (Nat × ℚ))) (derIdx : Nat)
       | some bound =>
           let row := viprRow v bound.rowIdx
           let coeff := formCoeff row.form idx
-          if boundRow row kind idx && decide (row.rhs = coeff * bound.value) then
+          if isBoundRow row kind idx && decide (row.rhs = coeff * bound.value) then
             some bound.rowIdx
           else
             none

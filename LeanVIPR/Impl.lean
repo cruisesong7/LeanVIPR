@@ -24,6 +24,6 @@ loop, with `Impl.Checker.Form`, `.Rules` and `.Solution` holding the `Bool`-valu
 decisions it calls.
 
 The `B` suffix on a definition here means it is the `Bool`-valued decision procedure for
-a declarative notion of the same name in `LeanVIPR.Spec` — `absurdB` for `Absurd`,
-`stepValidB` for `StepValid`. Where there is no such pair the suffix is not used.
+a declarative notion of the same name in `LeanVIPR.Spec` — `isAbsurd` for `Absurd`,
+`stepValid` for `StepValid`. Where there is no such pair the suffix is not used.
 -/

@@ -25,25 +25,25 @@ theorem scomb_rhs (comb : List (ℚ × SLe)) :
   simp only [scomb, combine, List.map_map]
   rfl
 
-theorem suitLeB_sound {cs} (h : suitLeB cs = true) : ∀ p ∈ cs, p.1 * senseSign p.2.sense ≤ 0 :=
+theorem suitableLe_sound {cs} (h : suitableLe cs = true) : ∀ p ∈ cs, p.1 * senseSign p.2.sense ≤ 0 :=
   fun p hp => of_decide_eq_true ((List.all_eq_true.mp h) p hp)
 
-theorem suitGeB_sound {cs} (h : suitGeB cs = true) : ∀ p ∈ cs, 0 ≤ p.1 * senseSign p.2.sense :=
+theorem suitableGe_sound {cs} (h : suitableGe cs = true) : ∀ p ∈ cs, 0 ≤ p.1 * senseSign p.2.sense :=
   fun p hp => of_decide_eq_true ((List.all_eq_true.mp h) p hp)
 
 @[simp] theorem alIsZero_normForm (f : LinForm) : alIsZero (normForm f) = formIsZero f := rfl
 
-@[simp] theorem alIntB_normForm (intVars : List Nat) (f : LinForm) :
-    alIntB intVars (normForm f) = formIntB intVars f := rfl
+@[simp] theorem alIsInt_normForm (intVars : List Nat) (f : LinForm) :
+    alIsInt intVars (normForm f) = formIsInt intVars f := rfl
 
-theorem intEntryB_sound {intVars : List Nat} {p : Nat × ℚ}
-    (h : intEntryB intVars p = true) :
+theorem entryIsInt_sound {intVars : List Nat} {p : Nat × ℚ}
+    (h : entryIsInt intVars p = true) :
     p.2 = 0 ∨ (IsIntVal p.2 ∧ p.1 ∈ intVars) := by
-  simp only [intEntryB, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
+  simp only [entryIsInt, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
     decide_eq_true_eq] at h
   rcases h with h | ⟨hq, hidx⟩
   · exact Or.inl h
-  · exact Or.inr ⟨isIntValB_sound hq, hidx⟩
+  · exact Or.inr ⟨isIntVal_sound hq, hidx⟩
 
 theorem mem_collectAsms {pool : SPool} {comb : List (ℚ × Nat)}
     {p : ℚ × Nat} (hp : p ∈ comb) {t : SLe} (ht : t ∈ spoolAsm pool p.2) :

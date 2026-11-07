@@ -25,30 +25,30 @@ def formEq (f g : LinForm) : Bool := formIsZero (f ++ sNegForm g)
 /-! ## Per-reason checks and soundness -/
 
 /-- Decidable suitability for a `≤`-deriving combination. -/
-def suitLeB (cs : List (ℚ × SLe)) : Bool := cs.all (fun p => decide (p.1 * senseSign p.2.sense ≤ 0))
+def suitableLe (cs : List (ℚ × SLe)) : Bool := cs.all (fun p => decide (p.1 * senseSign p.2.sense ≤ 0))
 
 /-- Decidable suitability for a `≥`-deriving combination. -/
-def suitGeB (cs : List (ℚ × SLe)) : Bool := cs.all (fun p => decide (0 ≤ p.1 * senseSign p.2.sense))
+def suitableGe (cs : List (ℚ × SLe)) : Bool := cs.all (fun p => decide (0 ≤ p.1 * senseSign p.2.sense))
 
 /-- One normalized coefficient is integral on an integer variable, or vanishes. -/
-def intEntryB (intVars : List Nat) (p : Nat × ℚ) : Bool :=
-  p.2 == 0 || (isIntValB p.2 && decide (p.1 ∈ intVars))
+def entryIsInt (intVars : List Nat) (p : Nat × ℚ) : Bool :=
+  p.2 == 0 || (isIntVal p.2 && decide (p.1 ∈ intVars))
 
 /-- The form is integer-valued: after summing duplicate indices, every nonzero
 coefficient is an integer on an integer variable. Normalizing first accepts
 combinations whose fractional or continuous-variable terms cancel. -/
-def formIntB (intVars : List Nat) (f : LinForm) : Bool :=
-  (normForm f).all (intEntryB intVars)
+def formIsInt (intVars : List Nat) (f : LinForm) : Bool :=
+  (normForm f).all (entryIsInt intVars)
 
 def alIsZero (al : List (Nat × ℚ)) : Bool := al.all (fun p => p.2 == 0)
 
-def alIntB (intVars : List Nat) (al : List (Nat × ℚ)) : Bool := al.all (intEntryB intVars)
+def alIsInt (intVars : List Nat) (al : List (Nat × ℚ)) : Bool := al.all (entryIsInt intVars)
 
 /-- The combination is itself an absurdity (identically-zero form, rhs contradicting a
 valid sense) — which, per the VIPR spec, dominates *any* stated constraint. -/
 def linAbsurd (cs : List (ℚ × SLe)) (combined : Le) (normalized : List (Nat × ℚ)) : Bool :=
-  (suitLeB cs && alIsZero normalized && decide (combined.rhs < 0)) ||
-  (suitGeB cs && alIsZero normalized && decide (0 < combined.rhs))
+  (suitableLe cs && alIsZero normalized && decide (combined.rhs < 0)) ||
+  (suitableGe cs && alIsZero normalized && decide (0 < combined.rhs))
 
 /-- **`lin` step check.** Accepts either normal rhs-domination or an absurd combination.
 
@@ -61,10 +61,10 @@ only which normalizations are forced. -/
 def linCheck (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
   let combined := scomb cs
   (formEq combined.form stated.form &&
-    (if stated.sense = 'L' then suitLeB cs && decide (combined.rhs ≤ stated.rhs)
-     else if stated.sense = 'G' then suitGeB cs && decide (stated.rhs ≤ combined.rhs)
+    (if stated.sense = 'L' then suitableLe cs && decide (combined.rhs ≤ stated.rhs)
+     else if stated.sense = 'G' then suitableGe cs && decide (stated.rhs ≤ combined.rhs)
      else if stated.sense = 'E' then
-       suitLeB cs && suitGeB cs && decide (combined.rhs = stated.rhs)
+       suitableLe cs && suitableGe cs && decide (combined.rhs = stated.rhs)
      else false)) ||
   linAbsurd cs combined (normForm combined.form)
 
@@ -72,17 +72,17 @@ def linCheck (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
 def rndCheck (intVars : List Nat) (stated : SLe) (cs : List (ℚ × SLe)) : Bool :=
   let combined := scomb cs
   let normalized := normForm combined.form
-  formEq combined.form stated.form && alIntB intVars normalized &&
+  formEq combined.form stated.form && alIsInt intVars normalized &&
   (if stated.sense = 'L' then
-      suitLeB cs && decide (((⌊combined.rhs⌋ : ℤ) : ℚ) ≤ stated.rhs)
+      suitableLe cs && decide (((⌊combined.rhs⌋ : ℤ) : ℚ) ≤ stated.rhs)
    else if stated.sense = 'G' then
-      suitGeB cs && decide (stated.rhs ≤ ((⌈combined.rhs⌉ : ℤ) : ℚ))
+      suitableGe cs && decide (stated.rhs ≤ ((⌈combined.rhs⌉ : ℤ) : ℚ))
    else false)
 
 /-! ## Domination and complementary integer bounds (for `uns` case-splits) -/
 
 /-- An absurdity (identically-zero form, rhs contradicting the sense). -/
-def absurdB (c : SLe) : Bool :=
+def isAbsurd (c : SLe) : Bool :=
   formIsZero c.form &&
   (if c.sense = 'L' then decide (c.rhs < 0)
    else if c.sense = 'G' then decide (0 < c.rhs)
@@ -92,8 +92,8 @@ def absurdB (c : SLe) : Bool :=
 /-- `c` dominates `d`: either `c` is an absurdity (which, per the VIPR spec, dominates
 any constraint), or the forms are equal as functions and the right-hand side is at least
 as strong for `d`'s sense (an `=`-row dominates either inequality direction). -/
-def domSLe (c d : SLe) : Bool :=
-  absurdB c ||
+def dominates (c d : SLe) : Bool :=
+  isAbsurd c ||
   (formEq c.form d.form &&
    (if d.sense = 'L' then ((c.sense == 'L') || (c.sense == 'E')) && decide (c.rhs ≤ d.rhs)
     else if d.sense = 'G' then ((c.sense == 'G') || (c.sense == 'E')) && decide (d.rhs ≤ c.rhs)
@@ -102,11 +102,11 @@ def domSLe (c d : SLe) : Bool :=
 
 /-- `b1`,`b2` are complementary integer bounds `f ≤ β` / `f ≥ β+1` (in either order):
 same form as functions, integer-valued form over `intVars`, integer `β`. -/
-def unsBoundsB (intVars : List Nat) (b1 b2 : SLe) : Bool :=
+def unsBounds (intVars : List Nat) (b1 b2 : SLe) : Bool :=
   ((b1.sense == 'L') && (b2.sense == 'G') && formEq b1.form b2.form
-    && formIntB intVars b1.form && isIntValB b1.rhs && decide (b2.rhs = b1.rhs + 1))
+    && formIsInt intVars b1.form && isIntVal b1.rhs && decide (b2.rhs = b1.rhs + 1))
   ||
   ((b1.sense == 'G') && (b2.sense == 'L') && formEq b1.form b2.form
-    && formIntB intVars b2.form && isIntValB b2.rhs && decide (b1.rhs = b2.rhs + 1))
+    && formIsInt intVars b2.form && isIntVal b2.rhs && decide (b1.rhs = b2.rhs + 1))
 
 end LeanVIPR.Semantics

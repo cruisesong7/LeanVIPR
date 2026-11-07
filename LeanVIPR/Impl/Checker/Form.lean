@@ -18,7 +18,7 @@ open Classical
 
 
 /-- Decidable "is an integer" for `ℚ`. -/
-def isIntValB (q : ℚ) : Bool := q.den == 1
+def isIntVal (q : ℚ) : Bool := q.den == 1
 
 /-- A linear form is identically zero if all its normalized coefficients vanish. -/
 def formIsZero (f : LinForm) : Bool := (normForm f).all (fun p => p.2 == 0)

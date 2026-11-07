@@ -34,21 +34,21 @@ abbrev CheckerPool := Array CheckerEntry
 def resolveRefs (pool : CheckerPool) (comb : List (ℚ × Nat)) : List (ℚ × SLe) :=
   comb.map fun p => (p.1, poolRow pool p.2)
 
-def collectReferencedAsms (pool : CheckerPool) : List (ℚ × Nat) → SAsm
+def referencedAsms (pool : CheckerPool) : List (ℚ × Nat) → SAsm
   | [] => ∅
-  | p :: ps => poolAsm pool p.2 ∪ collectReferencedAsms pool ps
+  | p :: ps => poolAsm pool p.2 ∪ referencedAsms pool ps
 
 def entryOf (pool : CheckerPool) (s : SStep) : CheckerEntry :=
   match s.reason with
   | .asm => (s.stated, {s.stated})
-  | .lin comb => (s.stated, collectReferencedAsms pool comb)
-  | .rnd comb => (s.stated, collectReferencedAsms pool comb)
+  | .lin comb => (s.stated, referencedAsms pool comb)
+  | .rnd comb => (s.stated, referencedAsms pool comb)
   | .uns i1 l1 i2 l2 =>
       (s.stated, (poolAsm pool i1).erase (poolRow pool l1) ∪
         (poolAsm pool i2).erase (poolRow pool l2))
   | .sol => (s.stated, ∅)
 
-def referencesPastB (pool : CheckerPool) : SReason → Bool
+def referencesPast (pool : CheckerPool) : SReason → Bool
   | .asm => true
   | .lin comb => comb.all fun p => decide (p.2 < pool.size)
   | .rnd comb => comb.all fun p => decide (p.2 < pool.size)
@@ -64,19 +64,19 @@ a step all of whose references point into the past, it gives the same answer aga
 finished pool as against the shorter pool the sequential replay would have built by the
 time it reached that step. `LeanVIPR.Thm.Checker` turns that into the equality with the
 parallel checker. -/
-def ruleCheckB (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
+def ruleCheck (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
   match s.reason with
   | .asm => true
   | .lin comb => linCheck s.stated (resolveRefs pool comb)
   | .rnd comb => rndCheck v.intVars s.stated (resolveRefs pool comb)
   | .uns i1 l1 i2 l2 =>
-      domSLe (poolRow pool i1) s.stated &&
-      domSLe (poolRow pool i2) s.stated &&
-      unsBoundsB v.intVars (poolRow pool l1) (poolRow pool l2)
-  | .sol => solReasonB v s.stated
+      dominates (poolRow pool i1) s.stated &&
+      dominates (poolRow pool i2) s.stated &&
+      unsBounds v.intVars (poolRow pool l1) (poolRow pool l2)
+  | .sol => solReason v s.stated
 
-def stepValidB (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
-  referencesPastB pool s.reason && ruleCheckB v pool s
+def stepValid (v : Vipr) (pool : CheckerPool) (s : SStep) : Bool :=
+  referencesPast pool s.reason && ruleCheck v pool s
 
 def initialPool (v : Vipr) : CheckerPool :=
   v.cons.map fun c => (conToSLe v c, (∅ : SAsm))
@@ -84,7 +84,7 @@ def initialPool (v : Vipr) : CheckerPool :=
 def replaySteps? (v : Vipr) (pool : CheckerPool) : List SStep → Option CheckerPool
   | [] => some pool
   | s :: ss =>
-      if stepValidB v pool s then
+      if stepValid v pool s then
         replaySteps? v (pool.push (entryOf pool s)) ss
       else
         none
@@ -94,31 +94,31 @@ optional final pool entry. -/
 def replay? (v : Vipr) : Option (Option CheckerEntry) :=
   (replaySteps? v (initialPool v) (viprSteps v)).map Array.back?
 
-def closedAbsurdB : Option CheckerEntry → Bool
+def closedAbsurd : Option CheckerEntry → Bool
   | none => false
-  | some e => decide (e.2 = ∅) && absurdB e.1
+  | some e => decide (e.2 = ∅) && isAbsurd e.1
 
-def closedDominatesB (target : SLe) : Option CheckerEntry → Bool
+def closedDominates (target : SLe) : Option CheckerEntry → Bool
   | none => false
-  | some e => decide (e.2 = ∅) && domSLe e.1 target
+  | some e => decide (e.2 = ∅) && dominates e.1 target
 
-def finalValidB (v : Vipr) (last? : Option CheckerEntry) : Bool :=
+def finalValid (v : Vipr) (last? : Option CheckerEntry) : Bool :=
   match v.rtp with
-  | .infeas => closedAbsurdB last?
+  | .infeas => closedAbsurd last?
   | .range lb ub =>
       if v.objSense = "min" then
         match lb with
         | none => true
-        | some lower => closedDominatesB (objectiveLowerRow v lower) last?
+        | some lower => closedDominates (objectiveLowerRow v lower) last?
       else if v.objSense = "max" then
         match ub with
         | none => true
-        | some upper => closedDominatesB (objectiveUpperRow v upper) last?
+        | some upper => closedDominates (objectiveUpperRow v upper) last?
       else false
 
 /-! ## Parallel replay
 
-Measured on `alu16_5`, 91% of replay is `ruleCheckB` and 2% is the assumption-set fold,
+Measured on `alu16_5`, 91% of replay is `ruleCheck` and 2% is the assumption-set fold,
 so the arithmetic is where the time is -- and it is independent across steps. Every row in
 the pool comes straight from the certificate (`entryOf` always states `s.stated`), so the
 pool can be built without validating anything, and then each step's rule check run against
@@ -134,8 +134,8 @@ def buildPool (v : Vipr) (pool : CheckerPool) : List SStep → CheckerPool
   | [] => pool
   | s :: ss => buildPool v (pool.push (entryOf pool s)) ss
 
-/-- `referencesPastB` against a pool of the given size. -/
-def refsBelowB (size : Nat) : SReason → Bool
+/-- `referencesPast` against a pool of the given size. -/
+def refsBelow (size : Nat) : SReason → Bool
   | .asm => true
   | .lin comb => comb.all fun p => decide (p.2 < size)
   | .rnd comb => comb.all fun p => decide (p.2 < size)
@@ -145,9 +145,9 @@ def refsBelowB (size : Nat) : SReason → Bool
   | .sol => true
 
 /-- The index-bound half of replay: cheap, and the only half that must run in order. -/
-def boundsOkB (size : Nat) : List SStep → Bool
+def allRefsBelow (size : Nat) : List SStep → Bool
   | [] => true
-  | s :: ss => refsBelowB size s.reason && boundsOkB (size + 1) ss
+  | s :: ss => refsBelow size s.reason && allRefsBelow (size + 1) ss
 
 /-- Split into runs of at most `n`, keeping the order. -/
 def chunk (n : Nat) : List SStep → List (List SStep)
@@ -181,20 +181,20 @@ def parChunkSize (tasks steps : Nat) : Nat := max 1 (steps / max tasks 1)
 /-- Parallel production checker. Equal to `checkVipr` by
 `LeanVIPR.Thm.Checker.checkViprPar_eq`. -/
 def checkViprPar (tasks : Nat) (v : Vipr) : Bool :=
-  solSectionB v &&
+  solSection v &&
   (let steps := viprSteps v
    let start := initialPool v
    let final := buildPool v start steps
-   boundsOkB start.size steps &&
-   parAll (parChunkSize tasks steps.length) (fun s => ruleCheckB v final s) steps &&
-   finalValidB v final.back?)
+   allRefsBelow start.size steps &&
+   parAll (parChunkSize tasks steps.length) (fun s => ruleCheck v final s) steps &&
+   finalValid v final.back?)
 
 /-- Production checker for both infeasibility and objective-range VIPR claims. -/
 def checkVipr (v : Vipr) : Bool :=
-  solSectionB v &&
+  solSection v &&
   match replay? v with
   | none => false
-  | some last? => finalValidB v last?
+  | some last? => finalValid v last?
 
 /-- Checker for a backward-sliced infeasibility certificate: accept `sliced` as a
 refutation of `original`. The slicer itself is untrusted, so this re-establishes every

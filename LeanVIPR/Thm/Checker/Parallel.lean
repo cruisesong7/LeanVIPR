@@ -22,7 +22,7 @@ Three facts carry the proof.
 * Rows never change: `buildPool` only pushes, so an entry at an index already in the pool
   reads the same afterwards (`poolEntry_buildPool`).
 * Hence a step whose references all point into the past cannot tell the two pools apart
-  (`ruleCheckB_congr`), which is where `boundsOkB` earns its keep: it is what establishes
+  (`ruleCheck_congr`), which is where `allRefsBelow` earns its keep: it is what establishes
   that hypothesis, and it is the one half that must still run in order.
 -/
 
@@ -83,11 +83,11 @@ theorem poolRow_buildPool {v : Vipr} {pool : CheckerPool} {ss : List SStep} {j :
 
 /-! ## A step cannot tell the two pools apart
 
-`referencesPastB` reads nothing of the pool but its size, so it is `refsBelowB` on that
-size; and `ruleCheckB` reads nothing but rows. -/
+`referencesPast` reads nothing of the pool but its size, so it is `refsBelow` on that
+size; and `ruleCheck` reads nothing but rows. -/
 
-theorem referencesPastB_eq_refsBelowB (pool : CheckerPool) (r : SReason) :
-    referencesPastB pool r = refsBelowB pool.size r := by
+theorem referencesPast_eq_refsBelow (pool : CheckerPool) (r : SReason) :
+    referencesPast pool r = refsBelow pool.size r := by
   cases r <;> rfl
 
 private theorem resolveRefs_congr {p q : CheckerPool} {comb : List (ℚ × Nat)}
@@ -104,35 +104,35 @@ private theorem resolveRefs_congr {p q : CheckerPool} {comb : List (ℚ × Nat)}
 
 /-- A step whose references all point below `p.size` gets the same answer from any pool
 that agrees with `p` on those rows. -/
-theorem ruleCheckB_congr {v : Vipr} {p q : CheckerPool} {s : SStep}
+theorem ruleCheck_congr {v : Vipr} {p q : CheckerPool} {s : SStep}
     (hrow : ∀ j, j < p.size → poolRow p j = poolRow q j)
-    (hrefs : refsBelowB p.size s.reason = true) :
-    ruleCheckB v p s = ruleCheckB v q s := by
+    (hrefs : refsBelow p.size s.reason = true) :
+    ruleCheck v p s = ruleCheck v q s := by
   cases hr : s.reason with
-  | asm => simp only [ruleCheckB, hr]
+  | asm => simp only [ruleCheck, hr]
   | lin comb =>
       rw [hr] at hrefs
-      simp only [ruleCheckB, hr]
-      rw [resolveRefs_congr hrow (by simpa [refsBelowB] using hrefs)]
+      simp only [ruleCheck, hr]
+      rw [resolveRefs_congr hrow (by simpa [refsBelow] using hrefs)]
   | rnd comb =>
       rw [hr] at hrefs
-      simp only [ruleCheckB, hr]
-      rw [resolveRefs_congr hrow (by simpa [refsBelowB] using hrefs)]
+      simp only [ruleCheck, hr]
+      rw [resolveRefs_congr hrow (by simpa [refsBelow] using hrefs)]
   | uns i1 l1 i2 l2 =>
       rw [hr] at hrefs
-      simp only [refsBelowB, Bool.and_eq_true, decide_eq_true_eq] at hrefs
+      simp only [refsBelow, Bool.and_eq_true, decide_eq_true_eq] at hrefs
       obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := hrefs
-      simp only [ruleCheckB, hr]
+      simp only [ruleCheck, hr]
       rw [hrow i1 h1, hrow i2 h3, hrow l1 h2, hrow l2 h4]
-  | sol => simp only [ruleCheckB, hr]
+  | sol => simp only [ruleCheck, hr]
 
 /-! ## Replay in order equals bounds in order plus rule checks anywhere -/
 
 theorem replaySteps?_eq : ∀ (v : Vipr) (pool : CheckerPool) (ss : List SStep),
     replaySteps? v pool ss
-      = if boundsOkB pool.size ss && ss.all (fun s => ruleCheckB v (buildPool v pool ss) s)
+      = if allRefsBelow pool.size ss && ss.all (fun s => ruleCheck v (buildPool v pool ss) s)
         then some (buildPool v pool ss) else none
-  | _, _, [] => by rw [replaySteps?, buildPool, boundsOkB]; simp
+  | _, _, [] => by rw [replaySteps?, buildPool, allRefsBelow]; simp
   | v, pool, s :: ss => by
       have hrow : ∀ j, j < pool.size →
           poolRow pool j = poolRow (buildPool v (pool.push (entryOf pool s)) ss) j := by
@@ -140,15 +140,15 @@ theorem replaySteps?_eq : ∀ (v : Vipr) (pool : CheckerPool) (ss : List SStep),
         simp only [poolRow]
         rw [poolEntry_buildPool v _ ss j (by rw [Array.size_push]; omega),
           poolEntry_push hj]
-      rw [replaySteps?, replaySteps?_eq v (pool.push (entryOf pool s)) ss, stepValidB,
-        referencesPastB_eq_refsBelowB, buildPool, boundsOkB, Array.size_push,
+      rw [replaySteps?, replaySteps?_eq v (pool.push (entryOf pool s)) ss, stepValid,
+        referencesPast_eq_refsBelow, buildPool, allRefsBelow, Array.size_push,
         List.all_cons]
-      by_cases hb : refsBelowB pool.size s.reason = true
-      · have hcongr : ruleCheckB v pool s
-            = ruleCheckB v (buildPool v (pool.push (entryOf pool s)) ss) s :=
-          ruleCheckB_congr hrow hb
+      by_cases hb : refsBelow pool.size s.reason = true
+      · have hcongr : ruleCheck v pool s
+            = ruleCheck v (buildPool v (pool.push (entryOf pool s)) ss) s :=
+          ruleCheck_congr hrow hb
         rw [hb, hcongr]
-        by_cases hr : ruleCheckB v (buildPool v (pool.push (entryOf pool s)) ss) s = true
+        by_cases hr : ruleCheck v (buildPool v (pool.push (entryOf pool s)) ss) s = true
         · rw [hr]; simp
         · rw [Bool.eq_false_iff.mpr hr]; simp
       · rw [Bool.eq_false_iff.mpr hb]; simp
@@ -159,11 +159,11 @@ theorem replaySteps?_eq : ∀ (v : Vipr) (pool : CheckerPool) (ss : List SStep),
 of tasks. Nothing about the verdict depends on how the work is divided. -/
 theorem checkViprPar_eq (tasks : Nat) (v : Vipr) : checkViprPar tasks v = checkVipr v := by
   simp only [checkViprPar, checkVipr, replay?, replaySteps?_eq, parAll_eq]
-  by_cases hsol : v.solSectionB = true
+  by_cases hsol : v.solSection = true
   · rw [hsol]
-    by_cases hb : boundsOkB (initialPool v).size (Lower.viprSteps v) = true
+    by_cases hb : allRefsBelow (initialPool v).size (Lower.viprSteps v) = true
     · by_cases hr : (Lower.viprSteps v).all
-          (fun s => ruleCheckB v (buildPool v (initialPool v) (Lower.viprSteps v)) s) = true
+          (fun s => ruleCheck v (buildPool v (initialPool v) (Lower.viprSteps v)) s) = true
       · rw [hb, hr]; simp
       · rw [hb, Bool.eq_false_iff.mpr hr]; simp
     · rw [Bool.eq_false_iff.mpr hb]; simp

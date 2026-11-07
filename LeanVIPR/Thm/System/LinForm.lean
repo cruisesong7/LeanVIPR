@@ -93,8 +93,8 @@ theorem sat_leUpper (a : Valuation) (i : Nat) (k : ℚ) :
   simp only [List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, add_zero]
   constructor <;> intro h <;> linarith
 
-theorem isIntValB_sound {q : ℚ} (h : isIntValB q = true) : IsIntVal q := by
-  have hden : q.den = 1 := by simp only [isIntValB, beq_iff_eq] at h; exact h
+theorem isIntVal_sound {q : ℚ} (h : isIntVal q = true) : IsIntVal q := by
+  have hden : q.den = 1 := by simp only [isIntVal, beq_iff_eq] at h; exact h
   have key : ((q.num : ℤ) : ℚ) = q := by
     have hnd := Rat.num_div_den q
     rw [hden] at hnd

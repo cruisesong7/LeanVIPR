@@ -234,10 +234,10 @@ theorem senseSign_cast (sense : Char) :
     · simp [senseSignReal, senseSign, hG]
     · simp [senseSignReal, senseSign, hL, hG]
 
-theorem suitLeB_complete {comb : List (ℚ × SLe)}
+theorem suitLe_complete {comb : List (ℚ × SLe)}
     (h : SuitableLe comb) :
-    suitLeB comb = true := by
-  unfold suitLeB
+    suitLe comb = true := by
+  unfold suitLe
   apply List.all_eq_true.mpr
   intro p hp
   rw [decide_eq_true_eq]
@@ -245,10 +245,10 @@ theorem suitLeB_complete {comb : List (ℚ × SLe)}
   rw [senseSign_cast] at hpReal
   exact_mod_cast hpReal
 
-theorem suitGeB_complete {comb : List (ℚ × SLe)}
+theorem suitGe_complete {comb : List (ℚ × SLe)}
     (h : SuitableGe comb) :
-    suitGeB comb = true := by
-  unfold suitGeB
+    suitGe comb = true := by
+  unfold suitGe
   apply List.all_eq_true.mpr
   intro p hp
   rw [decide_eq_true_eq]
@@ -256,10 +256,10 @@ theorem suitGeB_complete {comb : List (ℚ × SLe)}
   rw [senseSign_cast] at hpReal
   exact_mod_cast hpReal
 
-theorem isIntValB_complete {q : ℚ} (h : IsIntVal q) :
-    isIntValB q = true := by
+theorem isIntVal_complete {q : ℚ} (h : IsIntVal q) :
+    isIntVal q = true := by
   obtain ⟨z, rfl⟩ := h
-  simp [isIntValB]
+  simp [isIntVal]
 
 theorem eval_scale_valuation (f : LinForm) (s : ℚ) (a : Valuation) :
     LinForm.eval f (fun j => s * a j) = s * LinForm.eval f a := by
@@ -280,10 +280,10 @@ theorem not_isIntReal_half : ¬ IsIntReal ((1 / 2 : ℚ) : ℝ) := by
 
 /-- A semantically integer-valued form passes the normalized executable test:
 each normalized coefficient is isolated by a scaled basis valuation. -/
-theorem formIntB_complete_real {intVars : List Nat} {form : LinForm}
+theorem formInt_complete_real {intVars : List Nat} {form : LinForm}
     (h : FormIntegralReal intVars form) :
-    formIntB intVars form = true := by
-  unfold formIntB
+    formInt intVars form = true := by
+  unfold formInt
   apply List.all_eq_true.mpr
   intro p hp
   have hbasis : form.eval (basisValuation p.1) = p.2 := by
@@ -297,11 +297,11 @@ theorem formIntB_complete_real {intVars : List Nat} {form : LinForm}
       obtain ⟨z, hz⟩ := hs j hj
       exact ⟨z, by simp [ratToReal, hz]⟩)
     rwa [evalReal_ratToReal, eval_scale_valuation, hbasis] at hr
-  simp only [intEntryB, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
+  simp only [intEntry, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq,
     decide_eq_true_eq]
   by_cases hidx : p.1 ∈ intVars
   · right
-    refine ⟨isIntValB_complete ?_, hidx⟩
+    refine ⟨isIntVal_complete ?_, hidx⟩
     obtain ⟨z, hz⟩ := hvalue 1 (by
       intro j _
       by_cases hj : j = p.1
@@ -323,9 +323,9 @@ theorem linAbsurd_complete {comb : List (ℚ × SLe)}
     (h : LinAbsurd comb) :
     linAbsurd comb (scomb comb) (normForm (scomb comb).form) = true := by
   rcases h with ⟨hsuit, hzero, hnegative⟩ | ⟨hsuit, hzero, hpositive⟩
-  · simp [linAbsurd, suitLeB_complete hsuit,
+  · simp [linAbsurd, suitLe_complete hsuit,
       formIsZero_complete_real hzero, hnegative]
-  · simp [linAbsurd, suitGeB_complete hsuit,
+  · simp [linAbsurd, suitGe_complete hsuit,
       formIsZero_complete_real hzero, hpositive]
 
 theorem linCheck_complete {stated : SLe} {comb : List (ℚ × SLe)}
@@ -338,26 +338,26 @@ theorem linCheck_complete {stated : SLe} {comb : List (ℚ × SLe)}
     rw [Bool.and_eq_true]
     refine ⟨formEq_complete_real hform, ?_⟩
     rcases hdir with ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩ | ⟨hE, hle, hge, hrhs⟩
-    · simp [hL, suitLeB_complete hsuit, hrhs]
-    · simp [hG, suitGeB_complete hsuit, hrhs]
-    · simp [hE, suitLeB_complete hle, suitGeB_complete hge, hrhs]
+    · simp [hL, suitLe_complete hsuit, hrhs]
+    · simp [hG, suitGe_complete hsuit, hrhs]
+    · simp [hE, suitLe_complete hle, suitGe_complete hge, hrhs]
 
 theorem rndCheck_complete {intVars : List Nat} {stated : SLe}
     {comb : List (ℚ × SLe)}
     (h : RndValid intVars stated comb) :
     rndCheck intVars stated comb = true := by
   obtain ⟨hform, hint, hdir⟩ := h
-  simp only [rndCheck, alIntB_normForm, Bool.and_eq_true]
+  simp only [rndCheck, alInt_normForm, Bool.and_eq_true]
   constructor
-  · exact ⟨formEq_complete_real hform, formIntB_complete_real hint⟩
+  · exact ⟨formEq_complete_real hform, formInt_complete_real hint⟩
   rcases hdir with ⟨hL, hsuit, hrhs⟩ | ⟨hG, hsuit, hrhs⟩
-  · simp [hL, suitLeB_complete hsuit, hrhs]
-  · simp [hG, suitGeB_complete hsuit, hrhs]
+  · simp [hL, suitLe_complete hsuit, hrhs]
+  · simp [hG, suitGe_complete hsuit, hrhs]
 
-theorem absurdB_complete {row : SLe} (h : Absurd row) :
-    absurdB row = true := by
+theorem isAbsurd_complete {row : SLe} (h : Absurd row) :
+    isAbsurd row = true := by
   obtain ⟨hzero, hdir⟩ := h
-  rw [absurdB, Bool.and_eq_true]
+  rw [isAbsurd, Bool.and_eq_true]
   refine ⟨formIsZero_complete_real hzero, ?_⟩
   rcases hdir with ⟨hL, hnegative⟩ | ⟨hG, hpositive⟩ | ⟨hE, hne⟩
   · simp [hL, hnegative]
@@ -368,7 +368,7 @@ theorem domSLe_complete {source target : SLe}
     (h : Dominates source target) :
     domSLe source target = true := by
   rcases h with habsurd | ⟨hform, hdir⟩
-  · simp [domSLe, absurdB_complete habsurd]
+  · simp [domSLe, isAbsurd_complete habsurd]
   · rw [domSLe, Bool.or_eq_true]
     right
     rw [Bool.and_eq_true]
@@ -383,15 +383,15 @@ theorem domSLe_complete {source target : SLe}
         simp [hG, hsource, hrhs]
     · simp [hE, hsource, hrhs]
 
-theorem unsBoundsB_complete {intVars : List Nat} {left right : SLe}
+theorem unsBounds_complete {intVars : List Nat} {left right : SLe}
     (h : ComplementaryBounds intVars left right) :
-    unsBoundsB intVars left right = true := by
+    unsBounds intVars left right = true := by
   rcases h with
     ⟨hL, hG, hform, hformInt, hint, hrhs⟩ |
     ⟨hG, hL, hform, hformInt, hint, hrhs⟩
-  · simp [unsBoundsB, hL, hG, formEq_complete_real hform,
-      formIntB_complete_real hformInt, isIntValB_complete hint, hrhs]
-  · simp [unsBoundsB, hL, hG, formEq_complete_real hform,
-      formIntB_complete_real hformInt, isIntValB_complete hint, hrhs]
+  · simp [unsBounds, hL, hG, formEq_complete_real hform,
+      formInt_complete_real hformInt, isIntVal_complete hint, hrhs]
+  · simp [unsBounds, hL, hG, formEq_complete_real hform,
+      formInt_complete_real hformInt, isIntVal_complete hint, hrhs]
 
 end LeanVIPR.Semantics.RuleComplete

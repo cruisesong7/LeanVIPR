@@ -23,24 +23,24 @@ open LeanVIPR.Semantics.Lower
 /-! ## Executable predicates used by the checker -/
 
 /-- Exact rational satisfaction test used for `SOL` vectors. -/
-def satQB (c : SLe) (a : Valuation) : Bool :=
+def satQ (c : SLe) (a : Valuation) : Bool :=
   if c.sense = 'L' then decide (c.form.eval a ≤ c.rhs)
   else if c.sense = 'G' then decide (c.rhs ≤ c.form.eval a)
   else if c.sense = 'E' then decide (c.form.eval a = c.rhs)
   else false
 
-def solutionFeasibleB (v : Vipr) (s : NamedSolution) : Bool :=
-  v.intVars.all (fun j => isIntValB (sparseValuation s.2 j)) &&
-  (conSLes v).all (fun c => satQB c (sparseValuation s.2))
+def solutionFeasible (v : Vipr) (s : NamedSolution) : Bool :=
+  v.intVars.all (fun j => isIntVal (sparseValuation s.2 j)) &&
+  (conSLes v).all (fun c => satQ c (sparseValuation s.2))
 
-def allSolutionsB (v : Vipr) : Bool :=
-  v.sols.toList.all (solutionFeasibleB v)
+def allSolutions (v : Vipr) : Bool :=
+  v.sols.toList.all (solutionFeasible v)
 
-def solSectionB (v : Vipr) : Bool :=
+def solSection (v : Vipr) : Bool :=
   match v.rtp with
   | .infeas => v.sols.toList.isEmpty
   | .range lb ub =>
-      allSolutionsB v &&
+      allSolutions v &&
       if v.objSense = "min" then
         match ub with
         | none => true
@@ -53,7 +53,7 @@ def solSectionB (v : Vipr) : Bool :=
             v.sols.toList.any (fun s => decide (lower ≤ objectiveQ v s))
       else false
 
-def solReasonB (v : Vipr) (stated : SLe) : Bool :=
+def solReason (v : Vipr) (stated : SLe) : Bool :=
   if v.objSense = "min" then
     v.sols.toList.any (fun s =>
       domSLe ⟨'L', objectiveForm v, objectiveQ v s⟩ stated)

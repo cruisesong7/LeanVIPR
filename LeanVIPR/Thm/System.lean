@@ -27,8 +27,8 @@ sound.
 |---|---|---|
 | `proofSystem_sound` | a valid derivation refutes the problem over ℝ, with the integer variables integral | below |
 | `replay_sound` | every row a replay puts in the pool holds at any such valuation | `Thm.System.Sound` |
-| `linCheck_valid_real`, `rndCheck_valid_real`, `absurdB_sound_real`, `domSLe_valid_real`, `unsBoundsB_valid_real` | each executable rule check implies its declarative rule | `Thm.System.RuleSound` |
-| `linCheck_complete`, `rndCheck_complete`, `absurdB_complete`, `domSLe_complete`, `unsBoundsB_complete` | and is implied by it, so the checks lose no derivations | `Thm.System.RuleComplete` |
+| `linCheck_valid_real`, `rndCheck_valid_real`, `isAbsurd_sound_real`, `domSLe_valid_real`, `unsBounds_valid_real` | each executable rule check implies its declarative rule | `Thm.System.RuleSound` |
+| `linCheck_complete`, `rndCheck_complete`, `isAbsurd_complete`, `domSLe_complete`, `unsBounds_complete` | and is implied by it, so the checks lose no derivations | `Thm.System.RuleComplete` |
 | `farkasWitness_to_vipr`, `lpFragment_complete_of_farkas`, `lpFragment_sound_iff_hasProof` | the LP fragment is complete given rational Farkas | `Thm.System.Completeness` |
 
 Only the headline is here; the rest stays where it is proved because a later layer

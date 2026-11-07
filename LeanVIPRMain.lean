@@ -345,10 +345,10 @@ def reportInvalidReason (v : Vipr) (pool : CheckerPool)
       let resolved := resolveRefs pool comb
       let combined := scomb resolved
       IO.println s!"reason: lin ({comb.length} references)"
-      IO.println s!"references-past: {referencesPastB pool step.reason}"
+      IO.println s!"references-past: {refsPast pool step.reason}"
       IO.println s!"linCheck: {linCheck step.stated resolved}"
       IO.println s!"formEq: {formEq combined.form step.stated.form}"
-      IO.println s!"suitLe: {suitLeB resolved}  suitGe: {suitGeB resolved}"
+      IO.println s!"suitLe: {suitLe resolved}  suitGe: {suitGe resolved}"
       IO.println s!"combined rhs: {combined.rhs}  stated rhs: {step.stated.rhs}"
       IO.println s!"combined form: {repr (normForm combined.form)}"
       IO.println s!"stated form: {repr (normForm step.stated.form)}"
@@ -362,15 +362,15 @@ def reportInvalidReason (v : Vipr) (pool : CheckerPool)
       | _ => pure ()
   | .rnd comb =>
       IO.println s!"reason: rnd ({comb.length} references)"
-      IO.println s!"references-past: {referencesPastB pool step.reason}"
+      IO.println s!"references-past: {refsPast pool step.reason}"
       IO.println s!"rndCheck: {rndCheck v.intVars step.stated (resolveRefs pool comb)}"
   | .uns i1 l1 i2 l2 =>
       IO.println s!"reason: uns {i1} {l1} {i2} {l2}"
-      IO.println s!"references-past: {referencesPastB pool step.reason}"
+      IO.println s!"references-past: {refsPast pool step.reason}"
       IO.println s!"branch 1 dominates: {domSLe (poolRow pool i1) step.stated}"
       IO.println s!"branch 2 dominates: {domSLe (poolRow pool i2) step.stated}"
       IO.println s!"complementary bounds: {
-        unsBoundsB v.intVars (poolRow pool l1) (poolRow pool l2)}"
+        unsBounds v.intVars (poolRow pool l1) (poolRow pool l2)}"
   | .sol => IO.println "reason: sol"
 
 /-- Diagnostic command: report the first rejected derivation without changing acceptance. -/
@@ -385,7 +385,7 @@ def debugFirstInvalid (path : String) : IO UInt32 := do
       let mut pool := initialPool v
       let mut idx := 0
       for step in steps do
-        let valid := stepValidB v pool step
+        let valid := stepValid v pool step
         if !valid then
           IO.eprintln s!"first invalid derivation: step {idx}, VIPR row {v.cons.size + idx}"
           let original := v.ders.getD idx default
@@ -395,7 +395,7 @@ def debugFirstInvalid (path : String) : IO UInt32 := do
         pool := pool.push (entryOf pool step)
         idx := idx + 1
       IO.println "all derivation steps pass"
-      IO.println s!"final result: {solSectionB v && finalValidB v pool.back?}"
+      IO.println s!"final result: {solSection v && finalValid v pool.back?}"
       return 0
 
 /-- The axioms reported for the generated theorem must be among Lean's standard

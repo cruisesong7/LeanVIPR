@@ -53,8 +53,8 @@ lake exe viprcheck --kernel-mode reconstruct examples/uns_knapsack.vipr \
 
 That writes a Lean module under `/tmp/vipr-knapsack/LeanVIPRGenerated/`, has the
 kernel reduce the checker over it, and prints the theorem together with the
-axioms it rests on. It takes far longer; see
-[Modes and parameters](#modes-and-parameters).
+axioms it rests on, and takes considerably longer than the default. Every mode is
+listed under [Modes and parameters](#modes-and-parameters).
 
 Any other VIPR v1.0 `RTP infeas` file is the same command with a different path.
 
@@ -93,13 +93,26 @@ original's — are re-established at run time, so the untrusted slicer buys no t
 and costs none. It is simply less work: on `alu4_1`, 2.33s complete against 0.54s
 sliced.
 
-`--native-mode full` therefore proves nothing extra. It is kept for measuring
-against the slice and for debugging, not because it is safer.
-
 Slicing applies to `RTP infeas` only; range certificates are replayed completely
 either way. If the slicer emits a slice the checker rejects, both the native and
 kernel paths fall back to complete replay and say so, so slicing cannot cost an
 acceptance.
+
+### Complete replay, as an option
+
+```bash
+lake exe viprcheck --native-mode full CERT.vipr
+```
+
+This replays every step instead of slicing first. **It does not add any trust.**
+Both modes run the same proved checker and both conclude about the same original
+certificate — `checkViprSlice_sound` is what carries acceptance of a slice back,
+and its side conditions are re-tested on every run. Complete replay is simply more
+work for the identical claim.
+
+It is worth having for two things: comparing against `viprchk`, which has no
+slicing and always replays completely, and debugging, where seeing every step
+checked is easier to reason about. Neither is a safety argument.
 
 ### Parallelism
 
@@ -124,15 +137,6 @@ its reference counts have to be updated atomically.
 Two diagnostics, neither of which claims anything: `--debug-first-invalid`
 reports the first step the checker rejects, and `--dump-materialized` prints the
 certificate after `lin weak` completion.
-
-### Kernel mode is slow on purpose
-
-Kernel mode asks Lean's kernel to reduce the checker by term rewriting, with no
-compiled code involved. That costs minutes per certificate, and only small ones
-finish. On `alu4_2` the budget is roughly 16s elaborating the certificate as a
-Lean literal, 13s reducing `checkVipr`, and 7s importing Mathlib. It is a
-proof-of-concept for the trusted path, not the way to check a certificate from a
-solver run — use the default for that.
 
 ## Optional: regenerate the certificate
 

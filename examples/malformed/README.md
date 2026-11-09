@@ -11,6 +11,7 @@ condition without a fixture is a claim with nothing to run.
 
 | File | Condition violated | Expected |
 |---|---|---|
+| `bound_count_exceeds.vipr` | `BoundCountOk` — the `CON` header claims `b = 2` bound constraints among `m = 1` constraints | parse error, exit `1` |
 | `forward_reason_ref.vipr` | `ReasonRefsOk` — `d1` cites constraint 2, but only `CON` row 0 exists where it is cited | parse error, exit `1` |
 
 Run one:

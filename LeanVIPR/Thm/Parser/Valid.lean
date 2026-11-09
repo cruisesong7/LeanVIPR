@@ -234,6 +234,15 @@ theorem checkSolution_eq_ok_iff {nvar : Nat} {what : String} {vals : List (Nat �
     exact ⟨hr, firstKeyConflict_eq_none_of_functional
       (fun p hp q hq => hfun p (hperm.mem_iff.mp hp) q (hperm.mem_iff.mp hq))⟩
 
+/-! ## The bound count -/
+
+theorem checkBoundCount_eq_ok_iff {v : Vipr} :
+    checkBoundCount v = .ok () ↔ BoundCountOk v := by
+  unfold checkBoundCount BoundCountOk
+  split
+  case isTrue h => simp [h]
+  case isFalse h => simp [h]
+
 /-! ## Reason references point into the past -/
 
 theorem forwardRefs_eq_nil_iff (v : Vipr) :
@@ -352,6 +361,7 @@ private theorem validateVipr_split {v : Vipr} :
         (∀ d ∈ v.ders.toList,
           checkFormIndices v.varNames.size s!"DER {d.name}" d.form = .ok () ∧
             checkDistinct s!"DER {d.name} reason" (reasonMultipliers d.reason) = .ok ()) ∧
+        checkBoundCount v = .ok () ∧
         checkReasonRefs v = .ok () ∧
         checkFinalUse v = .ok ()) := by
   unfold validateVipr
@@ -364,7 +374,8 @@ private theorem validateVipr_split {v : Vipr} :
 theorem validateVipr_eq_ok_iff {v : Vipr} : validateVipr v = .ok () ↔ IsValid v := by
   rw [validateVipr_split, find?_ge_eq_none_iff, checkIndices_eq_ok_iff]
   simp only [checkFormIndices_eq_ok_iff, checkSolution_eq_ok_iff,
-    checkDistinct_eq_ok_iff, checkReasonRefs_eq_ok_iff, checkFinalUse_eq_ok_iff]
+    checkDistinct_eq_ok_iff, checkBoundCount_eq_ok_iff, checkReasonRefs_eq_ok_iff,
+    checkFinalUse_eq_ok_iff]
   exact Iff.rfl
 
 end LeanVIPR.Parser

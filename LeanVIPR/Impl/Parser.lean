@@ -427,6 +427,11 @@ def finalUseViolations (v : Vipr) (pos : Nat) : List ViprDer → List (ViprDer �
         if usedAfterFinal v (v.cons.size + pos) k then some (d, k) else none)
       ++ finalUseViolations v (pos + 1) ds
 
+/-- `b` counts a subset of the `m` constraints, so it cannot exceed it. -/
+def checkBoundCount (v : Vipr) : Except String Unit :=
+  if v.numBounds ≤ v.numCon then Except.ok ()
+  else Except.error s!"CON: b = {v.numBounds} exceeds m = {v.numCon}"
+
 /-- The derivations in `ds`, whose first element has index `pos`, that cite a constraint
 which does not exist yet -- paired with the offending reference. -/
 def forwardRefs (v : Vipr) (pos : Nat) : List ViprDer → List (ViprDer × Nat)
@@ -474,6 +479,7 @@ def validateVipr (v : Vipr) : Except String Unit :=
       checkAll (fun d => do
         checkFormIndices v.varNames.size s!"DER {d.name}" d.form
         checkDistinct s!"DER {d.name} reason" (reasonMultipliers d.reason)) v.ders.toList
+      checkBoundCount v
       checkReasonRefs v
       checkFinalUse v
 

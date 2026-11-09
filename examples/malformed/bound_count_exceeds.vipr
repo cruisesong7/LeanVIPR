@@ -1,0 +1,10 @@
+VER 1.0
+VAR 1 x
+INT 1 0
+OBJ min 1 0 1
+CON 1 2
+c1 G 5 1 0 1
+RTP range 5 5
+SOL 1
+s1 1 0 5
+DER 0

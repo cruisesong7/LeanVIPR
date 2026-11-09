@@ -318,13 +318,13 @@ def IsDerCore (ts : Toks) (d : ViprDer) : Prop :=
 inductive IsDers : Toks → List ViprDer → Prop
   | nil : IsDers [] []
   | globalFlag {core rest : Toks} {d : ViprDer} {ds : List ViprDer}
-      (h : IsDerCore core d) (hg : d.isGlobal = true) (hs : IsDers rest ds) :
+      (h : IsDerCore core d) (hg : d.scope = .global) (hs : IsDers rest ds) :
       IsDers (core ++ "global" :: rest) (d :: ds)
   | localFlag {core rest : Toks} {d : ViprDer} {ds : List ViprDer}
-      (h : IsDerCore core d) (hg : d.isGlobal = false) (hs : IsDers rest ds) :
+      (h : IsDerCore core d) (hg : d.scope = .local) (hs : IsDers rest ds) :
       IsDers (core ++ "local" :: rest) (d :: ds)
   | bare {core rest : Toks} {d : ViprDer} {ds : List ViprDer}
-      (h : IsDerCore core d) (hg : d.isGlobal = false)
+      (h : IsDerCore core d) (hg : d.scope = .absent)
       (hne : rest.head? ≠ some "global" ∧ rest.head? ≠ some "local")
       (hs : IsDers rest ds) : IsDers (core ++ rest) (d :: ds)
 
@@ -427,6 +427,18 @@ one point. -/
 def SolutionOk (nvar : Nat) (vals : List (Nat × ℚ)) : Prop :=
   (∀ p ∈ vals, p.1 < nvar) ∧ ∀ p ∈ vals, ∀ q ∈ vals, p.1 = q.1 → p.2 = q.2
 
+/-- The `CON` header's second field counts a subset of the first: `b` is "the total
+number of bound constraints" and `m` is "the total number of constraints (including
+bound constraints)", so `b ≤ m`.
+
+This is all of the specification's bound-constraint rules that can be stated here. The
+others -- that bound constraints appear before the nonbound ones -- quantify over a class
+the format never defines: the specification says bound constraints "are not treated
+specially" and that a generator "is free to choose arbitrary names" for them, so nothing
+in `ViprCon` distinguishes one. A placement rule over an undefined class is not
+checkable, and guessing a definition would reject valid certificates. -/
+def BoundCountOk (v : Vipr) : Prop := v.numBounds ≤ v.numCon
+
 /-- Every constraint a reason cites already exists where it is cited: a base constraint,
 or a derivation earlier in the `DER` list. The position of a derivation in that list is
 its constraint index, offset by the number of `CON` rows, which is why this is stated
@@ -458,6 +470,7 @@ def IsValid (v : Vipr) : Prop :=
   (∀ d ∈ v.ders.toList,
     IndicesOk v.varNames.size (d.form.map (·.idx)) ∧
       (reasonMultipliers d.reason).Nodup) ∧
+  BoundCountOk v ∧
   ReasonRefsOk v ∧
   FinalUseOk v
 

@@ -83,7 +83,7 @@ def boundTable (v : Vipr) : Array (Array (Nat × ℚ)) := Id.run do
   let mut table := Array.replicate v.varNames.size #[]
   for rowIdx in [:v.cons.size + v.ders.size] do
     let eligible :=
-      rowIdx < v.cons.size || (v.ders.getD (rowIdx - v.cons.size) default).isGlobal
+      rowIdx < v.cons.size || (v.ders.getD (rowIdx - v.cons.size) default).scope == .global
     if eligible then
       if let some (idx, coeff) := singleVar? (viprRow v rowIdx).form then
         table := table.modify idx (·.push (rowIdx, coeff))

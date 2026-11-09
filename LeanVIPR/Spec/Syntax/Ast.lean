@@ -59,6 +59,17 @@ inductive ViprReason where
   | sol
   deriving Repr, Inhabited
 
+/-- The optional v1.1 scope keyword on a `DER` row. Three inputs, three values: the
+keyword may be `global`, may be `local`, or may be absent, and a `Bool` could not tell
+the last two apart. The semantics still treats `absent` and `local` alike -- only
+`global` selects the global bounds -- but the certificate's text is preserved, so the
+printer can write back what was read. -/
+inductive ViprScope where
+  | absent
+  | global
+  | local
+  deriving Repr, Inhabited, DecidableEq
+
 /-- A `DER` derived constraint: `name sense rhs (form | OBJ) { reason } finalUseIdx`. -/
 structure ViprDer where
   name : String
@@ -68,7 +79,7 @@ structure ViprDer where
   usesObj : Bool
   reason : ViprReason
   idx : Int            -- trailing final-use index (`-1` = unused)
-  isGlobal : Bool := false
+  scope : ViprScope := .absent
   deriving Repr, Inhabited
 
 /-- The `RTP` (relation-to-prove) target. -/

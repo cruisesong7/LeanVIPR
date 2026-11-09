@@ -427,6 +427,27 @@ def finalUseViolations (v : Vipr) (pos : Nat) : List ViprDer → List (ViprDer �
         if usedAfterFinal v (v.cons.size + pos) k then some (d, k) else none)
       ++ finalUseViolations v (pos + 1) ds
 
+/-- The derivations in `ds`, whose first element has index `pos`, that cite a constraint
+which does not exist yet -- paired with the offending reference. -/
+def forwardRefs (v : Vipr) (pos : Nat) : List ViprDer → List (ViprDer × Nat)
+  | [] => []
+  | d :: ds =>
+      ((reasonRefs d.reason).filterMap fun k =>
+        if k < v.cons.size + pos then none else some (d, k))
+      ++ forwardRefs v (pos + 1) ds
+
+/-- A reason may only cite constraints that already exist: the `CON` rows, and the
+derivations before this one. Soundness does not depend on this -- the checker refuses to
+replay an out-of-range reference anyway -- but `finalUseHint` would otherwise resolve
+such a reference to a default, so what does depend on it is that an accepted certificate
+denotes one problem. -/
+def checkReasonRefs (v : Vipr) : Except String Unit :=
+  match forwardRefs v 0 v.ders.toList with
+  | [] => Except.ok ()
+  | (d, k) :: _ =>
+      Except.error s!"DER {d.name} refers to constraint {k}, which does not exist yet \
+                      (CON {v.cons.size} and earlier DER rows only)"
+
 /-- The `DER` section's trailing field is `-1`, or an index such that no constraint with
 a larger index refers to this one (spec, `DER` section). It lets a verifier discard the
 constraint from memory once that index has been checked, so a derivation that is used
@@ -453,6 +474,7 @@ def validateVipr (v : Vipr) : Except String Unit :=
       checkAll (fun d => do
         checkFormIndices v.varNames.size s!"DER {d.name}" d.form
         checkDistinct s!"DER {d.name} reason" (reasonMultipliers d.reason)) v.ders.toList
+      checkReasonRefs v
       checkFinalUse v
 
 /-- Read the `RTP` (relation-to-prove) section: `RTP infeas`, or `RTP range lb ub`. -/

@@ -427,6 +427,20 @@ one point. -/
 def SolutionOk (nvar : Nat) (vals : List (Nat × ℚ)) : Prop :=
   (∀ p ∈ vals, p.1 < nvar) ∧ ∀ p ∈ vals, ∀ q ∈ vals, p.1 = q.1 → p.2 = q.2
 
+/-- Every constraint a reason cites already exists where it is cited: a base constraint,
+or a derivation earlier in the `DER` list. The position of a derivation in that list is
+its constraint index, offset by the number of `CON` rows, which is why this is stated
+over a split of the list in the same way as `FinalUseOk`.
+
+This is here for the same reason as `IndicesOk`: without it a reason may name a row that
+does not exist, and `finalUseHint` resolves such a reference to `default`, so the AST
+would denote something the format does not. The checker separately refuses to replay an
+out-of-range reference, so soundness does not rest on this condition -- what rests on it
+is that an accepted certificate denotes one problem. -/
+def ReasonRefsOk (v : Vipr) : Prop :=
+  ∀ before d after, v.ders.toList = before ++ d :: after →
+    ∀ k ∈ reasonRefs d.reason, k < v.cons.size + before.length
+
 /-- No derivation cites a constraint past that constraint's declared final use. The
 position of a derivation in the `DER` list is its constraint index, offset by the number
 of `CON` rows, which is why the rule is stated over a split of the list. -/
@@ -444,6 +458,7 @@ def IsValid (v : Vipr) : Prop :=
   (∀ d ∈ v.ders.toList,
     IndicesOk v.varNames.size (d.form.map (·.idx)) ∧
       (reasonMultipliers d.reason).Nodup) ∧
+  ReasonRefsOk v ∧
   FinalUseOk v
 
 end LeanVIPR.Parser

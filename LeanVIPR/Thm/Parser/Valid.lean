@@ -234,6 +234,58 @@ theorem checkSolution_eq_ok_iff {nvar : Nat} {what : String} {vals : List (Nat �
     exact ⟨hr, firstKeyConflict_eq_none_of_functional
       (fun p hp q hq => hfun p (hperm.mem_iff.mp hp) q (hperm.mem_iff.mp hq))⟩
 
+/-! ## Reason references point into the past -/
+
+theorem forwardRefs_eq_nil_iff (v : Vipr) :
+    ∀ (pos : Nat) (ds : List ViprDer), forwardRefs v pos ds = [] ↔
+      ∀ before d after, ds = before ++ d :: after →
+        ∀ k ∈ reasonRefs d.reason, k < v.cons.size + pos + before.length
+  | pos, [] => by
+      simp only [forwardRefs, true_iff]
+      intro before d after hsplit
+      exact absurd hsplit.symm (by cases before <;> simp)
+  | pos, d :: ds => by
+      rw [forwardRefs, List.append_eq_nil_iff, List.filterMap_eq_nil_iff,
+        forwardRefs_eq_nil_iff v (pos + 1) ds]
+      constructor
+      · rintro ⟨hhead, htail⟩ before d' after hsplit k hk
+        cases before with
+        | nil =>
+            obtain ⟨rfl, rfl⟩ : d = d' ∧ ds = after := by simpa using hsplit
+            have hnone := hhead k hk
+            simp only [List.length_nil, Nat.add_zero]
+            split at hnone
+            case isTrue hlt => exact hlt
+            case isFalse => exact absurd hnone (by simp)
+        | cons e before' =>
+            obtain ⟨rfl, hrest⟩ : d = e ∧ ds = before' ++ d' :: after := by
+              simpa using hsplit
+            have := htail before' d' after hrest k hk
+            simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using this
+      · intro h
+        refine ⟨fun k hk => ?_, ?_⟩
+        · have hok := h [] d ds rfl k hk
+          simp only [List.length_nil, Nat.add_zero] at hok
+          split
+          case isTrue => rfl
+          case isFalse hbad => exact absurd hok hbad
+        · intro before d' after hrest k hk
+          have := h (d :: before) d' after (by simpa using hrest) k hk
+          simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using this
+
+private theorem checkReasonRefs_split {v : Vipr} :
+    checkReasonRefs v = .ok () ↔ forwardRefs v 0 v.ders.toList = [] := by
+  unfold checkReasonRefs
+  cases forwardRefs v 0 v.ders.toList with
+  | nil => simp
+  | cons x xs => simp
+
+theorem checkReasonRefs_eq_ok_iff {v : Vipr} :
+    checkReasonRefs v = .ok () ↔ ReasonRefsOk v := by
+  rw [checkReasonRefs_split, forwardRefs_eq_nil_iff]
+  simp only [Nat.add_zero]
+  exact Iff.rfl
+
 /-! ## The final-use rule -/
 
 theorem finalUseViolations_eq_nil_iff (v : Vipr) :
@@ -300,6 +352,7 @@ private theorem validateVipr_split {v : Vipr} :
         (∀ d ∈ v.ders.toList,
           checkFormIndices v.varNames.size s!"DER {d.name}" d.form = .ok () ∧
             checkDistinct s!"DER {d.name} reason" (reasonMultipliers d.reason) = .ok ()) ∧
+        checkReasonRefs v = .ok () ∧
         checkFinalUse v = .ok ()) := by
   unfold validateVipr
   cases v.intVars.find? (fun i => decide (v.varNames.size ≤ i)) with
@@ -311,7 +364,7 @@ private theorem validateVipr_split {v : Vipr} :
 theorem validateVipr_eq_ok_iff {v : Vipr} : validateVipr v = .ok () ↔ IsValid v := by
   rw [validateVipr_split, find?_ge_eq_none_iff, checkIndices_eq_ok_iff]
   simp only [checkFormIndices_eq_ok_iff, checkSolution_eq_ok_iff,
-    checkDistinct_eq_ok_iff, checkFinalUse_eq_ok_iff]
+    checkDistinct_eq_ok_iff, checkReasonRefs_eq_ok_iff, checkFinalUse_eq_ok_iff]
   exact Iff.rfl
 
 end LeanVIPR.Parser

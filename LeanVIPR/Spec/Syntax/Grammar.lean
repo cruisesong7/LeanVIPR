@@ -318,13 +318,13 @@ def IsDerCore (ts : Toks) (d : ViprDer) : Prop :=
 inductive IsDers : Toks → List ViprDer → Prop
   | nil : IsDers [] []
   | globalFlag {core rest : Toks} {d : ViprDer} {ds : List ViprDer}
-      (h : IsDerCore core d) (hg : d.isGlobal = true) (hs : IsDers rest ds) :
+      (h : IsDerCore core d) (hg : d.scope = .global) (hs : IsDers rest ds) :
       IsDers (core ++ "global" :: rest) (d :: ds)
   | localFlag {core rest : Toks} {d : ViprDer} {ds : List ViprDer}
-      (h : IsDerCore core d) (hg : d.isGlobal = false) (hs : IsDers rest ds) :
+      (h : IsDerCore core d) (hg : d.scope = .local) (hs : IsDers rest ds) :
       IsDers (core ++ "local" :: rest) (d :: ds)
   | bare {core rest : Toks} {d : ViprDer} {ds : List ViprDer}
-      (h : IsDerCore core d) (hg : d.isGlobal = false)
+      (h : IsDerCore core d) (hg : d.scope = .absent)
       (hne : rest.head? ≠ some "global" ∧ rest.head? ≠ some "local")
       (hs : IsDers rest ds) : IsDers (core ++ rest) (d :: ds)
 

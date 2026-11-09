@@ -738,12 +738,12 @@ private theorem head?_append_ne {a b : Toks} {s : String} (h : (a ++ b).head? �
   | nil => simp
   | cons x xs => simpa using h
 
-theorem takeScope_global (suf : Toks) : takeScope ("global" :: suf) = (true, suf) := rfl
+theorem takeScope_global (suf : Toks) : takeScope ("global" :: suf) = (.global, suf) := rfl
 
-theorem takeScope_local (suf : Toks) : takeScope ("local" :: suf) = (false, suf) := rfl
+theorem takeScope_local (suf : Toks) : takeScope ("local" :: suf) = (.local, suf) := rfl
 
 theorem takeScope_bare {ts : Toks} (h1 : ts.head? ≠ some "global")
-    (h2 : ts.head? ≠ some "local") : takeScope ts = (false, ts) := by
+    (h2 : ts.head? ≠ some "local") : takeScope ts = (.absent, ts) := by
   cases ts with
   | nil => rfl
   | cons t rest =>
@@ -754,9 +754,9 @@ theorem takeScope_bare {ts : Toks} (h1 : ts.head? ≠ some "global")
         · simp [takeScope, hg, hl]
 
 theorem takeScope_cases (ts : Toks) :
-    (∃ rest, ts = "global" :: rest ∧ takeScope ts = (true, rest)) ∨
-    (∃ rest, ts = "local" :: rest ∧ takeScope ts = (false, rest)) ∨
-    (takeScope ts = (false, ts) ∧ ts.head? ≠ some "global" ∧ ts.head? ≠ some "local") := by
+    (∃ rest, ts = "global" :: rest ∧ takeScope ts = (.global, rest)) ∨
+    (∃ rest, ts = "local" :: rest ∧ takeScope ts = (.local, rest)) ∨
+    (takeScope ts = (.absent, ts) ∧ ts.head? ≠ some "global" ∧ ts.head? ≠ some "local") := by
   cases ts with
   | nil => exact Or.inr (Or.inr ⟨rfl, by simp, by simp⟩)
   | cons t rest =>
@@ -770,7 +770,7 @@ theorem takeScope_cases (ts : Toks) :
 scope lookahead says about the rest. -/
 theorem takeDer_core {core suf : Toks} {d : ViprDer} (h : IsDerCore core d) :
     takeDer (core ++ suf)
-      = .ok ({ d with isGlobal := (takeScope suf).1 }, (takeScope suf).2) := by
+      = .ok ({ d with scope := (takeScope suf).1 }, (takeScope suf).2) := by
   obtain ⟨st, rt, body, rsn, it, rfl, hs, hr, hb, hrsn, hi⟩ := h
   have hflat : (d.name :: st :: rt :: (body ++ (rsn ++ [it]))) ++ suf
       = d.name :: st :: rt :: (body ++ (rsn ++ (it :: suf))) := by simp
@@ -779,9 +779,9 @@ theorem takeDer_core {core suf : Toks} {d : ViprDer} (h : IsDerCore core d) :
     takeBody_complete hb, takeReason_complete hrsn, takeInt_prefix hi]
 
 theorem takeDer_sound {ts ts' : Toks} {d : ViprDer} (h : takeDer ts = .ok (d, ts')) :
-    (∃ core, ts = core ++ "global" :: ts' ∧ IsDerCore core d ∧ d.isGlobal = true) ∨
-    (∃ core, ts = core ++ "local" :: ts' ∧ IsDerCore core d ∧ d.isGlobal = false) ∨
-    (∃ core, ts = core ++ ts' ∧ IsDerCore core d ∧ d.isGlobal = false ∧
+    (∃ core, ts = core ++ "global" :: ts' ∧ IsDerCore core d ∧ d.scope = .global) ∨
+    (∃ core, ts = core ++ "local" :: ts' ∧ IsDerCore core d ∧ d.scope = .local) ∨
+    (∃ core, ts = core ++ ts' ∧ IsDerCore core d ∧ d.scope = .absent ∧
       ts'.head? ≠ some "global" ∧ ts'.head? ≠ some "local") := by
   rw [takeDer] at h
   obtain ⟨⟨name, ts1⟩, hA, hB⟩ := bind_eq_ok h
@@ -826,19 +826,19 @@ theorem takeDers_complete {seg : Toks} {ds : List ViprDer} (h : IsDers seg ds) :
   induction h with
   | nil => simp [takeDers]
   | @globalFlag core rest d ds hc hg hs ih =>
-      have hd : ({ d with isGlobal := true } : ViprDer) = d := by rw [← hg]
+      have hd : ({ d with scope := .global } : ViprDer) = d := by rw [← hg]
       have hstep : takeDer (core ++ "global" :: rest) = .ok (d, rest) := by
         rw [takeDer_core hc, takeScope_global, hd]
       rw [List.length_cons, takeDers]
       simp only [bind, Except.bind, hstep, ih]
   | @localFlag core rest d ds hc hg hs ih =>
-      have hd : ({ d with isGlobal := false } : ViprDer) = d := by rw [← hg]
+      have hd : ({ d with scope := .local } : ViprDer) = d := by rw [← hg]
       have hstep : takeDer (core ++ "local" :: rest) = .ok (d, rest) := by
         rw [takeDer_core hc, takeScope_local, hd]
       rw [List.length_cons, takeDers]
       simp only [bind, Except.bind, hstep, ih]
   | @bare core rest d ds hc hg hne hs ih =>
-      have hd : ({ d with isGlobal := false } : ViprDer) = d := by rw [← hg]
+      have hd : ({ d with scope := .absent } : ViprDer) = d := by rw [← hg]
       have hstep : takeDer (core ++ rest) = .ok (d, rest) := by
         rw [takeDer_core hc, takeScope_bare hne.1 hne.2, hd]
       rw [List.length_cons, takeDers]

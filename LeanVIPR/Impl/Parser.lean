@@ -317,10 +317,10 @@ The keyword is optional and unbracketed, so it is matched greedily: a row *named
 `global` or `local` immediately after a flagless row would be read as that row's flag.
 `LeanVIPR.Thm.Parser.Grammar.IsDers` states this rule, so the exclusion is visible in the
 grammar rather than hidden here. -/
-def takeScope : Toks → Bool × Toks
-  | "global" :: rest => (true, rest)
-  | "local" :: rest => (false, rest)
-  | ts => (false, ts)
+def takeScope : Toks → ViprScope × Toks
+  | "global" :: rest => (.global, rest)
+  | "local" :: rest => (.local, rest)
+  | ts => (.absent, ts)
 
 def takeDer (ts : Toks) : Except String (ViprDer × Toks) := do
   let (name, ts1) ← takeTok ts
@@ -332,7 +332,7 @@ def takeDer (ts : Toks) : Except String (ViprDer × Toks) := do
   let scope := takeScope ts6
   Except.ok ({ name := name, sense := sense, rhs := rhs, form := form,
                usesObj := usesObj, reason := reason, idx := idx,
-               isGlobal := scope.1 }, scope.2)
+               scope := scope.1 }, scope.2)
 
 def takeDers : Nat → Toks → Except String (List ViprDer × Toks)
   | 0,     ts => Except.ok ([], ts)

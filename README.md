@@ -208,7 +208,7 @@ directory of the same name.
 | [`docs/VERIFICATION.md`](docs/VERIFICATION.md) | The trust boundary, and the parser's correctness theorems |
 | [`benchmarks/README.md`](benchmarks/README.md) | The certificate corpus, measured results, and the runners |
 | [`docs/SCIP-SETUP.md`](docs/SCIP-SETUP.md) | Building exact SCIP, and regenerating a `.vipr` from an `.mps` |
-| [`examples/audit/README.md`](examples/audit/README.md) | Adversarial and edge-case certificates, with expected verdicts |
+| [`examples/malformed/README.md`](examples/malformed/README.md) | Minimal fixtures for the well-formedness conditions `IsValid` states |
 
 ## License
 

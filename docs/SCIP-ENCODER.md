@@ -216,6 +216,73 @@ VIPR layer itself — the `rnd` and `uns` soundness proofs and the agreement che
 verified solver in Lean". That is an argument for stating the contribution precisely, not
 for competing on breadth.
 
+### How to argue this is a contribution, specifically against `leanprover/lp`
+
+Three things, in descending order of strength. The first is the one to lead with.
+
+**1. It answers a different question, and on our examples the answers differ.** This is
+stronger than any timing comparison, because `leanprover/lp` is not slower on an integer
+problem — it cannot state one, and the relaxation it *can* state has a different answer.
+Measured on the running example: strip the integrality markers from
+`encodeMps knap` and exact SCIP reports `3 variables (0 bin, 0 int, 3 cont)`, **optimal —
+feasible**, with witness `y = 4/5`, `z = 1` (indeed `10·(4/5) + 15·1 = 23`). The integer
+problem is **infeasible**. An LP-only checker given this problem therefore returns a
+verified answer to a question the user did not ask, and the fractional witness `y = 4/5`
+is exactly what the `rnd` rule exists to eliminate.
+
+(Note the trap here: doing this experiment on the *hand-written*
+`examples/uns_knapsack.mps` appears to show the relaxation is infeasible too. That file
+uses `LI`/`UI` bound types, which SCIP reads as declaring integrality, so stripping the
+markers does not remove it. `encodeMps` emits `LO`/`UP` precisely to avoid that ambiguity,
+which is why the experiment has to be run on our own output.)
+
+**2. The rule layer is the contribution, and it is quantifiable.** Farkas duality has no
+rounding rule and no branch rule. Across `benchmarks/`, every instance is entirely
+integer, and the derivations are dominated by exactly the reasons a Farkas checker lacks:
+
+| instance | lines | int vars | `asm` | `lin` | `rnd` | `uns` |
+|---|---|---|---|---|---|---|
+| `alu4_1` | 66433 | 283/283 | 854 | 55126 | **8276** | **427** |
+| `alu6_1` | 34664 | 295/295 | 440 | 27995 | **4193** | **220** |
+| `alu5_5` | 6405 | 302/302 | 26 | 3966 | **540** | **13** |
+
+A Farkas-only checker verifies zero of those `rnd` and `uns` steps. "We verify 8,276
+integer-rounding steps on `alu4_1`" is a concrete claim; "we express more problems" is not,
+since expressing more is just the `isInt` field.
+
+**3. Scale on real instances.** The `benchmarks/` set is MIPLIB-derived and no other Lean
+development can state any of it.
+
+### The benchmark table the paper needs
+
+Capability first — this is the primary table, and it needs no timings:
+
+| | integer vars | objective | infeasibility | optimum | unbounded | frontend |
+|---|---|---|---|---|---|---|
+| `omega` | yes | no | yes | no | no | tactic |
+| `linarith` | no | no | rational only | no | no | tactic |
+| `leanprover/lp` | **no** | yes | rational only | yes | **yes** | tactics, Π₂ |
+| this branch | **yes** | yes | yes | yes | no | none yet |
+
+Then timings only where capability actually overlaps:
+
+* **vs `omega`, integer feasibility.** Have one point: an infeasible market-split instance
+  (3 equalities, 12 binaries) where `omega` ran 600s without finishing and this pipeline
+  took 0.12s to certify and 22s to kernel-check. Should be extended to a family to show a
+  curve rather than a single point.
+* **vs `linarith`, rational LP infeasibility.** Not yet measured.
+* **vs `leanprover/lp`, pure LP.** Not yet measured, and **we will lose** — they call
+  SoPlex in-process and reconstruct a proof term, we fork a solver and parse a file.
+  Report it anyway; disclosing the case where the specialised tool wins is what makes the
+  rest of the comparison credible.
+
+Two things not to claim: that this is faster (on LP it is not), and that it replaces their
+tactic frontend (there is no frontend here yet).
+
+One caveat on examples. `omega` proves the knapsack running example in one line, so the
+knapsack is a *pedagogical* example and must not be the headline evidence. Lead with an
+instance no competing tactic can state or finish — market split, or any `alu`.
+
 ### Relation to SAT and SMT in Lean
 
 The natural comparison is `bv_decide` and [Trestle], and it is worth getting right,

@@ -59,4 +59,85 @@ theorem absurd_of_infeasible {m : Mip} (h : m.Infeasible) (xs : List ℤ)
     (hrows : ∀ c ∈ m.conSLes, satReal c (valuationOfInts xs)) : False :=
   h _ (feasible_valuationOfInts hrows)
 
+/-! ## Building a problem with its specification attached
+
+The analogue of Trestle's `VEncCNF` index, at the layer where it belongs: between the
+user's predicate and the reified problem. (Not between the problem and the MPS text —
+Trestle does not verify its DIMACS printing either, and for the same reason we need not
+verify ours: the returned proof is checked against the reified data, so a bad print causes
+a rejection rather than a wrong theorem.)
+
+`VRows P` is a row list carrying, in its type, the proof that those rows denote exactly
+`P`. Rows are added with `VRows.cons`, and the index conjoins automatically, so there is
+never a separate theorem to prove about the finished list — which is the whole point of
+the discipline.
+-/
+
+namespace Build
+
+/-- A list of rows together with the predicate it denotes. -/
+structure VRows (P : RealValuation → Prop) where
+  rows : List SLe
+  spec : ∀ a, (∀ c ∈ rows, satReal c a) ↔ P a
+
+/-- No rows constrain nothing. -/
+def nil : VRows (fun _ => True) where
+  rows := []
+  spec := by simp
+
+/-- One more row conjoins one more conjunct onto the index. -/
+def cons (c : SLe) {P : RealValuation → Prop} (v : VRows P) :
+    VRows (fun a => satReal c a ∧ P a) where
+  rows := c :: v.rows
+  spec := by
+    intro a
+    constructor
+    · intro h
+      exact ⟨h c (by simp), (v.spec a).mp (fun d hd => h d (by simp [hd]))⟩
+    · intro ⟨hc, hP⟩ d hd
+      rcases List.mem_cons.mp hd with rfl | hd
+      · exact hc
+      · exact (v.spec a).mpr hP d hd
+
+/-- The problem built from declared variables and a specified row list. The variables
+carry the bounds, so `conSLes` adds their rows on top of `v.rows`. -/
+def toMip (vars : Array Mip.Var) (objSense : Mip.ObjSense) (obj : LinForm)
+    (names : Array String) {P : RealValuation → Prop} (v : VRows P) : Mip where
+  vars := vars
+  objSense := objSense
+  obj := obj
+  rows := (v.rows.zipIdx.map (fun p =>
+    { name := names.getD p.2 s!"r{p.2}", sense := p.1.sense,
+      rhs := p.1.rhs, form := p.1.form })).toArray
+
+/-! ### What the index buys
+
+`absurd_of_infeasible` asks a caller for `∀ c ∈ m.conSLes, satReal c (valuationOfInts xs)`,
+which for a concrete problem means discharging each row by hand. With a `VRows P` the rows
+half comes from the index instead, so a caller supplies `P` — their own predicate, in their
+own terms — and nothing about rows at all. -/
+
+/-- A problem whose explicit rows were built with their specification attached: if an
+integer tuple satisfies `P` and the variable bounds, the valuation is feasible. -/
+theorem feasible_of_spec {P : RealValuation → Prop} (v : VRows P) (m : Mip)
+    (hrows : m.rowSLes = v.rows) (xs : List ℤ)
+    (hP : P (valuationOfInts xs))
+    (hb : ∀ c ∈ m.boundSLes, satReal c (valuationOfInts xs)) :
+    m.Feasible (valuationOfInts xs) := by
+  refine feasible_valuationOfInts ?_
+  intro c hc
+  rcases List.mem_append.mp (by simpa [Mip.conSLes] using hc) with h | h
+  · exact (v.spec _).mpr hP c (by rwa [hrows] at h)
+  · exact hb c h
+
+/-- **The front end's bridge, with the rows discharged by the index.** An infeasible
+problem rules out every integer tuple satisfying the predicate its rows were built from. -/
+theorem absurd_of_spec {P : RealValuation → Prop} (v : VRows P) {m : Mip}
+    (hinf : m.Infeasible) (hrows : m.rowSLes = v.rows) (xs : List ℤ)
+    (hP : P (valuationOfInts xs))
+    (hb : ∀ c ∈ m.boundSLes, satReal c (valuationOfInts xs)) : False :=
+  hinf _ (feasible_of_spec v m hrows xs hP hb)
+
+end Build
+
 end LeanVIPR.Mip

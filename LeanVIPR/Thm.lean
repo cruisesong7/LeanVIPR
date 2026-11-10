@@ -5,6 +5,8 @@ public import LeanVIPR.Thm.System
 public import LeanVIPR.Thm.System.Claim
 public import LeanVIPR.Thm.System.Completeness
 public import LeanVIPR.Thm.Checker
+public import LeanVIPR.Thm.Reflect
+public import LeanVIPR.Thm.Encoder
 
 @[expose] public section
 

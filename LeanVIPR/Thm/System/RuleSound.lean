@@ -79,7 +79,7 @@ private theorem formIsZero_sound_real {f : LinForm} (h : formIsZero f = true) :
   refine evalALReal_zero_of_all _ a (fun p hp => ?_)
   exact eq_of_beq ((List.all_eq_true.mp h) p hp)
 
-private theorem formEq_sound_real {f g : LinForm} (h : formEq f g = true) :
+theorem formEq_sound_real {f g : LinForm} (h : formEq f g = true) :
     FormEqReal f g := by
   intro a
   have hz := formIsZero_sound_real h a

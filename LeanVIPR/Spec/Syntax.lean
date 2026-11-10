@@ -2,6 +2,7 @@ module
 
 public import LeanVIPR.Spec.Syntax.Ast
 public import LeanVIPR.Spec.Syntax.Grammar
+public import LeanVIPR.Spec.Syntax.Mps
 
 @[expose] public section
 

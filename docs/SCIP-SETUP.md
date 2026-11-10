@@ -42,6 +42,49 @@ scip -c "set exact enable TRUE" \
 The exact MPS reader parses coefficients via `RatSetString`, which accepts exact
 `num/den` fractions — so we can emit our exact-ℚ encoding losslessly (dyadic or not).
 
+### The float reader truncates fractions, silently
+
+Measured on homebrew `scip` 10.0.3 `[precision: 8 byte]`, i.e. a non-`EXACTSOLVE` build.
+Given
+
+```
+ROWS
+ N obj
+ L r0
+COLUMNS
+    x obj 1/1
+    x r0 1/1
+RHS
+    rhs r0 1/2
+```
+
+maximizing `x` reports a primal bound of **1.0**, not `0.5`: the reader takes `1/2` to be
+`1`. There is no syntax error and no warning — the digits after the `/` are simply
+dropped.
+
+Consequences, all of which matter to `Impl.Encoder.Mps`:
+
+* **A float build cannot be used to sanity-check the encoder**, except on problems whose
+  every coefficient, right-hand side and bound is an integer. Those come out as `n/1`,
+  which truncates to `n` and is right by luck.
+* A float build given an exact-ℚ file will **answer a different problem and report
+  success**. `examples/uns_knapsack.mps` happens to be all-integer, so this is invisible
+  on the one example in the repo.
+* This is not an argument against MPS — the *exact* MPS reader is fine — but it means
+  "SCIP read our file" is only meaningful once the binary is the exact build. Note that
+  `scip --version` does **not** tell you: both builds report `[precision: 8 byte]` and
+  neither mentions exact solving. Only the cmake output says "Building SCIP with support
+  for exact solving mode using exact LP solver SoPlex". Detect by behaviour — run the
+  `1/2` case above and see whether you get `0.5` or `1.0`.
+
+For the record, the exact **LP** and **cip** readers are lossless too: `max (1/3)x + y`
+s.t. `(2/5)x + y ≤ 7/4`, `y ≤ 1/6` yields `Exact Primal Bound : 107/72` from an `.lp`
+file as readily as from the equivalent `.mps`. MPS is chosen for being cheaper to
+formalize, not for rational fidelity — see `docs/SCIP-ENCODER.md`.
+
+So: check for the exact build before trusting any encoder round-trip, and prefer an
+all-integer example when a float build is all that is available.
+
 ## Real certificate observed (infeasible `2x≤1 ∧ 2x≥1`, x integer)
 
 Official SCIP 10 emits (abridged): CON C0/C1 + variable bounds B2/B3; then DER with
@@ -61,3 +104,25 @@ The checker implements the VIPR v1.0 rules used by official exact SCIP:
 
 The checked-in knapsack certificate was emitted by official exact SCIP 10.0.1
 and exercises `asm`, `lin`, `rnd`, and `uns`.
+
+## Maximization comes back as minimization
+
+Exact SCIP normalizes a maximization by **negating the objective**, so the certificate
+says `OBJ min` over `-obj` with its bounds negated. On `max (1/3)a + b` subject to
+`(2/5)a + b ≤ 7/4`, `b ≤ 1/6` (optimum `107/72`) it emits
+
+```
+OBJ min
+ 2  0 -1/3 1 -1
+RTP range -107/72 -107/72
+```
+
+Every certificate real exact SCIP has produced in this repository says `OBJ min`,
+whatever the problem said; the only `OBJ max` anywhere is the hand-written
+`examples/valid_max_range.vipr`.
+
+Consequence for `Impl/Encoder/Agree.lean`: an agreement check that compares the
+certificate's objective to ours for *equality* fails on every maximization. That is what
+`Mip.ObjAgreesNeg` / `objAgreesNegWith` are for, and why `pipeline_upper_bound_of_min`
+rather than `pipeline_upper_bound` is the theorem that fires on real output — a minimizing
+certificate's lower bound `l` on `-obj` is an upper bound `-l` on ours.

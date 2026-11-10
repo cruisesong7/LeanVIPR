@@ -478,6 +478,40 @@ def FinalUseOk (v : Vipr) : Prop :=
   ∀ before d after, v.ders.toList = before ++ d :: after →
     ∀ k ∈ reasonRefs d.reason, ¬ usedAfterFinal v (v.cons.size + before.length) k
 
+/-! ### Conditions the specification states and this does not
+
+Three are absent deliberately, and the absences are decisions rather than oversights.
+
+*Unique constraint names.* `cert_spec_v1_0.md` says "Constraints have unique constraint
+names and are assigned indices starting from 0 according to the order in which they
+appear in the certificate file." Exact SCIP does not honour it: of 38 certificates
+measured, six violate it, `neos897005` with 17558 duplicate names and `khb05250` with
+1804, where `CON` name `1146` appears four times and `DER` name `110` seventeen times.
+Enforcing the sentence would reject real solver output, and references are positional
+anyway, so a duplicate name makes nothing ambiguous.
+
+*Bound constraints before the nonbound ones.* Normative -- the specification says they
+"must appear at the beginning of the section" -- but it quantifies over a class the
+format never defines. See `BoundCountOk` for the part that is statable.
+
+*Reasons new in v1.1 under `VER 1.0`.* "New in version 1.1" is a heading, not a
+prohibition, and `benchmarks/infeas/alu4_1.vipr` declares `VER 1.0` while using
+`lin weak { 0 }`.
+
+The rule behind all three: a conformance condition is safe to enforce only if real
+solver output satisfies it. Specification text is necessary but not sufficient, because
+the document and its reference implementation disagree, and it is the implementation that
+writes the files a checker has to read.
+
+### Which layer refuses an unsupported certificate
+
+`lin incomplete` is refused by the reader, while an unknown `OBJ` sense or `VER` string
+is read and refused by the checker. That is not inconsistency: it follows from what the
+AST can hold. There is no `ViprReason` constructor for `lin incomplete`, so a reader
+cannot carry one even if it wanted to; `objSense` and `version` are plain `String`
+fields, so those certificates are representable and `Vipr.ClaimValid` is simply false of
+them. The layer is wherever the certificate stops being expressible. -/
+
 /-- `IsValid v`: every sparse vector that contributes to the claimed problem or to a
 stated derived row is well formed, and the final-use rule holds. -/
 def IsValid (v : Vipr) : Prop :=

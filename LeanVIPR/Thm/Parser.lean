@@ -41,12 +41,21 @@ possibly an artefact of a narrow reader.
 | `parseNum_eq_some_iff`, `isNumValue_unique` — numeric tokens | `Thm.Parser.Number` |
 | `validateVipr_eq_ok_iff` — validation decides exactly `IsValid` | `Thm.Parser.Valid` |
 | `toString_roundtrip` — reading back what the printer writes returns what was written | below |
+| `toString_roundtrip_of_parse` — the same with no side conditions, for anything the parser accepts | below |
 | `printVipr_isVipr` — the grammar derives everything the printer writes | `Thm.Parser.Printer` |
 | `unwords_isTokenization` — joining tokens and re-tokenizing is the identity | `Thm.Parser.Printer` |
 
 `validateVipr_eq_ok_iff` is proved where it is rather than restated here because
 `parseVipr_complete` consumes it; declaring it here would make `Thm.Parser.Certificate`
 depend on this file and close a cycle.
+
+**What the round trip does not say.** It is `parseVipr (toString v) = .ok v`: printing
+then reading returns the certificate. The other direction, `toString (parseVipr s) = s`,
+is not proved and is not true in general -- the printer normalizes whitespace between
+tokens and writes each rational in one canonical form, so text that differs only in
+layout prints back differently. Scope keywords *are* reproduced exactly, since
+`ViprScope` records whether one was present. Byte-level fidelity would be needed to bind
+a kernel-checked theorem to source bytes rather than to the AST; it is not claimed here.
 
 **Round trip.** `LeanVIPR.Impl.Parser.Printer` writes a certificate back to text and
 `LeanVIPR.Thm.Parser.Printer` proves reading it back returns what was written. It is
@@ -123,5 +132,21 @@ theorem toString_roundtrip {ts : Toks} {v : Vipr} (hg : IsVipr ts v)
     (hvalid : IsValid v) (hv : Printable (verbatimToks v)) :
     parseVipr (toString v) = .ok v :=
   parseVipr_complete (print_isViprText hg hv) hvalid
+
+/-- **The round trip, with nothing assumed.** Whatever the parser accepts, printing and
+reading back returns it.
+
+The three hypotheses of `toString_roundtrip` are all discharged by the acceptance itself.
+`parseVipr_eq_ok_iff` supplies the grammar derivation and `IsValid`; the printability of
+the strings the certificate carries verbatim follows because they were tokens of the
+stream it was read from — `verbatimToks_subset` — and a tokenization's tokens are
+non-empty, whitespace-free, and never begin with `%`, which is exactly `PrintableTok`
+(`printable_of_isTokenization`). So the side conditions are not slack that a caller has
+to supply: they hold of every certificate there is to print. -/
+theorem toString_roundtrip_of_parse {content : String} {v : Vipr}
+    (h : parseVipr content = .ok v) : parseVipr (toString v) = .ok v := by
+  obtain ⟨⟨ts, htok, hg⟩, hvalid⟩ := parseVipr_eq_ok_iff.mp h
+  exact toString_roundtrip hg hvalid
+    (fun t ht => printable_of_isTokenization htok t (verbatimToks_subset hg t ht))
 
 end LeanVIPR.Parser

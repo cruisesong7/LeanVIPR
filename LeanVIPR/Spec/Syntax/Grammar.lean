@@ -299,14 +299,32 @@ def IsReason (ts : Toks) (r : ViprReason) : Prop :=
 
 /-! ## Derivations
 
-A `DER` row ends with a final-use index, optionally followed by the v1.1 scope keyword
-`global` or `local`. That keyword is optional *and* unbracketed, so the format is only
-unambiguous under maximal munch: a flagless row followed by a row *named* `global` or
-`local` would have that name read as its own flag. `IsDers` states the rule the parser
-follows — the `bare` case requires that the next token is neither keyword — which makes
-the derivation list unambiguous and makes the exclusion visible rather than implicit.
-Such a certificate is rejected, not misread: the absorbed name leaves the next row
-starting at its sense token. -/
+A `DER` row ends with a final-use index, optionally followed by the scope keyword
+`global` or `local`, unbracketed. That form is not in the published grammar -- the
+specification writes the scope only inside braces -- but exact SCIP emits it, in 17 of
+the 26 certificates under `benchmarks/`, so a reader of real certificates has to accept
+it.
+
+Unbracketed and optional, it needs a lookahead: a flagless row followed by a row *named*
+`global` or `local` would have that name read as its own flag. The `bare` case therefore
+requires the next token to be neither keyword, and such a certificate is rejected rather
+than misread.
+
+The ambiguity is not in the format. `IsDerSection` fixes the row count, and only one
+reading yields that many well-formed rows -- the greedy one leaves a row whose sense
+would have to be `0`. A reader that consults the count resolves this without any
+exclusion. This one cannot: it consumes a flat token stream, where the count is not
+available at the point of lookahead. The exclusion is the price of that strategy, not a
+property of VIPR.
+
+It is kept deliberately rather than for want of an alternative. It is also what lets the
+printer omit the keyword for `.absent` and still land back in this grammar, which is
+what makes printed output reproduce its input -- see
+`LeanVIPR.Thm.Parser.Printer.printDers_isDers`, whose `bare` case discharges its
+obligation with exactly this hypothesis. Dropping the exclusion would align the accepted
+language with a counted reader's at the cost of a printer that pads every flagless row.
+The input it refuses needs a constraint named exactly `global` or `local`; no certificate
+on hand has one. -/
 
 /-- A `DER` row up to and including its final-use index, without the scope keyword. -/
 def IsDerCore (ts : Toks) (d : ViprDer) : Prop :=

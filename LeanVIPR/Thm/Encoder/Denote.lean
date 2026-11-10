@@ -601,9 +601,88 @@ theorem declaresInt_iff (m : Mip) (hnd : (m.vars.toList.map Mip.Var.name).Nodup)
       exact ⟨i, hi⟩
     exact ⟨(i, v), List.mem_mapIdx.mpr ⟨i, hi, by rw [hiv]⟩, hvi, rfl⟩
 
+/-! ## The grouped sum
+
+The ingredient obligation 3 was missing. `Thm.System.LinForm.normForm_eval` is the
+analogous statement over `Valuation`; what the transpose needs is the `RealValuation` one,
+and it is proved here by induction rather than through `Finset`, which is not in this
+development's import surface. -/
+
+/-- A sum over `range k` whose term vanishes off one index. Proved by induction rather than
+through `Finset`, which is not in this development's import surface. -/
+theorem sum_range_single (a : Nat → ℝ) (c : ℝ) : ∀ (k i : Nat),
+    ((List.range k).map (fun j => (if i = j then c else 0) * a j)).sum
+      = if i < k then c * a i else 0
+  | 0, i => by simp
+  | k + 1, i => by
+      rw [List.range_succ]
+      simp only [List.map_append, List.sum_append, List.map_cons, List.map_nil,
+        List.sum_cons, List.sum_nil, add_zero, sum_range_single a c k i]
+      rcases lt_trichotomy i k with h | h | h
+      · rw [if_pos h, if_pos (by omega : i < k + 1), if_neg (by omega : ¬ i = k)]
+        simp
+      · subst h
+        rw [if_neg (by omega : ¬ i < i), if_pos (by omega : i < i + 1)]
+        simp
+      · rw [if_neg (by omega : ¬ i < k), if_neg (by omega : ¬ i = k),
+          if_neg (by omega : ¬ i < k + 1)]
+        simp
+
+theorem sum_map_add {α : Type} (l : List α) (A B : α → ℝ) :
+    (l.map (fun x => A x + B x)).sum = (l.map A).sum + (l.map B).sum := by
+  induction l with
+  | nil => simp
+  | cons x xs ih => simp [ih]; ring
+
+/-- `coeffOf` as a plain sum rather than a fold, which is what makes it additive in the
+form. -/
+def coeffAt (f : LinForm) (j : Nat) : ℚ :=
+  (f.map (fun t => if t.idx = j then t.coeff else 0)).sum
+
+theorem coeffOf_eq_coeffAt : ∀ (f : LinForm) (j : Nat) (acc : ℚ),
+    f.foldl (fun a t => if t.idx == j then a + t.coeff else a) acc = acc + coeffAt f j
+  | [], j, acc => by simp [coeffAt]
+  | t :: f, j, acc => by
+      rw [List.foldl_cons]
+      by_cases h : t.idx = j
+      · rw [show (if t.idx == j then acc + t.coeff else acc) = acc + t.coeff by simp [h],
+          coeffOf_eq_coeffAt f j (acc + t.coeff)]
+        simp [coeffAt, h]
+        ring
+      · rw [show (if t.idx == j then acc + t.coeff else acc) = acc by simp [h],
+          coeffOf_eq_coeffAt f j acc]
+        simp [coeffAt, h]
+
+theorem coeffOf_eq (f : LinForm) (j : Nat) : Encoder.coeffOf f j = coeffAt f j := by
+  unfold Encoder.coeffOf
+  simpa using coeffOf_eq_coeffAt f j 0
+
+/-- **The grouped sum**, the ingredient the transpose was missing. Reconstructing a form
+by index and evaluating gives the same real number as evaluating the original, provided
+every index it mentions is in range. `Thm.System.LinForm.normForm_eval` is the analogous
+statement over `Valuation`; this is the `RealValuation` one. -/
+theorem sum_range_coeffAt (a : RealValuation) (k : Nat) : ∀ (f : LinForm),
+    (∀ t ∈ f, t.idx < k) →
+    ((List.range k).map (fun j => ((coeffAt f j : ℚ) : ℝ) * a j)).sum = evalReal f a
+  | [], _ => by simp [coeffAt, evalReal]
+  | t :: f, h => by
+      have ht : t.idx < k := h t (by simp)
+      have hrest := sum_range_coeffAt a k f (fun s hs => h s (by simp [hs]))
+      have hsplit : (fun j => ((coeffAt (t :: f) j : ℚ) : ℝ) * a j)
+          = (fun j => (if t.idx = j then (t.coeff : ℝ) else 0) * a j
+              + ((coeffAt f j : ℚ) : ℝ) * a j) := by
+        funext j
+        by_cases hj : t.idx = j
+        · simp [coeffAt, hj]; push_cast; ring
+        · simp [coeffAt, hj]
+      rw [hsplit, sum_map_add, sum_range_single a (t.coeff : ℝ) k t.idx, hrest]
+      simp [ht, evalReal]
+
+
 /-! ## What is still open
 
-Eight of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
+Eight of the nine obligations in `IsMpsToks` are discharged above, and the one
+remaining has had its missing ingredient supplied: the decomposition, and
 the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. One remains, and it is the
 semantic one — each relates a section's recovered contents back to `m`, rather than
 saying which tokens derive which entries.
@@ -620,19 +699,20 @@ marker state: `stateAfter` plus decomposition lemmas for it and `intColumns` ove
 append, after which the invariant (`stateAfter_pre`) is one line per case. `Nodup` is what
 rules out a different variable with the same name having been the one declared.
 
-**3. `FormEqReal (rowForm cols names r.name) r.form`.** The transpose: `rowForm` rebuilds
-a row from the column-major entries, and that must agree with `r.form` as a linear
-function. The missing ingredient is a grouped-summation lemma over `ℝ`,
+**3. `FormEqReal (rowForm cols names r.name) r.form`.** The transpose. The ingredient this
+was blocked on is now **proved** — `sum_range_coeffAt`, the grouped sum over `ℝ`, together
+with `coeffOf_eq` relating the emitter's fold to a plain sum. Three steps remain, all
+bookkeeping rather than mathematics:
 
-```
-∀ f, (∀ t ∈ f, t.idx < k) → ∑_{j < k} (coeffOf f j) * a j = evalReal f a
-```
-
-`Thm/System/LinForm.lean` has `normForm_eval`, which is this statement over `Valuation`
-(`ℚ`); a real-valued analogue is what is needed, plus the bookkeeping that `rowForm`'s
-`if q = 0 then [] else _` skip does not change the sum. Requires `WellFormed.FormDeclared`
-for the index bound and the variable-name `Nodup` so `colCoeff` does not pick up another
-column's entries.
+* `evalReal (rowForm es names row) a = ∑_{j < names.length} colCoeff es names[j] row * a j`.
+  Two wrinkles: `rowForm`'s `if q = 0 then [] else _` skip (harmless, since a skipped
+  index would have contributed `0 * a j`), and `mapIdx`'s index shift, which needs the
+  statement generalized over an offset — `mapIdx f (x :: xs)` recurses with `f (·+1)`.
+  Verified on a concrete two-variable instance, so only the general induction is missing.
+* `colCoeff cols names[j] row = Encoder.coeffOf (that row's form) j`, from the emitter's
+  entries. Needs the variable-name `Nodup`, else another column's entries get summed in.
+* Then `FormEqReal` follows from `sum_range_coeffAt` with `k = m.vars.size`, whose index
+  bound is `WellFormed.FormDeclared`.
 
 ~~**4. `loBound`/`hiBound` recovery.**~~ **Done** — `loBound_flatten` and
 `hiBound_flatten`. One wrinkle worth recording: the two halves are *not* symmetric. A

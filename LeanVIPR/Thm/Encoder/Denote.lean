@@ -328,16 +328,154 @@ theorem hiBound_flatten : ∀ (vs : List Mip.Var), (vs.map Mip.Var.name).Nodup �
         have := hiBound_flatten vs hnd' v hv
         rwa [hiBound_eq] at this
 
+/-! ## The `COLUMNS` section's syntax
+
+Obligation 1. Two things make this the awkward section: it emits marker lines *between*
+columns, so the recursion has to carry the marker state, and the marker's own name must be
+a token the grammar reads back. -/
+
+theorem keywords_noDigit : ∀ k ∈ sectionKeywords, ∀ c ∈ k.toList, ¬ c.isDigit := by decide
+theorem markerTok_noDigit : ∀ c ∈ markerTok.toList, ¬ c.isDigit := by decide
+
+/-- A marker's name is readable back as a name. The argument is uniform rather than
+case-by-case over the keywords: every structurally-read token is digit-free, while
+`printNat` emits digits, so they cannot coincide. -/
+theorem isNameTok_markerName (n : Nat) : IsNameTok ("M" ++ printNat n) := by
+  obtain ⟨hdne, hdig⟩ := (printNat_isNatTok n).1
+  obtain ⟨d, hd⟩ : ∃ d, d ∈ (printNat n).toList := by
+    cases hl : (printNat n).toList with
+    | nil => exact absurd hl hdne
+    | cons c cs => exact ⟨c, by simp⟩
+  have hdd : d.isDigit := hdig d hd
+  have hmem : d ∈ ("M" ++ printNat n).toList := by simp [hd]
+  refine ⟨by simp, (printableTok_markerName n).2.1, by simp, ?_, ?_⟩
+  · exact fun hk => keywords_noDigit _ hk d hmem hdd
+  · intro hk
+    exact markerTok_noDigit d (by rw [← hk]; exact hmem) hdd
+
+/-- The `ColEntry` list `columnsAux` emits, mirroring its structure. -/
+def colEntriesOf (m : Mip) : List (Nat × Mip.Var) → Bool → Nat → List ColEntry
+  | [], inInt, mk => if inInt then [.marker ("M" ++ printNat mk) false] else []
+  | (j, v) :: rest, inInt, mk =>
+      let opening := v.isInt && !inInt
+      let closing := !v.isInt && inInt
+      let pre :=
+        if opening then [ColEntry.marker ("M" ++ printNat mk) true]
+        else if closing then [ColEntry.marker ("M" ++ printNat mk) false]
+        else []
+      let mk' := if opening || closing then mk + 1 else mk
+      let es := Encoder.colEntries m j
+      let es := if es.isEmpty then [(Encoder.objRowName, (0 : ℚ))] else es
+      pre ++ es.map (fun e => ColEntry.coeff v.name e.1 e.2)
+          ++ colEntriesOf m rest v.isInt mk'
+
+/-- One marker line derives one marker entry. -/
+theorem isColEntry_marker (mk : Nat) (tag : String) (b : Bool)
+    (h : (tag = "INTORG" ∧ b = true) ∨ (tag = "INTEND" ∧ b = false)) :
+    IsColEntry (Encoder.markerLine mk tag).2
+      (ColEntry.marker ("M" ++ printNat mk) b) := by
+  refine Or.inl ⟨"M" ++ printNat mk, "'" ++ tag ++ "'", rfl,
+    isNameTok_markerName mk, ?_⟩
+  rcases h with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+  · exact Or.inl ⟨rfl, rfl⟩
+  · exact Or.inr ⟨rfl, rfl⟩
+
+/-- One column's coefficient lines derive its coefficient entries. -/
+theorem isSeq_colLines {name : String} (hn : IsNameTok name) :
+    ∀ (es : List (String × ℚ)), (∀ e ∈ es, IsNameTok e.1) →
+    IsSeq IsColEntry (((Encoder.colLines name es).map Prod.snd).flatten)
+      (es.map (fun e => ColEntry.coeff name e.1 e.2))
+  | [], _ => by simpa [Encoder.colLines] using IsSeq.nil
+  | e :: es, h => by
+      have hhead : IsColEntry [name, e.1, Encoder.mpsRat e.2]
+          (ColEntry.coeff name e.1 e.2) :=
+        Or.inr ⟨name, e.1, Encoder.mpsRat e.2, e.2, rfl, hn, h e (by simp),
+          mpsRat_isNumTok e.2, rfl⟩
+      have := IsSeq.cons hhead (isSeq_colLines hn es (fun d hd => h d (by simp [hd])))
+      simpa [Encoder.colLines] using this
+
+/-- A column's entries are keyed by a row name or by the objective row. The `IsNameTok`
+analogue of `printableTok_colEntry`: the grammar needs the stronger property, since a row
+called `COLUMNS` would break the section split rather than merely fail to print. -/
+theorem isNameTok_colEntry (m : Mip) (hobj : IsNameTok Encoder.objRowName)
+    (hrow : ∀ r ∈ m.rows, IsNameTok r.name) (j : Nat) :
+    ∀ e ∈ Encoder.colEntries m j, IsNameTok e.1 := by
+  intro e he
+  simp only [Encoder.colEntries, List.mem_append] at he
+  rcases he with he | he
+  · split at he
+    · simp at he
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at he
+      subst he; exact hobj
+  · obtain ⟨r, hr, he⟩ := List.mem_filterMap.mp he
+    split at he
+    · simp at he
+    · simp only [Option.some.injEq] at he
+      subst he
+      exact hrow r (by simpa using hr)
+
+/-- **Obligation 1.** The whole `COLUMNS` section, by recursion carrying the marker state.
+The two `split`s mirror the emitter's own `if opening … else if closing …`, so the
+structure of the proof follows the structure of `columnsAux` exactly. -/
+theorem isSeq_columnsAux (m : Mip) (hobj : IsNameTok Encoder.objRowName)
+    (hrow : ∀ r ∈ m.rows, IsNameTok r.name) :
+    ∀ (vs : List (Nat × Mip.Var)) (inInt : Bool) (mk : Nat),
+      (∀ p ∈ vs, IsNameTok p.2.name) →
+      IsSeq IsColEntry
+        (((Encoder.columnsAux m vs inInt mk).map Prod.snd).flatten)
+        (colEntriesOf m vs inInt mk)
+  | [], inInt, mk, _ => by
+      simp only [Encoder.columnsAux, colEntriesOf]
+      split
+      · simpa using IsSeq.cons
+          (isColEntry_marker mk "INTEND" false (Or.inr ⟨rfl, rfl⟩)) IsSeq.nil
+      · simpa using IsSeq.nil
+  | (j, v) :: rest, inInt, mk, hvs => by
+      have hentries : ∀ e ∈ (if (Encoder.colEntries m j).isEmpty then
+            [(Encoder.objRowName, (0 : ℚ))] else Encoder.colEntries m j), IsNameTok e.1 := by
+        split
+        · intro e he
+          simp only [List.mem_cons, List.not_mem_nil, or_false] at he
+          subst he; exact hobj
+        · exact isNameTok_colEntry m hobj hrow j
+      have hcols := isSeq_colLines (hvs (j, v) (by simp)) _ hentries
+      have hrec := isSeq_columnsAux m hobj hrow rest v.isInt
+        (if (v.isInt && !inInt) || (!v.isInt && inInt) then mk + 1 else mk)
+        (fun p hp => hvs p (by simp [hp]))
+      simp only [Encoder.columnsAux, colEntriesOf]
+      split
+      · simpa [List.append_assoc] using IsSeq.cons
+          (isColEntry_marker mk "INTORG" true (Or.inl ⟨rfl, rfl⟩))
+          (isSeq_append hcols hrec)
+      · split
+        · simpa [List.append_assoc] using IsSeq.cons
+            (isColEntry_marker mk "INTEND" false (Or.inr ⟨rfl, rfl⟩))
+            (isSeq_append hcols hrec)
+        · simpa using isSeq_append hcols hrec
+
+theorem isColumnsSection (m : Mip) (hobj : IsNameTok Encoder.objRowName)
+    (hrow : ∀ r ∈ m.rows, IsNameTok r.name) (hv : ∀ v ∈ m.vars, IsNameTok v.name) :
+    IsColumnsSection (((Encoder.columnsLines m).map Prod.snd).flatten)
+      (colEntriesOf m (m.vars.toList.mapIdx (fun j v => (j, v))) false 1) :=
+  isSeq_columnsAux m hobj hrow _ _ _ (by
+    intro p hp
+    obtain ⟨i, hi, he⟩ := List.mem_mapIdx.mp hp
+    have hp2 : p.2 = m.vars.toList[i] := by rw [← he]
+    rw [hp2]
+    exact hv _ (by simpa using List.getElem_mem hi))
+
 /-! ## What is still open
 
-Six of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
-the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. Three remain, and they are the
+Seven of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
+the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. Two remain, and they are the
 semantic ones — each relates a section's recovered contents back to `m`, rather than
 saying which tokens derive which entries.
 
-**1. `COLUMNS` syntax.** `IsSeq IsColEntry _ cols` for the `cols : List ColEntry` that
-`columnsAux` emits. Needs a `colEntriesOf` analogous to `bndEntriesOf`, and a recursion
-carrying the marker state, since `columnsAux` emits marker lines between columns.
+~~**1. `COLUMNS` syntax.**~~ **Done** — `isColumnsSection`, by a recursion carrying the
+marker state whose `split`s mirror the emitter's own `if opening … else if closing …`. The
+enabler was `isNameTok_markerName`: a marker's name must be readable back, and the
+argument for it is uniform rather than case-by-case over the keywords — every
+structurally-read token is digit-free, `printNat` emits digits, so they cannot coincide.
 
 **2. `DeclaresInt cols v.name ↔ v.isInt`.** The marker invariant: the `INTORG`/`INTEND`
 pairs bracket exactly the integer variables. Needs a strengthened recursion hypothesis

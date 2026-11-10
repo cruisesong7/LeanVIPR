@@ -203,10 +203,135 @@ theorem isBoundsSection (m : Mip) (hvec : IsNameTok "BND")
       ((m.vars.toList.map bndEntriesOf).flatten) :=
   isSeq_bndEntriesList hvec m.vars.toList (fun v hv' => hv v (by simpa using hv'))
 
+/-! ## Recovering a variable's bounds from the `BOUNDS` entries
+
+Obligation 4. The folds scan every entry and keep the last match, so this needs the
+variable-name `Nodup` from `Mip.WellFormed`: without it another variable's `LO` line could
+shadow this one's. -/
+
+/-- The step `loBound` folds with, named so facts about it are statable. -/
+def loStep (x : String) (acc : Option ℚ) (e : BndEntry) : Option ℚ :=
+  match e with
+  | .fin true y q => if y = x then some q else acc
+  | .inf true y => if y = x then none else acc
+  | _ => acc
+
+def hiStep (x : String) (acc : Option ℚ) (e : BndEntry) : Option ℚ :=
+  match e with
+  | .fin false y q => if y = x then some q else acc
+  | .inf false y => if y = x then none else acc
+  | _ => acc
+
+/-- The variable an entry is about. -/
+def bndName : BndEntry → String
+  | .fin _ y _ => y
+  | .inf _ y => y
+
+theorem loBound_eq (es : List BndEntry) (x : String) :
+    loBound es x = es.foldl (loStep x) none := rfl
+
+theorem hiBound_eq (es : List BndEntry) (x : String) :
+    hiBound es x = es.foldl (hiStep x) none := rfl
+
+/-- Entries about other variables leave the fold alone. This is the lemma `Nodup` feeds. -/
+theorem loStep_foldl_ne {x : String} : ∀ (es : List BndEntry),
+    (∀ e ∈ es, bndName e ≠ x) → ∀ acc, es.foldl (loStep x) acc = acc
+  | [], _, _ => rfl
+  | e :: es, h, acc => by
+      have hstep : loStep x acc e = acc := by
+        cases e with
+        | fin b y q => cases b <;> simp_all [loStep, bndName]
+        | inf b y => cases b <;> simp_all [loStep, bndName]
+      rw [List.foldl_cons, hstep]
+      exact loStep_foldl_ne es (fun d hd => h d (by simp [hd])) acc
+
+theorem hiStep_foldl_ne {x : String} : ∀ (es : List BndEntry),
+    (∀ e ∈ es, bndName e ≠ x) → ∀ acc, es.foldl (hiStep x) acc = acc
+  | [], _, _ => rfl
+  | e :: es, h, acc => by
+      have hstep : hiStep x acc e = acc := by
+        cases e with
+        | fin b y q => cases b <;> simp_all [hiStep, bndName]
+        | inf b y => cases b <;> simp_all [hiStep, bndName]
+      rw [List.foldl_cons, hstep]
+      exact hiStep_foldl_ne es (fun d hd => h d (by simp [hd])) acc
+
+/-- A variable's own block sets its lower bound outright, whatever the accumulator was. -/
+theorem loStep_foldl_own (v : Mip.Var) (acc : Option ℚ) :
+    (bndEntriesOf v).foldl (loStep v.name) acc = v.lo := by
+  rcases hlo : v.lo with _ | lo <;> rcases hhi : v.hi with _ | hi <;>
+    simp [bndEntriesOf, hlo, hhi, loStep] <;> split <;> simp [loStep]
+
+/-- The upper bound needs the initial `none`, unlike the lower: a continuous variable with
+no upper bound emits no upper entry at all, so the fold has nothing to set and relies on
+where it started. The caller always has `none` there, because by `Nodup` every earlier
+entry is about a different variable. -/
+theorem hiStep_foldl_own (v : Mip.Var) :
+    (bndEntriesOf v).foldl (hiStep v.name) none = v.hi := by
+  rcases hlo : v.lo with _ | lo <;> rcases hhi : v.hi with _ | hi <;>
+    simp [bndEntriesOf, hlo, hhi, hiStep] <;> split <;> simp [hiStep]
+
+/-- `bndEntriesOf v` only ever talks about `v`. -/
+theorem bndName_mem (v : Mip.Var) : ∀ e ∈ bndEntriesOf v, bndName e = v.name := by
+  intro e he
+  rcases hlo : v.lo with _ | lo <;> rcases hhi : v.hi with _ | hi <;>
+    simp only [bndEntriesOf, hlo, hhi] at he <;> simp_all
+  all_goals (rcases he with rfl | ⟨-, rfl⟩ <;> rfl)
+
+/-- **Obligation 4, lower half.** -/
+theorem loBound_flatten : ∀ (vs : List Mip.Var), (vs.map Mip.Var.name).Nodup →
+    ∀ v ∈ vs, loBound ((vs.map bndEntriesOf).flatten) v.name = v.lo
+  | [], _, _, h => by simp at h
+  | w :: vs, hnd, v, hv => by
+      have hnd' : (vs.map Mip.Var.name).Nodup := (List.nodup_cons.mp (by simpa using hnd)).2
+      have hwnot : w.name ∉ vs.map Mip.Var.name :=
+        (List.nodup_cons.mp (by simpa using hnd)).1
+      rw [loBound_eq]
+      simp only [List.map_cons, List.flatten_cons, List.foldl_append]
+      rcases List.mem_cons.mp hv with rfl | hv
+      · rw [loStep_foldl_own v none]
+        refine loStep_foldl_ne _ ?_ _
+        intro e he
+        obtain ⟨es, hes, he⟩ := List.mem_flatten.mp he
+        obtain ⟨u, hu, rfl⟩ := List.mem_map.mp hes
+        rw [bndName_mem u e he]
+        exact fun hcontra => hwnot (by rw [← hcontra]; exact List.mem_map_of_mem hu)
+      · have hne : w.name ≠ v.name := fun hcontra =>
+          hwnot (hcontra ▸ List.mem_map_of_mem hv)
+        rw [loStep_foldl_ne (bndEntriesOf w) (fun e he => by
+          rw [bndName_mem w e he]; exact hne) none]
+        have := loBound_flatten vs hnd' v hv
+        rwa [loBound_eq] at this
+
+/-- **Obligation 4, upper half.** -/
+theorem hiBound_flatten : ∀ (vs : List Mip.Var), (vs.map Mip.Var.name).Nodup →
+    ∀ v ∈ vs, hiBound ((vs.map bndEntriesOf).flatten) v.name = v.hi
+  | [], _, _, h => by simp at h
+  | w :: vs, hnd, v, hv => by
+      have hnd' : (vs.map Mip.Var.name).Nodup := (List.nodup_cons.mp (by simpa using hnd)).2
+      have hwnot : w.name ∉ vs.map Mip.Var.name :=
+        (List.nodup_cons.mp (by simpa using hnd)).1
+      rw [hiBound_eq]
+      simp only [List.map_cons, List.flatten_cons, List.foldl_append]
+      rcases List.mem_cons.mp hv with rfl | hv
+      · rw [hiStep_foldl_own v]
+        refine hiStep_foldl_ne _ ?_ _
+        intro e he
+        obtain ⟨es, hes, he⟩ := List.mem_flatten.mp he
+        obtain ⟨u, hu, rfl⟩ := List.mem_map.mp hes
+        rw [bndName_mem u e he]
+        exact fun hcontra => hwnot (by rw [← hcontra]; exact List.mem_map_of_mem hu)
+      · have hne : w.name ≠ v.name := fun hcontra =>
+          hwnot (hcontra ▸ List.mem_map_of_mem hv)
+        rw [hiStep_foldl_ne (bndEntriesOf w) (fun e he => by
+          rw [bndName_mem w e he]; exact hne) none]
+        have := hiBound_flatten vs hnd' v hv
+        rwa [hiBound_eq] at this
+
 /-! ## What is still open
 
-Five of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
-the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. Four remain, and they are the
+Six of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
+the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. Three remain, and they are the
 semantic ones — each relates a section's recovered contents back to `m`, rather than
 saying which tokens derive which entries.
 
@@ -234,10 +359,13 @@ function. The missing ingredient is a grouped-summation lemma over `ℝ`,
 for the index bound and the variable-name `Nodup` so `colCoeff` does not pick up another
 column's entries.
 
-**4. `loBound bnds v.name = v.lo` and `hiBound bnds v.name = v.hi`.** The folds scan every
-entry and keep the last match, so this needs the variable-name `Nodup` from `WellFormed`:
-without it another variable's `LO` line could shadow this one's. Given that, an induction
-over the variable list.
+~~**4. `loBound`/`hiBound` recovery.**~~ **Done** — `loBound_flatten` and
+`hiBound_flatten`. One wrinkle worth recording: the two halves are *not* symmetric. A
+variable's own block always sets its lower bound, whatever the accumulator held, but a
+continuous variable with no upper bound emits no upper entry at all, so `hiStep_foldl_own`
+has to require the initial `none` where `loStep_foldl_own` is accumulator-agnostic. The
+`Nodup` hypothesis is what supplies that `none`, by ruling out an earlier variable having
+set it.
 
 Then `mpsRoundTrip` is assembly. None of this is soundness-critical — see the file header.
 -/

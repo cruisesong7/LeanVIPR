@@ -464,11 +464,148 @@ theorem isColumnsSection (m : Mip) (hobj : IsNameTok Encoder.objRowName)
     rw [hp2]
     exact hv _ (by simpa using List.getElem_mem hi))
 
+/-! ## The marker interleaving
+
+Obligation 2, and the one that is about the *arrangement* of entries rather than about any
+single entry: the `INTORG`/`INTEND` pairs must bracket exactly the integer columns. The
+proof threads a marker state, so `intColumns` and `stateAfter` are given decomposition
+lemmas first and the invariant is then one line per case. -/
+
+/-- The marker state an entry list leaves behind. -/
+def stateAfter : List ColEntry → Bool → Bool
+  | [], b => b
+  | .marker _ b :: rest, _ => stateAfter rest b
+  | .coeff _ _ _ :: rest, b => stateAfter rest b
+
+/-- `intColumns` splits along an append, threading the marker state. -/
+theorem intColumns_append : ∀ (es1 es2 : List ColEntry) (b : Bool),
+    intColumns (es1 ++ es2) b = intColumns es1 b ++ intColumns es2 (stateAfter es1 b)
+  | [], es2, b => by simp [intColumns, stateAfter]
+  | .marker n c :: rest, es2, b => by
+      simpa [intColumns, stateAfter] using intColumns_append rest es2 c
+  | .coeff c r q :: rest, es2, b => by
+      have := intColumns_append rest es2 b
+      cases b <;> simp [intColumns, stateAfter, this]
+
+/-- `stateAfter` threads through an append. -/
+theorem stateAfter_append : ∀ (es1 es2 : List ColEntry) (b : Bool),
+    stateAfter (es1 ++ es2) b = stateAfter es2 (stateAfter es1 b)
+  | [], _, _ => rfl
+  | .marker n c :: rest, es2, b => by
+      simpa [stateAfter] using stateAfter_append rest es2 c
+  | .coeff c r q :: rest, es2, b => by
+      simpa [stateAfter] using stateAfter_append rest es2 b
+
+/-- Markers only: no columns declared, and the state is whatever the last marker said. -/
+theorem intColumns_markers_nil (n : String) (c b : Bool) :
+    intColumns [ColEntry.marker n c] b = [] := by simp [intColumns]
+
+theorem stateAfter_marker (n : String) (c b : Bool) :
+    stateAfter [ColEntry.marker n c] b = c := by simp [stateAfter]
+
+theorem stateAfter_nil (b : Bool) : stateAfter [] b = b := rfl
+
+/-- Coefficient entries never change the state. -/
+theorem stateAfter_coeffs : ∀ (es : List (String × ℚ)) (name : String) (b : Bool),
+    stateAfter (es.map (fun e => ColEntry.coeff name e.1 e.2)) b = b
+  | [], _, _ => rfl
+  | e :: es, name, b => by simpa [stateAfter] using stateAfter_coeffs es name b
+
+/-- In state `true` every coefficient entry declares its column; in state `false`, none. -/
+theorem intColumns_coeffs : ∀ (es : List (String × ℚ)) (name : String) (b : Bool),
+    intColumns (es.map (fun e => ColEntry.coeff name e.1 e.2)) b =
+      if b then es.map (fun _ => name) else []
+  | [], _, b => by cases b <;> simp [intColumns]
+  | e :: es, name, b => by
+      have := intColumns_coeffs es name b
+      cases b <;> simp [intColumns, this]
+
+/-- **The invariant.** Whatever state a column is reached in, the markers the emitter puts
+before it leave the state equal to that column's own integrality. This is what makes the
+`INTORG`/`INTEND` pairs bracket exactly the integer columns. -/
+theorem stateAfter_pre (v : Mip.Var) (inInt : Bool) (mk : Nat) :
+    stateAfter
+      (if v.isInt && !inInt then [ColEntry.marker ("M" ++ printNat mk) true]
+       else if !v.isInt && inInt then [ColEntry.marker ("M" ++ printNat mk) false]
+       else []) inInt = v.isInt := by
+  cases hv : v.isInt <;> cases inInt <;> simp [stateAfter]
+
+/-- The entry list the emitter gives a column is never empty, so an integer column always
+contributes its name. -/
+theorem colBlock_ne_nil (m : Mip) (j : Nat) :
+    (if (Encoder.colEntries m j).isEmpty then [(Encoder.objRowName, (0 : ℚ))]
+     else Encoder.colEntries m j) ≠ [] := by
+  split
+  · simp
+  · rename_i h; simpa [List.isEmpty_iff] using h
+
+theorem mem_intColumns_colEntriesOf (m : Mip) (x : String) :
+    ∀ (vs : List (Nat × Mip.Var)) (inInt : Bool) (mk : Nat),
+      (x ∈ intColumns (colEntriesOf m vs inInt mk) inInt ↔
+        ∃ p ∈ vs, p.2.isInt = true ∧ p.2.name = x)
+  | [], inInt, mk => by
+      simp only [colEntriesOf]
+      split <;> simp [intColumns]
+  | (j, v) :: rest, inInt, mk => by
+      have hrec := mem_intColumns_colEntriesOf m x rest v.isInt
+        (if (v.isInt && !inInt) || (!v.isInt && inInt) then mk + 1 else mk)
+      simp only [colEntriesOf, intColumns_append, stateAfter_append,
+        stateAfter_pre v inInt mk, stateAfter_coeffs, intColumns_coeffs]
+      have hpre : intColumns
+          (if v.isInt && !inInt then [ColEntry.marker ("M" ++ printNat mk) true]
+           else if !v.isInt && inInt then [ColEntry.marker ("M" ++ printNat mk) false]
+           else []) inInt = [] := by
+        cases hv : v.isInt <;> cases inInt <;> simp [hv, intColumns]
+      rw [hpre]
+      cases hv : v.isInt <;> simp only [hv] at hrec
+      · simpa [hv] using hrec
+      · simp only [ite_true, List.nil_append, List.mem_append, List.mem_map]
+        constructor
+        · rintro (⟨e, _, rfl⟩ | h)
+          · exact ⟨(j, v), by simp, hv, rfl⟩
+          · obtain ⟨p, hp, hpi, hpx⟩ := hrec.mp h
+            exact ⟨p, by simp [hp], hpi, hpx⟩
+        · rintro ⟨p, hp, hpi, hpx⟩
+          rcases List.mem_cons.mp hp with rfl | hp
+          · obtain ⟨e, he⟩ : ∃ e, e ∈ (if (Encoder.colEntries m j).isEmpty then
+                [(Encoder.objRowName, (0 : ℚ))] else Encoder.colEntries m j) := by
+              cases hl : (if (Encoder.colEntries m j).isEmpty then
+                  [(Encoder.objRowName, (0 : ℚ))] else Encoder.colEntries m j) with
+              | nil => exact absurd hl (colBlock_ne_nil m j)
+              | cons a as => exact ⟨a, by simp⟩
+            exact Or.inl ⟨e, he, hpx⟩
+          · exact Or.inr (hrec.mpr ⟨p, hp, hpi, hpx⟩)
+
+
+/-- **Obligation 2.** A column is declared integral exactly when its variable is.
+
+`Nodup` is what rules out a *different* variable with the same name having been the one
+declared; without it the left-to-right direction fails. -/
+theorem declaresInt_iff (m : Mip) (hnd : (m.vars.toList.map Mip.Var.name).Nodup)
+    (v : Mip.Var) (hv : v ∈ m.vars) :
+    DeclaresInt (colEntriesOf m (m.vars.toList.mapIdx (fun j w => (j, w))) false 1)
+        v.name ↔ v.isInt = true := by
+  rw [DeclaresInt, mem_intColumns_colEntriesOf]
+  constructor
+  · rintro ⟨p, hp, hpi, hpx⟩
+    obtain ⟨i, hi, he⟩ := List.mem_mapIdx.mp hp
+    have hp2 : p.2 = m.vars.toList[i] := by rw [← he]
+    have hmem : p.2 ∈ m.vars.toList := by rw [hp2]; exact List.getElem_mem hi
+    have : p.2 = v := by
+      have hvl : v ∈ m.vars.toList := by simpa using hv
+      exact List.inj_on_of_nodup_map hnd hmem hvl hpx
+    rwa [this] at hpi
+  · intro hvi
+    obtain ⟨i, hi, hiv⟩ : ∃ i, ∃ h : i < m.vars.toList.length, m.vars.toList[i] = v := by
+      obtain ⟨i, hi⟩ := List.mem_iff_getElem.mp (by simpa using hv : v ∈ m.vars.toList)
+      exact ⟨i, hi⟩
+    exact ⟨(i, v), List.mem_mapIdx.mpr ⟨i, hi, by rw [hiv]⟩, hvi, rfl⟩
+
 /-! ## What is still open
 
-Seven of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
-the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. Two remain, and they are the
-semantic ones — each relates a section's recovered contents back to `m`, rather than
+Eight of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
+the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. One remains, and it is the
+semantic one — each relates a section's recovered contents back to `m`, rather than
 saying which tokens derive which entries.
 
 ~~**1. `COLUMNS` syntax.**~~ **Done** — `isColumnsSection`, by a recursion carrying the
@@ -477,11 +614,11 @@ enabler was `isNameTok_markerName`: a marker's name must be readable back, and t
 argument for it is uniform rather than case-by-case over the keywords — every
 structurally-read token is digit-free, `printNat` emits digits, so they cannot coincide.
 
-**2. `DeclaresInt cols v.name ↔ v.isInt`.** The marker invariant: the `INTORG`/`INTEND`
-pairs bracket exactly the integer variables. Needs a strengthened recursion hypothesis
-relating `columnsAux`'s `inInt` argument to the run of variables already emitted — the
-hardest of the four, because the property is about the *interleaving* rather than about
-any one entry.
+~~**2. `DeclaresInt cols v.name ↔ v.isInt`.**~~ **Done** — `declaresInt_iff`. The property
+is about the *arrangement* of entries rather than any one entry, so the proof threads a
+marker state: `stateAfter` plus decomposition lemmas for it and `intColumns` over an
+append, after which the invariant (`stateAfter_pre`) is one line per case. `Nodup` is what
+rules out a different variable with the same name having been the one declared.
 
 **3. `FormEqReal (rowForm cols names r.name) r.form`.** The transpose: `rowForm` rebuilds
 a row from the column-major entries, and that must agree with `r.form` as a linear

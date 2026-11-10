@@ -2,6 +2,7 @@ module
 
 public import LeanVIPR.Thm.Encoder.Agree
 public import LeanVIPR.Thm.Encoder.Emit
+public import LeanVIPR.Thm.Encoder.Denote
 public import LeanVIPR.Thm.Encoder.Pipeline
 
 @[expose] public section

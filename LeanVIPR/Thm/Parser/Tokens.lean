@@ -269,4 +269,137 @@ theorem IsTokenization.no_pct {cs : List Char} {ts : Toks} (h : IsTokenization c
       · simpa using hpct
       · exact ih s hs
 
+/-! ## The fold-based tokenizer computes the same tokens
+
+`wsTokensOf` exists only so that a certificate's tokens can be computed without first
+building its character list. `wsTokensOf_eq` is what lets every theorem above, all of
+them stated over `wsTokens`, apply to what the parser actually runs. -/
+
+/-- Tokens of `cs`, given that `pre` has already been read as the start of a token.
+`pre = []` is the ordinary case and reduces to `wsTokens`. -/
+def wsTokensPre (pre : List Char) (cs : List Char) : List String :=
+  match pre with
+  | [] => wsTokens cs
+  | _ => String.ofList (pre ++ (takeToken cs).1) :: wsTokens (takeToken cs).2
+
+private theorem wsTokensPre_ne_nil : ∀ {pre : List Char}, pre ≠ [] → ∀ cs : List Char,
+    wsTokensPre pre cs
+      = String.ofList (pre ++ (takeToken cs).1) :: wsTokens (takeToken cs).2
+  | [], h, _ => absurd rfl h
+  | _ :: _, _, _ => rfl
+
+/-! The three branches of `wsTokens` and the two of `takeToken`, as rewrite rules. -/
+
+private theorem takeToken_cons_nonWs {c : Char} (h : ¬ c.isWhitespace) (cs : List Char) :
+    takeToken (c :: cs) = (c :: (takeToken cs).1, (takeToken cs).2) := by
+  rw [takeToken]; simp only [h, Bool.false_eq_true, ite_false]
+
+private theorem takeToken_cons_ws {c : Char} (h : c.isWhitespace) (cs : List Char) :
+    takeToken (c :: cs) = ([], c :: cs) := by
+  rw [takeToken]; simp only [h, ite_true]
+
+private theorem wsTokens_cons_ws {c : Char} (h : c.isWhitespace) (cs : List Char) :
+    wsTokens (c :: cs) = wsTokens cs := by rw [wsTokens]; simp only [h, ite_true]
+
+private theorem wsTokens_cons_pct {c : Char} (hws : ¬ c.isWhitespace) (hc : c = '%')
+    (cs : List Char) : wsTokens (c :: cs) = wsTokens (dropComment cs) := by
+  subst hc; rw [wsTokens]; simp only [hws, Bool.false_eq_true, ite_false, beq_self_eq_true,
+    ite_true]
+
+private theorem wsTokens_cons_tok {c : Char} (hws : ¬ c.isWhitespace) (hc : ¬ (c == '%'))
+    (cs : List Char) : wsTokens (c :: cs)
+      = String.ofList (c :: (takeToken cs).1) :: wsTokens (takeToken cs).2 := by
+  rw [wsTokens]; simp only [hws, hc, Bool.false_eq_true, ite_false]
+
+/-- The fold, from an arbitrary state. The hypothesis records the invariant that a
+comment only ever runs between tokens, which `TokState.step` maintains. -/
+private theorem foldl_step_eq : ∀ (cs : List Char) (out : List String) (cur : List Char)
+    (inC : Bool), (cur = [] ∨ inC = false) →
+    (cs.foldl TokState.step ⟨out, cur, inC⟩).finish =
+      out.reverse ++ (if inC then wsTokens (dropComment cs) else wsTokensPre cur.reverse cs)
+  | [], out, cur, inC, hinv => by
+      cases inC with
+      | true =>
+          rcases hinv with rfl | h
+          · simp [TokState.finish, TokState.flush, dropComment, wsTokens]
+          · simp at h
+      | false =>
+          cases cur with
+          | nil => simp [TokState.finish, TokState.flush, wsTokensPre, wsTokens]
+          | cons d ds =>
+              simp only [List.foldl_nil, TokState.finish, Bool.false_eq_true, ite_false]
+              rw [wsTokensPre_ne_nil (by simp), takeToken]
+              simp [TokState.flush, wsTokens]
+  | c :: cs, out, cur, inC, hinv => by
+      rw [List.foldl_cons]
+      cases inC with
+      | true =>
+          rcases hinv with rfl | h
+          · by_cases hn : c == '\n'
+            · have hc : c.isWhitespace := by
+                have : c = '\n' := by simpa using hn
+                simp [this]
+              rw [show TokState.step ⟨out, [], true⟩ c = ⟨out, [], false⟩ by
+                simp [TokState.step, hn]]
+              rw [foldl_step_eq cs out [] false (Or.inl rfl)]
+              simp only [ite_true, Bool.false_eq_true, ite_false, List.reverse_nil,
+                wsTokensPre, dropComment, hn]
+              rw [wsTokens_cons_ws hc]
+            · rw [show TokState.step ⟨out, [], true⟩ c = ⟨out, [], true⟩ by
+                simp [TokState.step, hn]]
+              rw [foldl_step_eq cs out [] true (Or.inl rfl)]
+              simp only [ite_true, dropComment, hn, Bool.false_eq_true, ite_false]
+          · simp at h
+      | false =>
+          by_cases hws : c.isWhitespace
+          · rw [show TokState.step ⟨out, cur, false⟩ c
+                = ⟨TokState.flush ⟨out, cur, false⟩, [], false⟩ by simp [TokState.step, hws]]
+            rw [foldl_step_eq cs _ [] false (Or.inl rfl)]
+            simp only [Bool.false_eq_true, ite_false]
+            cases cur with
+            | nil =>
+                simp only [List.reverse_nil, wsTokensPre]
+                simp [TokState.flush, wsTokens_cons_ws hws]
+            | cons d ds =>
+                rw [wsTokensPre_ne_nil (by simp) (c :: cs), takeToken_cons_ws hws,
+                  wsTokens_cons_ws hws]
+                simp only [List.reverse_nil, wsTokensPre]
+                simp [TokState.flush]
+          · by_cases hpct : c == '%' && cur.isEmpty
+            · have hcur : cur = [] := by
+                simp only [Bool.and_eq_true, List.isEmpty_iff] at hpct
+                exact hpct.2
+              have hc : c = '%' := by
+                simp only [Bool.and_eq_true] at hpct
+                simpa using hpct.1
+              subst hcur
+              rw [show TokState.step ⟨out, [], false⟩ c = ⟨out, [], true⟩ by
+                simp [TokState.step, hws, hc]]
+              rw [foldl_step_eq cs out [] true (Or.inl rfl)]
+              simp only [ite_true, Bool.false_eq_true, ite_false, List.reverse_nil,
+                wsTokensPre]
+              rw [wsTokens_cons_pct hws hc]
+            · rw [show TokState.step ⟨out, cur, false⟩ c = ⟨out, c :: cur, false⟩ by
+                simp [TokState.step, hws, hpct]]
+              rw [foldl_step_eq cs out (c :: cur) false (Or.inr rfl)]
+              simp only [Bool.false_eq_true, ite_false, List.reverse_cons]
+              cases cur with
+              | nil =>
+                  have hc : ¬ (c == '%') := by
+                    simp only [Bool.and_eq_true, List.isEmpty_nil, and_true] at hpct
+                    exact hpct
+                  rw [List.reverse_nil, List.nil_append, wsTokensPre_ne_nil (by simp),
+                    wsTokensPre, wsTokens_cons_tok hws hc]
+                  simp
+              | cons d ds =>
+                  rw [wsTokensPre_ne_nil (by simp), wsTokensPre_ne_nil (by simp),
+                    takeToken_cons_nonWs hws]
+                  simp
+
+/-- The tokenizer the parser runs computes the tokens the specification talks about. -/
+theorem wsTokensOf_eq (s : String) : wsTokensOf s = wsTokens s.toList := by
+  rw [wsTokensOf, String.foldl_eq_foldl_toList,
+    foldl_step_eq s.toList [] [] false (Or.inl rfl)]
+  simp [wsTokensPre]
+
 end LeanVIPR.Parser

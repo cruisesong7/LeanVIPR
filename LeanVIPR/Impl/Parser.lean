@@ -89,6 +89,52 @@ def wsTokens : List Char → List String
     rw [← hr]
     exact takeToken_length_lt c cs
 
+/-! ### Tokenizing without materializing the character list
+
+`wsTokens` says what the tokens of a certificate are, by structural recursion over its
+characters, and that is the definition every theorem about tokenization is stated over.
+Running it means building `content.toList` first, which costs about 32 bytes per
+character — on a 10 MB certificate, 316 MB of cons cells, over two thirds of peak memory
+and the reason large certificates run out of it.
+
+`wsTokensOf` computes the same list with a `String.foldl`, which walks the string by
+position and allocates nothing per character. `LeanVIPR.Thm.Parser.wsTokensOf_eq` proves
+the two agree, so this is a change of implementation only: the character list remains
+what the specification talks about. -/
+
+/-- Tokenizer state: finished tokens and the token in progress, both reversed, and
+whether a `%` comment is running. A token in progress is never empty, so `cur = []`
+means "between tokens". -/
+structure TokState where
+  out : List String
+  cur : List Char
+  inComment : Bool
+
+/-- Close off the token in progress, if there is one. -/
+def TokState.flush (st : TokState) : List String :=
+  match st.cur with
+  | [] => st.out
+  | cs => String.ofList cs.reverse :: st.out
+
+def TokState.finish (st : TokState) : List String := st.flush.reverse
+
+/-- Consume one character. Mirrors the three branches of `wsTokens`, plus the comment
+state that `dropComment` expresses by recursion. -/
+def TokState.step (st : TokState) (c : Char) : TokState :=
+  if st.inComment then
+    if c == '\n' then { out := st.out, cur := [], inComment := false } else st
+  else if c.isWhitespace then
+    { out := st.flush, cur := [], inComment := false }
+  else if c == '%' && st.cur.isEmpty then
+    { out := st.out, cur := [], inComment := true }
+  else
+    { out := st.out, cur := c :: st.cur, inComment := false }
+
+/-- Whitespace-separated tokens of a string, computed without building its character
+list. Equal to `wsTokens s.toList`. -/
+def wsTokensOf (s : String) : List String :=
+  (s.foldl TokState.step { out := [], cur := [], inComment := false }).finish
+
 /-! ## Token consumers (Except-monad parser over `List String`) -/
 
 def takeTok : Toks → Except String (String × Toks)
@@ -271,10 +317,10 @@ The keyword is optional and unbracketed, so it is matched greedily: a row *named
 `global` or `local` immediately after a flagless row would be read as that row's flag.
 `LeanVIPR.Thm.Parser.Grammar.IsDers` states this rule, so the exclusion is visible in the
 grammar rather than hidden here. -/
-def takeScope : Toks → Bool × Toks
-  | "global" :: rest => (true, rest)
-  | "local" :: rest => (false, rest)
-  | ts => (false, ts)
+def takeScope : Toks → ViprScope × Toks
+  | "global" :: rest => (.global, rest)
+  | "local" :: rest => (.local, rest)
+  | ts => (.absent, ts)
 
 def takeDer (ts : Toks) : Except String (ViprDer × Toks) := do
   let (name, ts1) ← takeTok ts
@@ -286,7 +332,7 @@ def takeDer (ts : Toks) : Except String (ViprDer × Toks) := do
   let scope := takeScope ts6
   Except.ok ({ name := name, sense := sense, rhs := rhs, form := form,
                usesObj := usesObj, reason := reason, idx := idx,
-               isGlobal := scope.1 }, scope.2)
+               scope := scope.1 }, scope.2)
 
 def takeDers : Nat → Toks → Except String (List ViprDer × Toks)
   | 0,     ts => Except.ok ([], ts)
@@ -381,6 +427,32 @@ def finalUseViolations (v : Vipr) (pos : Nat) : List ViprDer → List (ViprDer �
         if usedAfterFinal v (v.cons.size + pos) k then some (d, k) else none)
       ++ finalUseViolations v (pos + 1) ds
 
+/-- `b` counts a subset of the `m` constraints, so it cannot exceed it. -/
+def checkBoundCount (v : Vipr) : Except String Unit :=
+  if v.numBounds ≤ v.numCon then Except.ok ()
+  else Except.error s!"CON: b = {v.numBounds} exceeds m = {v.numCon}"
+
+/-- The derivations in `ds`, whose first element has index `pos`, that cite a constraint
+which does not exist yet -- paired with the offending reference. -/
+def forwardRefs (v : Vipr) (pos : Nat) : List ViprDer → List (ViprDer × Nat)
+  | [] => []
+  | d :: ds =>
+      ((reasonRefs d.reason).filterMap fun k =>
+        if k < v.cons.size + pos then none else some (d, k))
+      ++ forwardRefs v (pos + 1) ds
+
+/-- A reason may only cite constraints that already exist: the `CON` rows, and the
+derivations before this one. Soundness does not depend on this -- the checker refuses to
+replay an out-of-range reference anyway -- but `finalUseHint` would otherwise resolve
+such a reference to a default, so what does depend on it is that an accepted certificate
+denotes one problem. -/
+def checkReasonRefs (v : Vipr) : Except String Unit :=
+  match forwardRefs v 0 v.ders.toList with
+  | [] => Except.ok ()
+  | (d, k) :: _ =>
+      Except.error s!"DER {d.name} refers to constraint {k}, which does not exist yet \
+                      (CON {v.cons.size} and earlier DER rows only)"
+
 /-- The `DER` section's trailing field is `-1`, or an index such that no constraint with
 a larger index refers to this one (spec, `DER` section). It lets a verifier discard the
 constraint from memory once that index has been checked, so a derivation that is used
@@ -407,6 +479,8 @@ def validateVipr (v : Vipr) : Except String Unit :=
       checkAll (fun d => do
         checkFormIndices v.varNames.size s!"DER {d.name}" d.form
         checkDistinct s!"DER {d.name} reason" (reasonMultipliers d.reason)) v.ders.toList
+      checkBoundCount v
+      checkReasonRefs v
       checkFinalUse v
 
 /-- Read the `RTP` (relation-to-prove) section: `RTP infeas`, or `RTP range lb ub`. -/
@@ -472,6 +546,6 @@ def parseViprToks (ts0 : Toks) : Except String Vipr := do
       Except.ok v
 
 def parseVipr (content : String) : Except String Vipr :=
-  parseViprToks (wsTokens content.toList)
+  parseViprToks (wsTokensOf content)
 
 end LeanVIPR.Parser

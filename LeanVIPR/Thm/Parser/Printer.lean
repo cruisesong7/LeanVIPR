@@ -315,27 +315,44 @@ theorem printDerCore_isDerCore {ts : Toks} {d : ViprDer} (h : IsDerCore ts d) :
     printBody_isBody (isBody_objForm hb), printReason_isReason hr,
     printInt_isIntTok _⟩
 
+private theorem isDerCore_head? {core : Toks} {d : ViprDer} (h : IsDerCore core d)
+    (rest : Toks) : (core ++ rest).head? = some d.name := by
+  obtain ⟨st, rt, body, rsn, it, he, -⟩ := h
+  rw [he]; simp
+
+private theorem isDers_head? : ∀ {ts : Toks} {d : ViprDer} {ds : List ViprDer},
+    IsDers ts (d :: ds) → ts.head? = some d.name
+  | _, _, _, IsDers.globalFlag hc _ _ => isDerCore_head? hc _
+  | _, _, _, IsDers.localFlag hc _ _ => isDerCore_head? hc _
+  | _, _, _, IsDers.bare hc _ _ _ => isDerCore_head? hc _
+
+private theorem printDers_head? : ∀ {ts : Toks} {ds : List ViprDer}, IsDers ts ds →
+    (printDers ds).head? = ts.head?
+  | _, _, IsDers.nil => by simp [printDers]
+  | _, _, IsDers.globalFlag hc hg _ => by
+      rw [printDers, hg, isDerCore_head? (printDerCore_isDerCore hc),
+        isDerCore_head? hc]
+  | _, _, IsDers.localFlag hc hg _ => by
+      rw [printDers, hg, isDerCore_head? (printDerCore_isDerCore hc),
+        isDerCore_head? hc]
+  | _, _, IsDers.bare hc hg _ _ => by
+      rw [printDers, hg, isDerCore_head? (printDerCore_isDerCore hc),
+        isDerCore_head? hc]
+
 theorem printDers_isDers : ∀ {ts : Toks} {ds : List ViprDer}, IsDers ts ds →
     IsDers (printDers ds) ds
   | _, _, IsDers.nil => by simpa [printDers] using IsDers.nil
   | _, _, IsDers.globalFlag hc hg hs => by
-      rw [printDers]
-      split
-      case isTrue =>
-          exact IsDers.globalFlag (printDerCore_isDerCore hc) hg (printDers_isDers hs)
-      case isFalse hbad => exact absurd hg hbad
+      rw [printDers, hg]
+      exact IsDers.globalFlag (printDerCore_isDerCore hc) hg (printDers_isDers hs)
   | _, _, IsDers.localFlag hc hg hs => by
-      rw [printDers]
-      split
-      case isTrue hbad => rw [hg] at hbad; simp at hbad
-      case isFalse =>
-          exact IsDers.localFlag (printDerCore_isDerCore hc) hg (printDers_isDers hs)
-  | _, _, IsDers.bare hc hg _ hs => by
-      rw [printDers]
-      split
-      case isTrue hbad => rw [hg] at hbad; simp at hbad
-      case isFalse =>
-          exact IsDers.localFlag (printDerCore_isDerCore hc) hg (printDers_isDers hs)
+      rw [printDers, hg]
+      exact IsDers.localFlag (printDerCore_isDerCore hc) hg (printDers_isDers hs)
+  | _, _, IsDers.bare hc hg hne hs => by
+      rw [printDers, hg]
+      refine IsDers.bare (printDerCore_isDerCore hc) hg ?_ (printDers_isDers hs)
+      rw [printDers_head? hs]
+      exact hne
 
 /-! ## Sections -/
 
@@ -636,20 +653,19 @@ theorem printDerCore_printable {ts : Toks} {d : ViprDer} (h : IsDerCore ts d)
 theorem printDers_printable : ∀ {ts : Toks} {ds : List ViprDer}, IsDers ts ds →
     (∀ d ∈ ds, PrintableTok d.name) → Printable (printDers ds)
   | _, _, IsDers.nil, _ => by simpa [printDers] using printable_nil
-  | _, d :: ds, IsDers.globalFlag hc _ hs, hn => by
-      rw [printDers]
+  | _, d :: ds, IsDers.globalFlag hc hg hs, hn => by
+      rw [printDers, hg]
       refine printable_append (printDerCore_printable hc (hn d (by simp))) ?_
-      exact printable_cons (by split <;> decide)
+      exact printable_cons (by decide)
         (printDers_printable hs (fun e he => hn e (by simp [he])))
-  | _, d :: ds, IsDers.localFlag hc _ hs, hn => by
-      rw [printDers]
+  | _, d :: ds, IsDers.localFlag hc hg hs, hn => by
+      rw [printDers, hg]
       refine printable_append (printDerCore_printable hc (hn d (by simp))) ?_
-      exact printable_cons (by split <;> decide)
+      exact printable_cons (by decide)
         (printDers_printable hs (fun e he => hn e (by simp [he])))
-  | _, d :: ds, IsDers.bare hc _ _ hs, hn => by
-      rw [printDers]
-      refine printable_append (printDerCore_printable hc (hn d (by simp))) ?_
-      exact printable_cons (by split <;> decide)
+  | _, d :: ds, IsDers.bare hc hg _ hs, hn => by
+      rw [printDers, hg]
+      exact printable_append (printDerCore_printable hc (hn d (by simp)))
         (printDers_printable hs (fun e he => hn e (by simp [he])))
 
 theorem printRtp_printable (rtp : ViprRtp) : Printable (printRtp rtp) := by

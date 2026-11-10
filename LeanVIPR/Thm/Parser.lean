@@ -85,6 +85,7 @@ open LeanVIPR.Impl
 characters of the file, and the value returned is the one the grammar assigns to them. -/
 theorem parseVipr_sound {content : String} {v : Vipr} (h : parseVipr content = .ok v) :
     IsViprText content.toList v ∧ IsValid v := by
+  rw [parseVipr, wsTokensOf_eq] at h
   obtain ⟨hg, hv⟩ := parseViprToks_sound h
   exact ⟨⟨_, wsTokens_isTokenization _, hg⟩, hv⟩
 
@@ -95,6 +96,7 @@ theorem parseVipr_complete {content : String} {v : Vipr}
     parseVipr content = .ok v := by
   obtain ⟨ts, ht, hg⟩ := hg
   rw [isTokenization_eq ht] at hg
+  rw [parseVipr, wsTokensOf_eq]
   exact parseViprToks_complete hg hv
 
 theorem parseVipr_eq_ok_iff {content : String} {v : Vipr} :

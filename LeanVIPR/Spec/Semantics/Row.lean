@@ -47,16 +47,6 @@ def scomb (comb : List (ℚ × SLe)) : Le := combine (comb.map (fun p => (p.1, p
 /-- Negate a form (as `-1 · f`). -/
 def sNegForm (f : LinForm) : LinForm := LinForm.scale (-1) f
 
-/-! ### Tests on an already normalized form
-
-`linCheck` and `rndCheck` normalize the (typically long) combined form once and reuse
-it: `normForm (f ++ g)` extends `normForm f` term by term with the short stated row `g`.
-The `@[simp]` lemmas fold these tests back into `formIsZero`, `formEq`, and `formIntB`. -/
-
-/-- Extend a normalized form with further terms. -/
-def alExtend (al : List (Nat × ℚ)) (g : LinForm) : List (Nat × ℚ) :=
-  g.foldl (fun acc t => addTerm acc t.idx t.coeff) al
-
 /-! ## Derivation replay over sensed constraints -/
 
 /-- A derivation step: the stated (sensed) row, and its reason (indices reference the

@@ -30,7 +30,7 @@ theorem candidate_feasible {v : Vipr} {a : RealValuation} (h : Candidate v a) :
 /-- Soundness of a `{ sol }` derivation row.  For infeasibility certificates the
 solution set is empty, so this rule cannot be valid.  For range certificates it
 holds at every valuation that is no worse than the referenced solution. -/
-theorem solReason_sound {v : Vipr} {stated : SLe} {a : RealValuation}
+theorem solReasonValid_sound {v : Vipr} {stated : SLe} {a : RealValuation}
     (hsols : SolSectionValid v) (hcand : Candidate v a)
     (hreason : SolReasonValid v stated) : satReal stated a := by
   cases hr : v.rtp with
@@ -139,7 +139,7 @@ theorem replay_sound (v : Vipr) (a : RealValuation)
             simp only [hr] at hrule
             simp only [sentryOf, hr]
             intro _ _
-            exact solReason_sound hsols hcand hrule
+            exact solReasonValid_sound hsols hcand hrule
 
 private theorem closedFinal_holds {v : Vipr} {a : RealValuation}
     (hsols : SolSectionValid v) (hcand : Candidate v a)
@@ -332,10 +332,10 @@ theorem ClaimValid.optimal_within {v : Vipr} {lb ub : Option ℚ}
 
 /-! ### Refinement of executable solution checks to the declarative proof system -/
 
-theorem satQB_sound_solution {c : SLe} {s : NamedSolution}
-    (h : satQB c (sparseValuation s.2) = true) :
+theorem satRat_sound_solution {c : SLe} {s : NamedSolution}
+    (h : satRat c (sparseValuation s.2) = true) :
     satReal c (solutionValuation s) := by
-  simp only [satQB] at h
+  simp only [satRat] at h
   simp only [satReal]
   split_ifs at h ⊢ with hL hG hE
   · rw [evalReal_solution]
@@ -345,25 +345,25 @@ theorem satQB_sound_solution {c : SLe} {s : NamedSolution}
   · rw [evalReal_solution]
     exact_mod_cast of_decide_eq_true h
 
-theorem solutionFeasibleB_sound {v : Vipr} {s : NamedSolution}
-    (h : solutionFeasibleB v s = true) : Feasible v (solutionValuation s) := by
-  rw [solutionFeasibleB, Bool.and_eq_true] at h
+theorem solutionFeasible_sound {v : Vipr} {s : NamedSolution}
+    (h : solutionFeasible v s = true) : Feasible v (solutionValuation s) := by
+  rw [solutionFeasible, Bool.and_eq_true] at h
   refine ⟨?_, ?_⟩
   · intro j hj
     have hjb := (List.all_eq_true.mp h.1) j hj
-    obtain ⟨z, hz⟩ := isIntValB_sound hjb
+    obtain ⟨z, hz⟩ := isIntVal_sound hjb
     refine ⟨z, ?_⟩
     change (sparseValuation s.2 j : ℝ) = (z : ℝ)
     exact_mod_cast hz
   · intro c hc
-    exact satQB_sound_solution ((List.all_eq_true.mp h.2) c hc)
+    exact satRat_sound_solution ((List.all_eq_true.mp h.2) c hc)
 
-theorem allSolutionsB_sound {v : Vipr} (h : allSolutionsB v = true) :
+theorem allSolutionsFeasible_sound {v : Vipr} (h : allSolutionsFeasible v = true) :
     AllSolutionsValid v := by
   intro s hs
-  exact solutionFeasibleB_sound ((List.all_eq_true.mp h) s hs)
+  exact solutionFeasible_sound ((List.all_eq_true.mp h) s hs)
 
-theorem solSectionB_sound {v : Vipr} (h : solSectionB v = true) :
+theorem solSection_sound {v : Vipr} (h : solSection v = true) :
     SolSectionValid v := by
   cases hr : v.rtp with
   | infeas =>
@@ -372,11 +372,11 @@ theorem solSectionB_sound {v : Vipr} (h : solSectionB v = true) :
       cases hs : v.sols.toList with
       | nil => rfl
       | cons s ss =>
-          simp [solSectionB, hr, hs] at h
+          simp [solSection, hr, hs] at h
   | range lb ub =>
       rw [SolSectionValid, hr]
-      simp only [solSectionB, hr, Bool.and_eq_true] at h
-      refine ⟨allSolutionsB_sound h.1, ?_⟩
+      simp only [solSection, hr, Bool.and_eq_true] at h
+      refine ⟨allSolutionsFeasible_sound h.1, ?_⟩
       by_cases hmin : v.objSense = "min"
       · simp only [ite_eq_left hmin] at h
         simp only [hmin]
@@ -395,18 +395,18 @@ theorem solSectionB_sound {v : Vipr} (h : solSectionB v = true) :
               exact ⟨s, hs, of_decide_eq_true hle⟩
         · simp [hmin, hmax] at h
 
-theorem solReasonB_sound {v : Vipr} {stated : SLe}
-    (h : solReasonB v stated = true) : SolReasonValid v stated := by
-  unfold solReasonB at h
+theorem solReason_sound {v : Vipr} {stated : SLe}
+    (h : solReason v stated = true) : SolReasonValid v stated := by
+  unfold solReason at h
   unfold SolReasonValid
   by_cases hmin : v.objSense = "min"
   · simp only [ite_eq_left hmin] at h ⊢
     obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-    exact ⟨s, hs, Rule.domSLe_valid_real hdom⟩
+    exact ⟨s, hs, Rule.dominates_valid_real hdom⟩
   · by_cases hmax : v.objSense = "max"
     · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
       obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-      exact ⟨s, hs, Rule.domSLe_valid_real hdom⟩
+      exact ⟨s, hs, Rule.dominates_valid_real hdom⟩
     · simp [hmin, hmax] at h
 
 end LeanVIPR.Parser.Vipr

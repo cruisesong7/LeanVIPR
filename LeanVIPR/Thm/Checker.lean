@@ -2,6 +2,7 @@ module
 
 public import LeanVIPR.Thm.Checker.Sound
 public import LeanVIPR.Thm.Checker.Complete
+public import LeanVIPR.Thm.Checker.Parallel
 
 @[expose] public section
 

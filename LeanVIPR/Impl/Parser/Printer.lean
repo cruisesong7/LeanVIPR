@@ -113,13 +113,17 @@ def printDerCore (d : ViprDer) : Toks :=
   d.name :: printChar d.sense :: printRat d.rhs ::
     (printBody d.form d.usesObj ++ (printReason d.reason ++ [printInt d.idx]))
 
-/-- A flagless row is written with an explicit `local`. The flag is matched greedily, so
-omitting it would make the next row's name ambiguous when that name is `global` or
-`local`. -/
+/-- A row's scope keyword is written back exactly as it was read, and a flagless row
+emits nothing. That is safe because `IsDers.bare` excludes a flagless row followed by a
+row *named* `global` or `local`, so the omitted keyword can never be mistaken for the
+next row's name on the way back in. -/
 def printDers : List ViprDer → Toks
   | [] => []
   | d :: ds =>
-      printDerCore d ++ (if d.isGlobal then "global" else "local") :: printDers ds
+      printDerCore d ++ (match d.scope with
+        | .absent => printDers ds
+        | .global => "global" :: printDers ds
+        | .local => "local" :: printDers ds)
 
 def printBound (infinity : String) : Option ℚ → String
   | none => infinity

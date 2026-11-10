@@ -679,6 +679,79 @@ theorem sum_range_coeffAt (a : RealValuation) (k : Nat) : ∀ (f : LinForm),
       simp [ht, evalReal]
 
 
+/-! ## Towards the transpose: evaluating `rowForm`, and what `colCoeff` picks out
+
+Obligation 3, in pieces. `evalReal_mapIdxFlatten` is step 1 — `rowForm` evaluates to the
+grouped sum — generalized over the index offset `mapIdx` introduces, since
+`mapIdx f (x :: xs)` recurses with `f (·+1)`. The zero-skip is harmless because a skipped
+index would have contributed `0 * a j` anyway. -/
+
+theorem evalReal_append (f g : LinForm) (a : RealValuation) :
+    evalReal (f ++ g) a = evalReal f a + evalReal g a := by
+  simp [evalReal]
+
+theorem sum_range_succ_front (h : Nat → ℝ) (k : Nat) :
+    ((List.range (k + 1)).map h).sum = h 0 + ((List.range k).map (fun j => h (j + 1))).sum := by
+  rw [List.range_succ_eq_map]
+  simp [List.map_map, Function.comp_def]
+
+theorem evalReal_mapIdxFlatten (g : String → ℚ) (a : RealValuation) :
+    ∀ (names : List String) (off : Nat),
+      evalReal ((names.mapIdx (fun j n =>
+          if g n = 0 then ([] : LinForm) else [(⟨off + j, g n⟩ : Term)])).flatten) a
+        = ((List.range names.length).map
+            (fun j => ((g (names.getD j "") : ℚ) : ℝ) * a (off + j))).sum
+  | [], off => by simp [evalReal]
+  | n :: ns, off => by
+      have ih := evalReal_mapIdxFlatten g a ns (off + 1)
+      have hrw : (ns.mapIdx fun i x =>
+            if g x = 0 then ([] : LinForm) else [(⟨off + (i + 1), g x⟩ : Term)])
+          = ns.mapIdx (fun i x =>
+            if g x = 0 then ([] : LinForm) else [(⟨(off + 1) + i, g x⟩ : Term)]) := by
+        congr 1
+        funext i x
+        rw [show off + (i + 1) = (off + 1) + i from by omega]
+      have hhead : evalReal (if g n = 0 then ([] : LinForm) else [(⟨off + 0, g n⟩ : Term)]) a
+          = ((g n : ℚ) : ℝ) * a (off + 0) := by
+        split <;> rename_i hz <;> simp [evalReal, hz]
+      rw [List.mapIdx_cons, List.flatten_cons, evalReal_append, hhead, hrw, ih,
+        List.length_cons, sum_range_succ_front]
+      simp only [List.getD_cons_zero, List.getD_cons_succ, Nat.add_zero]
+      have hfun : (fun j => ((g (ns.getD j "") : ℚ) : ℝ) * a (off + 1 + j))
+          = (fun j => ((g (ns.getD j "") : ℚ) : ℝ) * a (off + (j + 1))) := by
+        funext j
+        rw [show off + (j + 1) = off + 1 + j from by omega]
+      rw [hfun]
+
+/-- `colCoeff` splits along an append, like `intColumns` does. -/
+theorem colCoeff_append (es1 es2 : List ColEntry) (col row : String) :
+    colCoeff (es1 ++ es2) col row = colCoeff es1 col row + colCoeff es2 col row := by
+  simp [colCoeff]
+
+/-- Marker entries contribute nothing. -/
+theorem colCoeff_marker (n : String) (b : Bool) (col row : String) :
+    colCoeff [ColEntry.marker n b] col row = 0 := by simp [colCoeff]
+
+/-- A column's own coefficient entries, summed for one row. -/
+theorem colCoeff_coeffs (name col row : String) :
+    ∀ (es : List (String × ℚ)),
+      colCoeff (es.map (fun e => ColEntry.coeff name e.1 e.2)) col row
+        = if name = col then (es.map (fun e => if e.1 = row then e.2 else 0)).sum else 0
+  | [] => by cases h : name == col <;> simp_all [colCoeff]
+  | e :: es => by
+      have ih := colCoeff_coeffs name col row es
+      by_cases hn : name = col
+      · subst hn
+        by_cases hr : e.1 = row
+        · subst hr
+          simp only [colCoeff, List.map_cons, List.sum_cons] at ih ⊢
+          simp_all
+        · simp only [colCoeff, List.map_cons, List.sum_cons] at ih ⊢
+          simp_all
+      · simp only [colCoeff, List.map_cons, List.sum_cons] at ih ⊢
+        simp_all
+
+
 /-! ## What is still open
 
 Eight of the nine obligations in `IsMpsToks` are discharged above, and the one

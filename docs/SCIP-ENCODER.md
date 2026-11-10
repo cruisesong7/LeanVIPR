@@ -139,12 +139,33 @@ So the honest positioning is **not** "LP in Lean", which is taken and done bette
 *verified mixed-integer* programming: the integrality layer above what they cover, with
 LP as the degenerate case.
 
-**Complementary, not competing.** `leanprover/lp` owns verified *linear* programming in
-Lean and does it better than this branch would: tactics, an in-process FFI backend, proof
-reconstruction, unboundedness. This branch owns the *integrality* layer — the `rnd` and
-`uns` reasoning that Farkas duality cannot express. Framing the relationship as
-subsumption is both inaccurate and unnecessary; the two cover different problem classes
-and the overlap is the degenerate case.
+**Complementary, and the layering is literal rather than diplomatic.** Exact SCIP's own
+`--version` reports `[LP solver: SoPlex 8.0.1]`: SCIP *is* branch-and-bound with cuts
+sitting on top of SoPlex, which solves its LP relaxations. `leanprover/lp` verifies
+SoPlex. This branch verifies SCIP. The relationship between the two Lean developments is
+exactly the relationship between the two solvers they check, one layer up.
+
+That is also why "we express more problems" is the weaker form of the claim, and not the
+one to lead with. Expressing more is nearly free — it is the `isInt` field on
+`Mip.Var`. What is not free is that the extra expressiveness arrives with extra *proof
+rules that have to be proved sound*:
+
+| | certificate is | rules to verify |
+|---|---|---|
+| `leanprover/lp` | a dual multiplier vector | Farkas duality |
+| this branch | a derivation DAG | `asm`, `lin`, `rnd`, `uns` — branch discharge and integer rounding |
+
+A Farkas certificate is a *vector*; a VIPR certificate is a *proof tree*. Those are
+different objects, which is why the two developments cannot simply be merged into one
+checker, and why the contribution here is the rule layer rather than the problem class.
+
+And the fragments nest exactly: VIPR's `lin` reason **is** a Farkas combination. So
+`leanprover/lp` is, in effect, a very well-engineered checker for the `lin` fragment, and
+this branch adds `rnd` and `uns` above it. That suggests a real integration rather than a
+turf split — their tactic frontend for continuous goals, falling through to this pipeline
+when integrality appears — which is the right "future work" sentence.
+
+Framing the relationship as subsumption is therefore both inaccurate and unnecessary.
 
 For completeness, since the question comes up: **in problem class this does contain LP, in
 capability it does not.**

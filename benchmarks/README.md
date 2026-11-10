@@ -147,9 +147,10 @@ rather than seconds, so it is measured separately and with a 300 s cap:
 python3 benchmarks/run_kernel.py --output benchmarks/results/kernel.csv
 ```
 
-18 of 21 runs complete within the cap.
-The three that do not are `kernel-full` on range certificates (`egout`, `flugpl`,
-`gt2`), where there is no reconstruction path and the whole certificate must reduce.
+18 of 26 runs complete within the cap. Of the 8 that do not,
+6 are `kernel-full` on range certificates (`egout`, `flugpl`, `gt2`, `alu4_9`, `vpm1`, `enigma`), which have no
+reconstruction path so the whole certificate must reduce, and 2 are `kernel-reconstruct`
+on the largest infeasibility certificates (`alu6_1`, `alu4_1`).
 
 | Certificate | Mode | Wall |
 |---|---|---:|

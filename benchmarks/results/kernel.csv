@@ -20,3 +20,8 @@ alu5_5,infeas,kernel-reconstruct,116.74,300,pass,0
 flugpl,range,kernel-full,300.01,300,timeout,
 alu7_5,infeas,kernel-reconstruct,37.65,300,pass,0
 gt2,range,kernel-full,300.00,300,timeout,
+alu6_1,infeas,kernel-reconstruct,300.00,300,timeout,
+alu4_9,range,kernel-full,300.01,300,timeout,
+alu4_1,infeas,kernel-reconstruct,300.01,300,timeout,
+vpm1,range,kernel-full,300.01,300,timeout,
+enigma,range,kernel-full,300.01,300,timeout,

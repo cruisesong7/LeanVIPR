@@ -80,8 +80,36 @@ def reportCertificate (path : String) (v : Vipr) : IO Unit := do
     ++ s!"lin×{countReason v.ders isLin}  rnd×{countReason v.ders isRnd}  "
     ++ s!"uns×{countReason v.ders isUns}  sol×{countReason v.ders isSol}")
 
+/-- Decode `bytes` as ISO-8859-1: each byte becomes the code point of the same
+value.
+
+Injective, so two names that differ as bytes still differ as strings. That
+matters, because the checker compares variable names for duplicates. -/
+def decodeLatin1 (bytes : ByteArray) : String :=
+  bytes.foldl (fun s b => s.push (Char.ofNat b.toNat)) ""
+
+/-- Read a certificate, tolerating names that are not UTF-8.
+
+Published certificates in the `dfn6*` family carry ISO-8859-1 variable names
+such as `München`, which `IO.FS.readFile` rejects with an uncaught exception.
+The reference checker reads bytes and never looks inside a name, and neither
+does this one, so the decoding only has to be deterministic and injective: try
+UTF-8, and fall back to ISO-8859-1 for the whole file.
+
+The fallback loses byte-level fidelity, because printing the certificate back
+out re-encodes those names as UTF-8. `toString_roundtrip_of_parse` is unaffected:
+it relates `parseVipr` and `toString` on the string that was parsed, whatever
+produced it. -/
+def readCertificate (path : String) : IO String := do
+  let bytes ← IO.FS.readBinFile ⟨path⟩
+  match String.fromUTF8? bytes with
+  | some content => return content
+  | none =>
+      IO.eprintln s!"warning: {path} is not UTF-8; reading it as ISO-8859-1"
+      return decodeLatin1 bytes
+
 def parseFile (path : String) : IO (Except String (String × Vipr)) := do
-  let content ← IO.FS.readFile ⟨path⟩
+  let content ← readCertificate path
   match parseVipr content with
   | .error e => return .error e
   | .ok v => return .ok (content, v)

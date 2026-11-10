@@ -10,10 +10,17 @@ For each certificate, in order of increasing compressed size, the runner
 4. runs ``viprcheck --native-mode slice`` for ``RTP infeas`` certificates,
 5. deletes the plain file.
 
-All runs are strictly sequential. Each run is wrapped in ``/usr/bin/time -l -p``
-(macOS rusage: max RSS, peak footprint, instructions, cycles, ...) and guarded by
-a wall-clock timeout and a resident-memory watchdog. One CSV row is appended and
-flushed per run, so an interrupted run can be resumed with ``--resume``.
+All runs are strictly sequential. Each run is wrapped in ``/usr/bin/time`` and
+guarded by a wall-clock timeout and a memory watchdog. One CSV row is appended
+and flushed per run, so an interrupted run can be resumed with ``--resume``.
+
+macOS and Linux are both supported and write the same columns, but they cannot
+fill all of them. macOS reports peak memory footprint, instructions retired and
+cycles elapsed; Linux reports none of the three, so those columns stay empty
+there. The footprint watchdog uses ``phys_footprint`` on macOS (resident +
+compressed + swapped) and ``VmRSS + VmSwap`` on Linux, which has no
+compressed-memory accounting. Linux needs GNU ``/usr/bin/time`` on PATH, which
+is a separate package from the shell builtin.
 """
 
 from __future__ import annotations
@@ -54,7 +61,12 @@ CPP_CPU_RE = re.compile(r"Completed in (?P<cpu>[0-9.eE+-]+) seconds \(CPU\)")
 CPP_TERMINATED_RE = re.compile(r"Terminated after (?P<n>\d+) derivations")
 CPP_NDER_RE = re.compile(r"numberOfDerivations = (?P<n>\d+)")
 
-# Fields of macOS `/usr/bin/time -l` that are reported per run.
+IS_DARWIN = sys.platform == "darwin"
+IS_LINUX = sys.platform.startswith("linux")
+
+# The resource columns, keyed by the label macOS `/usr/bin/time -l` prints.
+# This is also the canonical column order, so both platforms emit the same
+# schema and two runs can be concatenated.
 RUSAGE_FIELDS = {
     "maximum resident set size": "max_rss_bytes",
     "peak memory footprint": "peak_footprint_bytes",
@@ -68,6 +80,20 @@ RUSAGE_FIELDS = {
     "instructions retired": "instructions",
     "cycles elapsed": "cycles",
 }
+
+# GNU time has no format specifier for peak footprint, instructions or cycles,
+# so on Linux those three columns stay empty.  `%M` is in kilobytes.
+GNU_TIME_FORMAT = "\n".join([
+    "real %e", "user %U", "sys %S",
+    "rusage max_rss_kb %M",
+    "rusage page_reclaims %R",
+    "rusage page_faults %F",
+    "rusage swaps %W",
+    "rusage block_in %I",
+    "rusage block_out %O",
+    "rusage vol_ctx_switches %w",
+    "rusage invol_ctx_switches %c",
+])
 
 COMMON_HEAD = [
     # identity
@@ -215,20 +241,57 @@ def read_header(path: Path) -> Dict[str, str]:
 # measurement
 
 
-_LIBSYSTEM = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
-_LIBSYSTEM.proc_pid_rusage.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+_LIBSYSTEM = None
 
 
-def phys_footprint_bytes(pid: int) -> int:
+def _libsystem():
+    """Load libSystem on first use, so importing this module works on Linux."""
+    global _LIBSYSTEM
+    if _LIBSYSTEM is None:
+        _LIBSYSTEM = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+        _LIBSYSTEM.proc_pid_rusage.argtypes = [ctypes.c_int, ctypes.c_int,
+                                               ctypes.c_void_p]
+    return _LIBSYSTEM
+
+
+def _darwin_footprint_bytes(pid: int) -> int:
     """macOS phys_footprint of `pid` (resident + compressed + swapped), or 0.
 
     Uses proc_pid_rusage(RUSAGE_INFO_V2). After the 16-byte UUID the struct is a
     sequence of uint64s, of which ri_phys_footprint is the eighth.
     """
     buf = (ctypes.c_uint64 * 64)()
-    if _LIBSYSTEM.proc_pid_rusage(pid, 2, ctypes.byref(buf)) != 0:
+    if _libsystem().proc_pid_rusage(pid, 2, ctypes.byref(buf)) != 0:
         return 0
     return int(buf[2 + 7])
+
+
+_VM_RE = re.compile(r"^(VmRSS|VmSwap):\s+(\d+) kB", re.M)
+
+
+def _linux_footprint_bytes(pid: int) -> int:
+    """VmRSS + VmSwap of `pid`, or 0.
+
+    The nearest Linux analogue of phys_footprint.  It is not the same quantity:
+    Linux has no compressed-memory accounting, so a process whose pages the
+    kernel has compressed rather than swapped is undercounted relative to macOS.
+    """
+    try:
+        text = Path(f"/proc/{pid}/status").read_text()
+    except OSError:
+        return 0
+    return sum(int(kb) * 1024 for _, kb in _VM_RE.findall(text))
+
+
+def phys_footprint_bytes(pid: int) -> int:
+    return _darwin_footprint_bytes(pid) if IS_DARWIN else _linux_footprint_bytes(pid)
+
+
+def time_wrapper(out: Path) -> List[str]:
+    """The `/usr/bin/time` invocation that writes rusage to `out`."""
+    if IS_DARWIN:
+        return ["/usr/bin/time", "-l", "-p", "-o", str(out)]
+    return ["/usr/bin/time", "-f", GNU_TIME_FORMAT, "-o", str(out)]
 
 
 def tree_memory(root_pid: int) -> Tuple[int, int]:
@@ -263,9 +326,18 @@ def parse_rusage(path: Path) -> Dict[str, str]:
             if line.startswith(key + " "):
                 values[{"real": "time_real_s", "user": "user_s", "sys": "sys_s"}[key]] = \
                     line.split()[1]
-        m = re.match(r"(\d+)\s+(.*)$", line)
-        if m and m.group(2) in RUSAGE_FIELDS:
-            values[RUSAGE_FIELDS[m.group(2)]] = m.group(1)
+        if IS_DARWIN:
+            m = re.match(r"(\d+)\s+(.*)$", line)
+            if m and m.group(2) in RUSAGE_FIELDS:
+                values[RUSAGE_FIELDS[m.group(2)]] = m.group(1)
+        else:
+            m = re.match(r"rusage (\S+) (\d+)$", line)
+            if m:
+                name, raw = m.group(1), int(m.group(2))
+                if name == "max_rss_kb":
+                    values["max_rss_bytes"] = str(raw * 1024)
+                else:
+                    values[name] = str(raw)
     return values
 
 
@@ -275,7 +347,7 @@ def measure(command: List[str], log: Path, timeout: float,
     """Run `command` under /usr/bin/time with timeout and memory watchdog."""
     time_path = log.with_suffix(".time")
     time_path.unlink(missing_ok=True)
-    full = ["/usr/bin/time", "-l", "-p", "-o", str(time_path), *command]
+    full = [*time_wrapper(time_path), *command]
     child_env = None
     if env:
         child_env = dict(os.environ)
@@ -397,15 +469,56 @@ def capture(cmd: List[str], cwd: Optional[Path] = None) -> str:
         return ""
 
 
+def host_info() -> Dict[str, str]:
+    """CPU, core count and memory of this machine, however the OS reports it."""
+    if IS_DARWIN:
+        sysctl = lambda key: capture(["sysctl", "-n", key])
+        return {
+            "host_cpu": sysctl("machdep.cpu.brand_string"),
+            "host_ncpu": sysctl("hw.ncpu"),
+            "host_perf_cores": sysctl("hw.perflevel0.physicalcpu"),
+            "host_mem_bytes": sysctl("hw.memsize"),
+            "os": f"{platform.system()} {platform.mac_ver()[0]} ({platform.release()})",
+        }
+    cpuinfo, meminfo = "", ""
+    try:
+        cpuinfo = Path("/proc/cpuinfo").read_text()
+        meminfo = Path("/proc/meminfo").read_text()
+    except OSError:
+        pass
+    model = re.search(r"^model name\s*:\s*(.+)$", cpuinfo, re.M)
+    memkb = re.search(r"^MemTotal:\s+(\d+) kB", meminfo, re.M)
+    # One physical core per distinct (physical id, core id); absent on some
+    # architectures, in which case report nothing rather than a guess.
+    cores = {
+        tuple(re.findall(r"^(?:physical id|core id)\s*:\s*(\d+)$", block, re.M))
+        for block in cpuinfo.split("\n\n") if block.strip()
+    }
+    cores.discard(())
+    return {
+        "host_cpu": model.group(1).strip() if model else platform.processor(),
+        "host_ncpu": str(os.cpu_count() or ""),
+        "host_perf_cores": str(len(cores)) if cores else "",
+        "host_mem_bytes": str(int(memkb.group(1)) * 1024) if memkb else "",
+        "os": f"{platform.system()} {platform.release()}",
+    }
+
+
+def file_sha256(path: Path) -> str:
+    try:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for block in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(block)
+        return digest.hexdigest()
+    except OSError:
+        return ""
+
+
 def write_env(path: Path, args: argparse.Namespace) -> None:
-    sysctl = lambda key: capture(["sysctl", "-n", key])
     env = {
         "date": dt.datetime.now().isoformat(timespec="seconds"),
-        "host_cpu": sysctl("machdep.cpu.brand_string"),
-        "host_ncpu": sysctl("hw.ncpu"),
-        "host_perf_cores": sysctl("hw.perflevel0.physicalcpu"),
-        "host_mem_bytes": sysctl("hw.memsize"),
-        "os": f"{platform.system()} {platform.mac_ver()[0]} ({platform.release()})",
+        **host_info(),
         "python": platform.python_version(),
         "lean_toolchain": (ROOT / "lean-toolchain").read_text().strip(),
         "lean_version": capture(["lean", "--version"], cwd=ROOT),
@@ -413,16 +526,20 @@ def write_env(path: Path, args: argparse.Namespace) -> None:
         "leanvipr_dirty": capture(["git", "status", "--porcelain", "--", "LeanVIPR",
                                    "LeanVIPRMain.lean"], cwd=ROOT) or "clean",
         "lean_binary": str(args.lean),
-        "lean_binary_sha256": capture(["shasum", "-a", "256", str(args.lean)]).split(" ")[0],
+        "lean_binary_sha256": file_sha256(args.lean),
         "viprchk_commit": capture(["git", "rev-parse", "HEAD"], cwd=args.cpp.parent.parent),
         "viprchk_binary": str(args.cpp),
         "viprchk_build": "CMake Release (-O3 -DNDEBUG), target viprchk, VIPRCOMP=OFF",
         "cxx_compiler": capture(["c++", "--version"]).splitlines()[0],
-        "gmp": capture(["brew", "list", "--versions", "gmp"]),
+        "gmp": (capture(["brew", "list", "--versions", "gmp"]) if IS_DARWIN
+                else capture(["pkg-config", "--modversion", "gmp"])),
         "timeout_s": str(args.timeout),
         "mem_limit_gib": str(args.mem_limit_gb),
         "footprint_limit_gib": str(args.footprint_limit_gb),
-        "watchdog": "kill if tree RSS > mem_limit or tree phys_footprint > footprint_limit (footprint check added after vpm1; rows before it used RSS only)",
+        "watchdog": ("kill if tree RSS > mem_limit or tree "
+                     + ("phys_footprint" if IS_DARWIN else "VmRSS+VmSwap")
+                     + " > footprint_limit (footprint check added after vpm1; "
+                       "rows before it used RSS only)"),
         "corpus": str(args.root),
         "sets": " ".join(args.sets),
         "lean_modes": ("full (all); slice (all; for non-infeas RTP viprcheck falls back to the full check, LeanVIPRMain.lean:300)"
@@ -448,12 +565,36 @@ def load_done(path: Path) -> Dict[Tuple[str, str, str, str], str]:
     return done
 
 
+def preflight() -> None:
+    """Fail now, not after the first certificate, if the host cannot measure."""
+    if not (IS_DARWIN or IS_LINUX):
+        raise SystemExit(f"unsupported platform {sys.platform}: "
+                         "the runner measures rusage through macOS or GNU "
+                         "/usr/bin/time")
+    if not Path("/usr/bin/time").exists():
+        raise SystemExit("missing /usr/bin/time" + ("" if IS_DARWIN else
+                         " — install GNU time (Debian/Ubuntu: `apt install "
+                         "time`, Fedora: `dnf install time`). The shell "
+                         "builtin will not do: the runner needs -f and -o."))
+    if IS_LINUX:
+        probe = subprocess.run(["/usr/bin/time", "-f", "real %e", "true"],
+                               capture_output=True, text=True)
+        if probe.returncode != 0:
+            raise SystemExit("/usr/bin/time does not accept -f, so it is not "
+                             "GNU time: " + (probe.stderr.strip() or "?"))
+
+
 def main() -> int:
     args = parse_args()
+    preflight()
     args.lean, args.cpp = args.lean.resolve(), args.cpp.resolve()
-    for exe in (args.lean, args.cpp):
-        if not exe.exists():
-            raise SystemExit(f"missing executable {exe}")
+    # Only the checkers actually being run need to be present, so --tools lean
+    # works without building the C++ side.
+    needed = {"lean": args.lean, "cpp": args.cpp}
+    for tool in args.tools:
+        if not needed[tool].exists():
+            raise SystemExit(f"missing executable {needed[tool]} (needed for "
+                             f"--tools {tool})")
     mem_limit = int(args.mem_limit_gb * (1 << 30))
     args.footprint_limit = int(args.footprint_limit_gb * (1 << 30))
     args.workdir.mkdir(parents=True, exist_ok=True)
@@ -482,9 +623,11 @@ def main() -> int:
         warm_src = certs[0]
         warm = args.workdir / "warmup.vipr"
         decompress(warm_src, warm)
-        for cmd in ([str(args.cpp), str(warm)],
-                    [str(args.lean), "--native-mode", "full", str(warm)]):
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        commands = {"cpp": [str(args.cpp), str(warm)],
+                    "lean": [str(args.lean), "--native-mode", "full", str(warm)]}
+        for tool in args.tools:
+            subprocess.run(commands[tool], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
         warm.unlink()
 
     # One CSV per method, opened lazily, appended to on resume.

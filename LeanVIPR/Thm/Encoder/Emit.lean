@@ -56,6 +56,26 @@ theorem allWhitespace_cons {c : Char} {w : List Char} (hc : c.isWhitespace)
   · exact hc
   · exact hw d hd
 
+/-! ## Every indent the emitter writes is whitespace
+
+Nothing to prove per section: `Encoder.Indent` has three constructors and all three render
+to whitespace, so the obligation is discharged once, by cases. Before `Indent` was a type
+this needed a lemma for each section of the emitter, each of which could have been got
+wrong; now a new section cannot introduce a bad indent in the first place. -/
+
+/-- Every line's indentation is whitespace. True of any `List Line` at all, since
+`Encoder.Indent` only has whitespace constructors — see `indentsWhitespace`. -/
+def IndentsWhitespace (ls : List Encoder.Line) : Prop :=
+  ∀ l ∈ ls, AllWhitespace l.1.toString.toList
+
+theorem allWhitespace_indent (i : Encoder.Indent) :
+    AllWhitespace i.toString.toList := by
+  cases i <;> decide
+
+/-- Consequently every emitted line satisfies the invariant, whatever the problem. -/
+theorem indentsWhitespace (ls : List Encoder.Line) : IndentsWhitespace ls :=
+  fun l _ => allWhitespace_indent l.1
+
 /-- Leading whitespace contributes no tokens. This is what makes a data line's
 indentation invisible to the grammar. -/
 theorem isTokenization_wsPrefix : ∀ {w : List Char}, AllWhitespace w →
@@ -111,37 +131,28 @@ theorem isTokenization_unwordsChars_append :
 
 /-! ## The whole file tokenizes to the tokens it carries -/
 
-/-- Every line's indentation is whitespace. The indentations `mpsLines` emits are `""`,
-`" "` and `"    "`, so this is a finite check — but stating it as a hypothesis keeps the
-lemma about rendering rather than about the encoder. -/
-def IndentsWhitespace (ls : List Encoder.Line) : Prop :=
-  ∀ l ∈ ls, AllWhitespace l.1.toList
-
 theorem isTokenization_renderLines :
     ∀ {ls : List Encoder.Line}, Printable ((ls.map Prod.snd).flatten) →
-    IndentsWhitespace ls →
     IsTokenization ((ls.map Encoder.renderLineChars).flatten)
       ((ls.map Prod.snd).flatten)
-  | [], _, _ => by simpa using IsTokenization.nil
-  | l :: ls, hp, hi => by
+  | [], _ => by simpa using IsTokenization.nil
+  | l :: ls, hp => by
       have hpl : Printable l.2 := fun t ht => hp t (by simp [ht])
       have hprest : Printable ((ls.map Prod.snd).flatten) := by
         intro t ht; exact hp t (by simp [ht])
       have ih := isTokenization_renderLines hprest
-        (fun x hx => hi x (by simp [hx]))
       have hstep := isTokenization_unwordsChars_append hpl
         (w := ['\n']) (by simp) (allWhitespace_cons (by decide) allWhitespace_nil) ih
-      have hpre := isTokenization_wsPrefix (hi l (by simp)) hstep
+      have hpre := isTokenization_wsPrefix (allWhitespace_indent l.1) hstep
       simpa [Encoder.renderLineChars, List.append_assoc] using hpre
 
 /-- **The tokenization half of the round trip.** The emitted text tokenizes to exactly the
 tokens the file carries, so what remains for `mpsRoundTrip` is to show those tokens derive
 `m` under `IsMpsToks`. -/
 theorem isTokenization_encodeMps (name : String) (m : Mip)
-    (hp : Printable (Encoder.mpsToks name m))
-    (hi : IndentsWhitespace (Encoder.mpsLines name m)) :
+    (hp : Printable (Encoder.mpsToks name m)) :
     IsTokenization (Encoder.encodeMpsNamed name m).toList (Encoder.mpsToks name m) := by
-  have := isTokenization_renderLines (ls := Encoder.mpsLines name m) hp hi
+  have := isTokenization_renderLines (ls := Encoder.mpsLines name m) hp
   simpa [Encoder.encodeMpsNamed, Encoder.encodeMpsChars, Encoder.mpsToks] using this
 
 /-! ## Names the grammar accepts are names the printer can emit

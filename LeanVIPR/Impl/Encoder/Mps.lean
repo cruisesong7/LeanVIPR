@@ -102,16 +102,37 @@ no reasoning about string concatenation is needed. The rendered text is unchange
 line below is `indent ++ unwords toks`, which is what the previous string-building
 version produced character for character. -/
 
+/-- The only indentations MPS lines use.
+
+A three-valued type rather than a raw `String`, so "every indent is whitespace" holds *by
+construction*: `LeanVIPR.Thm.Encoder.Emit.allWhitespace_indent` discharges it once by
+cases, and no section of the emitter can introduce a non-whitespace indent for a later
+proof to have to rule out. This is the one place Trestle's discipline — put the invariant
+in the type instead of proving it afterwards — transfers cleanly to a file emitter. -/
+inductive Indent where
+  /-- Column one: a section keyword. -/
+  | none
+  /-- One space: a `ROWS` or `BOUNDS` entry. -/
+  | one
+  /-- Four spaces: a `COLUMNS` or `RHS` entry. -/
+  | four
+  deriving Repr, DecidableEq, Inhabited
+
+def Indent.toString : Indent → String
+  | .none => ""
+  | .one => " "
+  | .four => "    "
+
 /-- One emitted line: its indentation, and its tokens. -/
-abbrev Line := String × Toks
+abbrev Line := Indent × Toks
 
 /-- An `INTORG` / `INTEND` marker line. -/
 def markerLine (n : Nat) (tag : String) : Line :=
-  ("    ", ["M" ++ printNat n, "'MARKER'", "'" ++ tag ++ "'"])
+  (.four, ["M" ++ printNat n, "'MARKER'", "'" ++ tag ++ "'"])
 
 /-- The `COLUMNS` lines for one column, one entry per line. -/
 def colLines (name : String) (es : List (String × ℚ)) : List Line :=
-  es.map (fun e => ("    ", [name, e.1, mpsRat e.2]))
+  es.map (fun e => (.four, [name, e.1, mpsRat e.2]))
 
 /-! ## Sections -/
 
@@ -119,12 +140,12 @@ def colLines (name : String) (es : List (String × ℚ)) : List Line :=
 def objSenseLines (m : Mip) : List Line :=
   match m.objSense with
   | .min => []
-  | .max => [("", ["OBJSENSE"]), ("    ", ["MAX"])]
+  | .max => [(.none, ["OBJSENSE"]), (.four, ["MAX"])]
 
 /-- The free objective row, then one line per constraint row. -/
 def rowsLines (m : Mip) : List Line :=
-  (" ", ["N", objRowName]) ::
-    m.rows.toList.map (fun r => (" ", [r.sense.toString, r.name]))
+  (.one, ["N", objRowName]) ::
+    m.rows.toList.map (fun r => (.one, [r.sense.toString, r.name]))
 
 /-- `COLUMNS`, walking the variables in index order and toggling the integrality markers
 around maximal runs of integer variables. `inInt` says whether a marker block is open and
@@ -152,29 +173,29 @@ def columnsLines (m : Mip) : List Line :=
 /-- Every row's right-hand side, including the zeros. The MPS default is zero, so the
 zero lines are redundant; emitting them keeps the section in bijection with `rows`. -/
 def rhsLines (m : Mip) : List Line :=
-  m.rows.toList.map (fun r => ("    ", ["rhs", r.name, mpsRat r.rhs]))
+  m.rows.toList.map (fun r => (.four, ["rhs", r.name, mpsRat r.rhs]))
 
 /-- The bound lines for one variable: the lower bound first, then the upper. -/
 def boundLines (v : Mip.Var) : List Line :=
   let lo :=
     match v.lo with
-    | none => [(" ", ["MI", "BND", v.name])]
-    | some l => [(" ", ["LO", "BND", v.name, mpsRat l])]
+    | none => [(.one, ["MI", "BND", v.name])]
+    | some l => [(.one, ["LO", "BND", v.name, mpsRat l])]
   let hi :=
     match v.hi with
-    | none => if v.isInt then [(" ", ["PL", "BND", v.name])] else []
-    | some u => [(" ", ["UP", "BND", v.name, mpsRat u])]
+    | none => if v.isInt then [(.one, ["PL", "BND", v.name])] else []
+    | some u => [(.one, ["UP", "BND", v.name, mpsRat u])]
   lo ++ hi
 
 /-! ## The file -/
 
 def mpsLines (name : String) (m : Mip) : List Line :=
-  ("", ["NAME", name]) :: objSenseLines m
-    ++ ("", ["ROWS"]) :: rowsLines m
-    ++ ("", ["COLUMNS"]) :: columnsLines m
-    ++ ("", ["RHS"]) :: rhsLines m
-    ++ ("", ["BOUNDS"]) :: (m.vars.toList.map boundLines).flatten
-    ++ [("", ["ENDATA"])]
+  (.none, ["NAME", name]) :: objSenseLines m
+    ++ (.none, ["ROWS"]) :: rowsLines m
+    ++ (.none, ["COLUMNS"]) :: columnsLines m
+    ++ (.none, ["RHS"]) :: rhsLines m
+    ++ (.none, ["BOUNDS"]) :: (m.vars.toList.map boundLines).flatten
+    ++ [(.none, ["ENDATA"])]
 
 /-- Every token the file carries, in order: what the grammar reads once the indentation
 and line breaks are absorbed. -/
@@ -187,7 +208,7 @@ Characters rather than a `String`, and `String.ofList` only at the very boundary
 following `Impl.Parser.Printer`'s `unwords`. It keeps `LeanVIPR.Thm.Encoder.Emit` a list
 induction instead of an argument about `String.join`. -/
 def renderLineChars (l : Line) : List Char :=
-  l.1.toList ++ unwordsChars l.2 ++ ['\n']
+  l.1.toString.toList ++ unwordsChars l.2 ++ ['\n']
 
 /-- Every character of the file, in order. -/
 def encodeMpsChars (name : String) (m : Mip) : List Char :=

@@ -121,7 +121,7 @@ theorem relaxesRowsB_sound {rows₁ rows₂ : List SLe} {ints₁ ints₂ : List 
     decide_eq_true_eq] at h
   refine ⟨fun i hi => h.1 i (by simpa using hi), fun c hc => ?_⟩
   obtain ⟨d, hd, hdom⟩ := h.2 c (by simpa using hc)
-  exact ⟨d, by simpa using hd, domSLe_valid_real hdom⟩
+  exact ⟨d, by simpa using hd, dominates_valid_real hdom⟩
 
 theorem relaxesB_sound {m : Mip} {σ : Array Nat} {rows : List SLe} {ints : List Nat}
     (h : relaxesB m σ rows ints = true) :

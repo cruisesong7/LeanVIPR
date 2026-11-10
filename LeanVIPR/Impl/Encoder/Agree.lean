@@ -68,7 +68,7 @@ def sigmaFn (σ : Array Nat) : Nat → Nat := fun i => σ.getD i 0
 
 /-! ## Checking the guess (this is what soundness rests on) -/
 
-/-- The `Bool`-valued decision for `Mip.RelaxesRows`, reusing the checker's own `domSLe`
+/-- The `Bool`-valued decision for `Mip.RelaxesRows`, reusing the checker's own `dominates`
 rather than list equality on `SLe`. See `Mip.Relaxes` for why: a renamed row carries its
 terms in the certificate's index order, so the lists differ even when the rows are the
 same linear constraint.
@@ -78,7 +78,7 @@ arguments swapped. -/
 def relaxesRowsB (rows₁ : List SLe) (ints₁ : List Nat) (σ : Array Nat)
     (rows₂ : List SLe) (ints₂ : List Nat) : Bool :=
   ints₂.all (fun i => decide (sigmaFn σ i ∈ ints₁)) &&
-    rows₂.all (fun c => rows₁.any (fun d => domSLe d (Mip.renameSLe (sigmaFn σ) c)))
+    rows₂.all (fun c => rows₁.any (fun d => dominates d (Mip.renameSLe (sigmaFn σ) c)))
 
 def relaxesB (m : Mip) (σ : Array Nat) (rows : List SLe) (ints : List Nat) : Bool :=
   relaxesRowsB m.conSLes m.intVars σ rows ints

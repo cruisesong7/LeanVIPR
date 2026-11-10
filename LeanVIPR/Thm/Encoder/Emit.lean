@@ -165,4 +165,286 @@ needs about names. -/
 theorem printableTok_of_isNameTok {t : String} (h : IsNameTok t) : PrintableTok t :=
   ⟨h.1, h.2.1, h.2.2.1⟩
 
+/-! ## Every token the emitter writes is one the tokenizer could produce
+
+`Printable (mpsToks name m)` is the last hypothesis on `isTokenization_encodeMps`. Unlike
+the indents it cannot be made structural: the tokens include names taken from the user's
+`Mip`, so it genuinely needs `EncodableNames` and the sense condition from
+`Mip.WellFormed`. What it can be is compositional — one lemma per kind of token, then one
+per section. -/
+
+/-- So an all-literal token list can be checked by `decide`, which is what makes the
+section headers and the fixed vocabulary (`BND`, `rhs`, `'MARKER'`, …) free. -/
+instance (ts : Toks) : Decidable (Printable ts) := by
+  unfold Printable; infer_instance
+
+/-- Lines contribute their tokens, so per-line printability suffices. -/
+theorem printable_flatten {ls : List Encoder.Line}
+    (h : ∀ l ∈ ls, Printable l.2) : Printable ((ls.map Prod.snd).flatten) := by
+  intro t ht
+  obtain ⟨ts, hts, ht⟩ := List.mem_flatten.mp ht
+  obtain ⟨l, hl, rfl⟩ := List.mem_map.mp hts
+  exact h l hl t ht
+
+theorem printableTok_mpsRat (q : ℚ) : PrintableTok (Encoder.mpsRat q) := by
+  unfold Encoder.mpsRat
+  split
+  · exact printInt_printableTok _
+  · exact printRat_printableTok _
+
+/-- A marker line's name, `M` followed by the marker number. -/
+theorem printableTok_markerName (n : Nat) : PrintableTok ("M" ++ printNat n) := by
+  obtain ⟨_, hnw, _⟩ := printNat_printableTok n
+  refine ⟨by simp, ?_, by simp⟩
+  intro c hc
+  rcases List.mem_cons.mp (by simpa using hc) with rfl | hc
+  · decide
+  · exact hnw c hc
+
+/-- A row's sense, which `Mip.WellFormed` restricts to `L`, `G` or `E`. -/
+theorem printableTok_sense {c : Char} (h : c = 'L' ∨ c = 'G' ∨ c = 'E') :
+    PrintableTok c.toString := by
+  rcases h with rfl | rfl | rfl <;> decide
+
+/-! ### One lemma per section -/
+
+theorem printable_markerLine (n : Nat) (tag : String)
+    (htag : PrintableTok ("'" ++ tag ++ "'")) :
+    Printable (Encoder.markerLine n tag).2 := by
+  intro t ht
+  simp only [Encoder.markerLine, List.mem_cons, List.not_mem_nil, or_false] at ht
+  rcases ht with rfl | rfl | rfl
+  · exact printableTok_markerName n
+  · decide
+  · exact htag
+
+theorem printable_colLines {name : String} (hn : PrintableTok name)
+    (es : List (String × ℚ)) (hr : ∀ e ∈ es, PrintableTok e.1) :
+    ∀ l ∈ Encoder.colLines name es, Printable l.2 := by
+  intro l hl
+  simp only [Encoder.colLines, List.mem_map] at hl
+  obtain ⟨e, he, rfl⟩ := hl
+  intro t ht
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+  rcases ht with rfl | rfl | rfl
+  · exact hn
+  · exact hr e he
+  · exact printableTok_mpsRat e.2
+
+theorem printable_objSenseLines (m : Mip) :
+    ∀ l ∈ Encoder.objSenseLines m, Printable l.2 := by
+  intro l hl
+  cases hm : m.objSense <;> rw [Encoder.objSenseLines, hm] at hl
+  · simp at hl
+  · simp only [List.mem_cons, List.not_mem_nil, or_false] at hl
+    rcases hl with rfl | rfl <;> intro t ht <;>
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at ht <;>
+      rcases ht with rfl <;> decide
+
+theorem printable_rhsLines (m : Mip)
+    (hr : ∀ r ∈ m.rows, PrintableTok r.name) :
+    ∀ l ∈ Encoder.rhsLines m, Printable l.2 := by
+  intro l hl
+  simp only [Encoder.rhsLines, List.mem_map] at hl
+  obtain ⟨r, hrm, rfl⟩ := hl
+  intro t ht
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+  rcases ht with rfl | rfl | rfl
+  · decide
+  · exact hr r (by simpa using hrm)
+  · exact printableTok_mpsRat r.rhs
+
+theorem printable_rowsLines (m : Mip)
+    (hr : ∀ r ∈ m.rows, PrintableTok r.name ∧ (r.sense = 'L' ∨ r.sense = 'G' ∨ r.sense = 'E')) :
+    ∀ l ∈ Encoder.rowsLines m, Printable l.2 := by
+  intro l hl
+  simp only [Encoder.rowsLines, List.mem_cons, List.mem_map] at hl
+  rcases hl with rfl | ⟨r, hrm, rfl⟩
+  · intro t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    rcases ht with rfl | rfl <;> decide
+  · intro t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    obtain ⟨hname, hsense⟩ := hr r (by simpa using hrm)
+    rcases ht with rfl | rfl
+    · exact printableTok_sense hsense
+    · exact hname
+
+theorem printable_boundLines (v : Mip.Var) (hv : PrintableTok v.name) :
+    ∀ l ∈ Encoder.boundLines v, Printable l.2 := by
+  have h3 : ∀ ty : String, PrintableTok ty → Printable [ty, "BND", v.name] := by
+    intro ty hty t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    rcases ht with rfl | rfl | rfl
+    · exact hty
+    · decide
+    · exact hv
+  have h4 : ∀ ty : String, PrintableTok ty → ∀ q : ℚ,
+      Printable [ty, "BND", v.name, Encoder.mpsRat q] := by
+    intro ty hty q t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    rcases ht with rfl | rfl | rfl | rfl
+    · exact hty
+    · decide
+    · exact hv
+    · exact printableTok_mpsRat q
+  intro l hl
+  rcases hlo : v.lo with _ | lo <;> rcases hhi : v.hi with _ | hi <;>
+    simp only [Encoder.boundLines, hlo, hhi] at hl <;> simp_all
+  · rcases hl with rfl | ⟨hb, rfl⟩
+    · exact h3 "MI" (by decide)
+    · exact h3 "PL" (by decide)
+  · rcases hl with rfl | rfl
+    · exact h3 "MI" (by decide)
+    · exact h4 "UP" (by decide) hi
+  · rcases hl with rfl | ⟨hb, rfl⟩
+    · exact h4 "LO" (by decide) lo
+    · exact h3 "PL" (by decide)
+  · rcases hl with rfl | rfl
+    · exact h4 "LO" (by decide) lo
+    · exact h4 "UP" (by decide) hi
+
+
+/-! ### The names a problem must have for its file to be readable back
+
+`EncodableNames` plus the sense restriction from `Mip.WellFormed`, bundled so the lemmas
+below do not each carry four hypotheses. -/
+
+structure Emittable (m : Mip) (name : String) : Prop where
+  probName : PrintableTok name
+  varNames : ∀ v ∈ m.vars, PrintableTok v.name
+  rowNames : ∀ r ∈ m.rows, PrintableTok r.name
+  senses : ∀ r ∈ m.rows, r.sense = 'L' ∨ r.sense = 'G' ∨ r.sense = 'E'
+
+/-- A column's entries are keyed by a row name or by the objective row. -/
+theorem printableTok_colEntry {n : String} (m : Mip) (h : Emittable m n) (j : Nat) :
+    ∀ e ∈ Encoder.colEntries m j, PrintableTok e.1 := by
+  intro e he
+  simp only [Encoder.colEntries, List.mem_append] at he
+  rcases he with he | he
+  · split at he
+    · simp at he
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at he
+      subst he
+      exact (show PrintableTok Encoder.objRowName by decide)
+  · obtain ⟨r, hr, he⟩ := List.mem_filterMap.mp he
+    split at he
+    · simp at he
+    · simp only [Option.some.injEq] at he
+      subst he
+      exact h.rowNames r (by simpa using hr)
+
+theorem printable_columnsAux {n : String} (m : Mip) (h : Emittable m n) :
+    ∀ (vs : List (Nat × Mip.Var)) (inInt : Bool) (mk : Nat),
+      (∀ p ∈ vs, PrintableTok p.2.name) →
+      ∀ l ∈ Encoder.columnsAux m vs inInt mk, Printable l.2
+  | [], inInt, mk, _ => by
+      intro l hl
+      simp only [Encoder.columnsAux] at hl
+      split at hl
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at hl
+        subst hl
+        exact printable_markerLine mk "INTEND" (by decide)
+      · simp at hl
+  | (j, v) :: rest, inInt, mk, hvs => by
+      intro l hl
+      simp only [Encoder.columnsAux] at hl
+      rcases List.mem_append.mp hl with hl | hl
+      · rcases List.mem_append.mp hl with hl | hl
+        · split at hl
+          · simp only [List.mem_cons, List.not_mem_nil, or_false] at hl
+            subst hl; exact printable_markerLine _ "INTORG" (by decide)
+          · split at hl
+            · simp only [List.mem_cons, List.not_mem_nil, or_false] at hl
+              subst hl; exact printable_markerLine _ "INTEND" (by decide)
+            · simp at hl
+        · refine printable_colLines (hvs (j, v) (by simp)) _ ?_ l hl
+          split
+          · intro e he
+            simp only [List.mem_cons, List.not_mem_nil, or_false] at he
+            subst he
+            exact (show PrintableTok Encoder.objRowName by decide)
+          · exact printableTok_colEntry m h j
+      · exact printable_columnsAux m h rest v.isInt _
+          (fun p hp => hvs p (by simp [hp])) l hl
+
+theorem printable_columnsLines {n : String} (m : Mip) (h : Emittable m n) :
+    ∀ l ∈ Encoder.columnsLines m, Printable l.2 :=
+  printable_columnsAux m h _ _ _ (by
+    intro p hp
+    obtain ⟨i, hi, he⟩ := List.mem_mapIdx.mp hp
+    have hp2 : p.2 = m.vars.toList[i] := by rw [← he]
+    rw [hp2]
+    exact h.varNames _ (by simpa using List.getElem_mem hi))
+
+/-- The constraint-row lines on their own, without the leading free objective row:
+`simp` splits `rowsLines`' cons, so the tail needs its own lemma. -/
+theorem printable_rowEntryLines (m : Mip)
+    (hr : ∀ r ∈ m.rows,
+      PrintableTok r.name ∧ (r.sense = 'L' ∨ r.sense = 'G' ∨ r.sense = 'E')) :
+    ∀ l ∈ m.rows.toList.map
+        (fun r => ((Encoder.Indent.one, [r.sense.toString, r.name]) : Encoder.Line)),
+      Printable l.2 := by
+  intro l hl
+  obtain ⟨r, hrm, rfl⟩ := List.mem_map.mp hl
+  intro t ht
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+  obtain ⟨hname, hsense⟩ := hr r (by simpa using hrm)
+  rcases ht with rfl | rfl
+  · exact printableTok_sense hsense
+  · exact hname
+
+/-- The `BOUNDS` section: every variable's lines. -/
+theorem printable_boundsSection (m : Mip) (hv : ∀ v ∈ m.vars, PrintableTok v.name) :
+    ∀ l ∈ (m.vars.toList.map Encoder.boundLines).flatten, Printable l.2 := by
+  intro l hl
+  obtain ⟨ls, hls, hl⟩ := List.mem_flatten.mp hl
+  obtain ⟨v, hvm, rfl⟩ := List.mem_map.mp hls
+  exact printable_boundLines v (hv v (by simpa using hvm)) l hl
+
+/-! ### Assembly -/
+
+/-- Every token the file carries is one the tokenizer could produce. -/
+theorem printable_mpsToks {n : String} (m : Mip) (h : Emittable m n) :
+    Printable (Encoder.mpsToks n m) := by
+  have hname : Printable (Encoder.Indent.none, ["NAME", n]).2 := by
+    intro t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    rcases ht with rfl | rfl
+    · decide
+    · exact h.probName
+  have hkw : ∀ k : String, PrintableTok k →
+      Printable (Encoder.Indent.none, [k]).2 := by
+    intro k hk t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    rcases ht with rfl
+    exact hk
+  refine printable_flatten ?_
+  intro l hl
+  simp only [Encoder.mpsLines, List.cons_append, List.mem_cons,
+    List.mem_append] at hl
+  repeat' rcases hl with hl | hl
+  all_goals first
+    | decide
+    | exact hname
+    | exact hkw _ (by decide)
+    | (subst hl; exact hname)
+    | (subst hl; exact hkw _ (by decide))
+    | exact printable_objSenseLines m l (by assumption)
+    | exact printable_rowsLines m
+        (fun r hr => ⟨h.rowNames r hr, h.senses r hr⟩) l (by assumption)
+    | exact printable_rowEntryLines m
+        (fun r hr => ⟨h.rowNames r hr, h.senses r hr⟩) l (by assumption)
+    | exact printable_columnsLines m h l (by assumption)
+    | exact printable_rhsLines m h.rowNames l (by assumption)
+    | exact printable_boundsSection m h.varNames l (by assumption)
+    | simp_all
+    | (exfalso; simp_all)
+
+/-- **The tokenization half, with no hypotheses left but the names.** The emitted text
+tokenizes to exactly the tokens the file carries. -/
+theorem isTokenization_encodeMps' {n : String} (m : Mip) (h : Emittable m n) :
+    IsTokenization (Encoder.encodeMpsNamed n m).toList (Encoder.mpsToks n m) :=
+  isTokenization_encodeMps n m (printable_mpsToks m h)
+
 end LeanVIPR.Mps

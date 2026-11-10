@@ -830,13 +830,27 @@ name precondition the round trip needs.
 
 Two hypotheses to discharge and one theorem to prove.
 
-* `Printable (mpsToks name m)` — every emitted token is nonempty, whitespace-free and not
-  comment-initial. The literals (`NAME`, `ROWS`, `BND`, …) are decidable; names come from
-  `EncodableNames` via `printableTok_of_isNameTok`; numerals have
-  `printRat_printableTok` and `printNat_printableTok` already. Needs a `mpsRat` companion
-  and a walk over the sections.
-* `IndentsWhitespace (mpsLines name m)` — the only indentations emitted are `""`, `" "`
-  and `"    "`, so each case is immediate; `columnsAux` needs an induction.
+* ~~`IndentsWhitespace (mpsLines name m)`~~ — **gone, not proved.** `Encoder.Indent` is now
+  a three-constructor type rather than a raw `String`, so `allWhitespace_indent` discharges
+  it once by cases and the hypothesis has disappeared from `isTokenization_encodeMps`. A
+  new section of the emitter cannot introduce a bad indent for a later proof to rule out.
+  The first attempt was a lemma per section, each a brittle `rcases` over membership in a
+  literal list; the type made all of them unnecessary.
+* ~~`Printable (mpsToks name m)`~~ — **proved**, as `printable_mpsToks`. Unlike the
+  indents this could *not* be made structural, because the tokens include names taken from
+  the user's `Mip`; it genuinely needs hypotheses, bundled as `Mps.Emittable` (the problem
+  name, the variable and row names, and the sense restriction from `Mip.WellFormed`).
+  Compositional: one lemma per kind of token (`printableTok_mpsRat`,
+  `printableTok_markerName`, `printableTok_sense`) and one per section. A
+  `Decidable (Printable ts)` instance makes every all-literal line — the section headers
+  and the fixed vocabulary `BND`, `rhs`, `'MARKER'` — fall to `decide`.
+
+So the tokenization half is now **unconditional** apart from the names:
+
+```lean
+theorem isTokenization_encodeMps' {n : String} (m : Mip) (h : Emittable m n) :
+    IsTokenization (Encoder.encodeMpsNamed n m).toList (Encoder.mpsToks n m)
+```
 * `IsMpsToks (mpsToks name m) m` — the real remaining work, section by section against
   the predicates in `Spec/Syntax/Mps.lean`.
 

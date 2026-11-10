@@ -220,7 +220,25 @@ for competing on breadth.
 
 Three things, in descending order of strength. The first is the one to lead with.
 
-**1. It answers a different question, and on our examples the answers differ.** This is
+**0. The strongest form of the argument is a theorem, not a benchmark.** `leanprover/lp`'s
+tactic is carrier-parametrized — it has `Rat`, `Int`, `Nat`, `Dyadic` and field lanes — so
+it is *not* `Rat`-only, and the obvious worry is that its `Int` lane already does integer
+reasoning. Reading the source settles it: `LPTactic/LP/IntCertificate.lean` says the whole
+assembly is "the shared **ordered-ring** one in `RingCertificate.lean`", and its context
+takes "integer multipliers only (the residual must clear to an integer; a fractional one
+means the certificate is not expressible over `Int`)". The integrality check is on the
+*multipliers*, not on the variables. So every lane proves goals by a weighted sum of
+hypotheses — a Farkas / positive-combination argument.
+
+Farkas' lemma then does the rest of the work for us. A linear system is infeasible **iff**
+such a combination exists. Our examples have *feasible* LP relaxations — the knapsack's
+relaxation is optimal at `y = 4/5`, `z = 1` — so no such combination exists, and therefore
+**no Farkas-based method can prove them, in any carrier.** That is a completeness
+statement about the method, not a gap in their implementation, and it is the cleanest
+possible framing: the problems this branch addresses are exactly the ones duality cannot
+reach, which is why VIPR has `rnd` and `uns` at all.
+
+**1. Concretely, on our examples the answers differ.** This is
 stronger than any timing comparison, because `leanprover/lp` is not slower on an integer
 problem — it cannot state one, and the relaxation it *can* state has a different answer.
 Measured on the running example: strip the integrality markers from
@@ -271,7 +289,12 @@ Then timings only where capability actually overlaps:
   took 0.12s to certify and 22s to kernel-check. Should be extended to a family to show a
   curve rather than a single point.
 * **vs `linarith`, rational LP infeasibility.** Not yet measured.
-* **vs `leanprover/lp`, pure LP.** Not yet measured, and **we will lose** — they call
+* **vs `leanprover/lp`, pure LP.** Not yet measured — and note it is not trivial to set
+  up here: `lp` pins Lean **v4.33.1** against our v4.35.0, and on this machine its SoPlex
+  FFI fails to link because v4.33.1's bundled `ld64.lld` cannot parse the installed macOS
+  SDK's `.tbd` files ("unknown architecture"). Its pure-Lean side builds fine, so the
+  blocker is environmental, not theirs; the `lp-backend-soplex-json` backend would avoid
+  the native link. When measured, **we will lose** — they call
   SoPlex in-process and reconstruct a proof term, we fork a solver and parse a file.
   Report it anyway; disclosing the case where the specialised tool wins is what makes the
   rest of the comparison credible.

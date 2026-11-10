@@ -313,10 +313,12 @@ def takeReason (name : String) (ts : Toks) : Except String (ViprReason × Toks) 
 A global one-variable derivation may tighten the bounds used by a later
 `lin weak { 0 }` completion.
 
-The keyword is optional and unbracketed, so it is matched greedily: a row *named*
-`global` or `local` immediately after a flagless row would be read as that row's flag.
-`LeanVIPR.Thm.Parser.Grammar.IsDers` states this rule, so the exclusion is visible in the
-grammar rather than hidden here. -/
+The keyword is optional and unbracketed -- a form the published grammar does not
+describe but exact SCIP emits -- so it is matched greedily: a row *named* `global` or
+`local` immediately after a flagless row would be read as that row's flag. Reading the
+token stream flat is what forces that; the row count would settle it, but it is not
+available here. `LeanVIPR.Thm.Parser.Grammar.IsDers` states the resulting exclusion, so
+it is visible in the grammar rather than hidden in this function. -/
 def takeScope : Toks → ViprScope × Toks
   | "global" :: rest => (.global, rest)
   | "local" :: rest => (.local, rest)

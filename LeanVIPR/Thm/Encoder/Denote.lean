@@ -124,4 +124,122 @@ theorem isRhsSection (m : Mip) (hvec : IsNameTok "rhs")
   have := isSeq_rhsEntries m.rows.toList hvec (fun r hr => h r (by simpa using hr))
   simpa [IsRhsSection, Encoder.rhsLines] using this
 
+/-! ## The `BOUNDS` section's syntax
+
+The entries one variable contributes, then the concatenation over variables. Only the
+*syntax* here — that the tokens derive some `BndEntry` list. Recovering `v.lo` and `v.hi`
+from that list is a separate obligation, listed at the foot of this file. -/
+
+/-- The `BndEntry` list one variable's lines derive. -/
+def bndEntriesOf (v : Mip.Var) : List BndEntry :=
+  (match v.lo with
+   | none => [BndEntry.inf true v.name]
+   | some l => [BndEntry.fin true v.name l]) ++
+  (match v.hi with
+   | none => if v.isInt then [BndEntry.inf false v.name] else []
+   | some u => [BndEntry.fin false v.name u])
+
+theorem isSeq_bndEntries (v : Mip.Var) (hvec : IsNameTok "BND") (hv : IsNameTok v.name) :
+    IsSeq IsBndEntry (((Encoder.boundLines v).map Prod.snd).flatten) (bndEntriesOf v) := by
+  have fin4 : ∀ (ty : String) (isLo : Bool) (q : ℚ),
+      (ty = "LO" ∧ isLo = true) ∨ (ty = "UP" ∧ isLo = false) →
+      IsBndEntry [ty, "BND", v.name, Encoder.mpsRat q] (BndEntry.fin isLo v.name q) := by
+    intro ty isLo q h
+    refine Or.inl ⟨ty, "BND", v.name, Encoder.mpsRat q, q, rfl, hvec, hv,
+      mpsRat_isNumTok q, ?_⟩
+    rcases h with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact Or.inl ⟨rfl, rfl⟩
+    · exact Or.inr ⟨rfl, rfl⟩
+  have inf3 : ∀ (ty : String) (isLo : Bool),
+      (ty = "MI" ∧ isLo = true) ∨ (ty = "PL" ∧ isLo = false) →
+      IsBndEntry [ty, "BND", v.name] (BndEntry.inf isLo v.name) := by
+    intro ty isLo h
+    refine Or.inr ⟨ty, "BND", v.name, rfl, hvec, hv, ?_⟩
+    rcases h with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact Or.inl ⟨rfl, rfl⟩
+    · exact Or.inr ⟨rfl, rfl⟩
+  rcases hlo : v.lo with _ | lo <;> rcases hhi : v.hi with _ | hi <;>
+    simp only [Encoder.boundLines, bndEntriesOf, hlo, hhi]
+  · split
+    · simpa using IsSeq.cons (inf3 "MI" true (Or.inl ⟨rfl, rfl⟩))
+        (IsSeq.cons (inf3 "PL" false (Or.inr ⟨rfl, rfl⟩)) IsSeq.nil)
+    · simpa using IsSeq.cons (inf3 "MI" true (Or.inl ⟨rfl, rfl⟩)) IsSeq.nil
+  · simpa using IsSeq.cons (inf3 "MI" true (Or.inl ⟨rfl, rfl⟩))
+      (IsSeq.cons (fin4 "UP" false hi (Or.inr ⟨rfl, rfl⟩)) IsSeq.nil)
+  · split
+    · simpa using IsSeq.cons (fin4 "LO" true lo (Or.inl ⟨rfl, rfl⟩))
+        (IsSeq.cons (inf3 "PL" false (Or.inr ⟨rfl, rfl⟩)) IsSeq.nil)
+    · simpa using IsSeq.cons (fin4 "LO" true lo (Or.inl ⟨rfl, rfl⟩)) IsSeq.nil
+  · simpa using IsSeq.cons (fin4 "LO" true lo (Or.inl ⟨rfl, rfl⟩))
+      (IsSeq.cons (fin4 "UP" false hi (Or.inr ⟨rfl, rfl⟩)) IsSeq.nil)
+
+/-- `IsSeq` concatenates, which is what lets the per-variable bound entries compose. -/
+theorem isSeq_append {α : Type} {R : Toks → α → Prop} :
+    ∀ {a : Toks} {xs : List α}, IsSeq R a xs →
+    ∀ {b : Toks} {ys : List α}, IsSeq R b ys → IsSeq R (a ++ b) (xs ++ ys) := by
+  intro a xs ha
+  induction ha with
+  | nil => intro b ys hb; simpa using hb
+  | cons h hs ih =>
+      intro b ys hb
+      simpa [List.append_assoc] using IsSeq.cons h (ih hb)
+
+/-- The bound entries of a whole list of variables. Structural recursion rather than a
+nested induction. -/
+theorem isSeq_bndEntriesList (hvec : IsNameTok "BND") :
+    ∀ (vs : List Mip.Var), (∀ v ∈ vs, IsNameTok v.name) →
+    IsSeq IsBndEntry (((vs.map Encoder.boundLines).flatten).map Prod.snd).flatten
+      ((vs.map bndEntriesOf).flatten)
+  | [], _ => by simpa using IsSeq.nil
+  | v :: vs, h => by
+      have := isSeq_append (isSeq_bndEntries v hvec (h v (by simp)))
+        (isSeq_bndEntriesList hvec vs (fun u hu => h u (by simp [hu])))
+      simpa using this
+
+theorem isBoundsSection (m : Mip) (hvec : IsNameTok "BND")
+    (hv : ∀ v ∈ m.vars, IsNameTok v.name) :
+    IsBoundsSection
+      ((((m.vars.toList.map Encoder.boundLines).flatten).map Prod.snd).flatten)
+      ((m.vars.toList.map bndEntriesOf).flatten) :=
+  isSeq_bndEntriesList hvec m.vars.toList (fun v hv' => hv v (by simpa using hv'))
+
+/-! ## What is still open
+
+Five of the nine obligations in `IsMpsToks` are discharged above: the decomposition, and
+the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. Four remain, and they are the
+semantic ones — each relates a section's recovered contents back to `m`, rather than
+saying which tokens derive which entries.
+
+**1. `COLUMNS` syntax.** `IsSeq IsColEntry _ cols` for the `cols : List ColEntry` that
+`columnsAux` emits. Needs a `colEntriesOf` analogous to `bndEntriesOf`, and a recursion
+carrying the marker state, since `columnsAux` emits marker lines between columns.
+
+**2. `DeclaresInt cols v.name ↔ v.isInt`.** The marker invariant: the `INTORG`/`INTEND`
+pairs bracket exactly the integer variables. Needs a strengthened recursion hypothesis
+relating `columnsAux`'s `inInt` argument to the run of variables already emitted — the
+hardest of the four, because the property is about the *interleaving* rather than about
+any one entry.
+
+**3. `FormEqReal (rowForm cols names r.name) r.form`.** The transpose: `rowForm` rebuilds
+a row from the column-major entries, and that must agree with `r.form` as a linear
+function. The missing ingredient is a grouped-summation lemma over `ℝ`,
+
+```
+∀ f, (∀ t ∈ f, t.idx < k) → ∑_{j < k} (coeffOf f j) * a j = evalReal f a
+```
+
+`Thm/System/LinForm.lean` has `normForm_eval`, which is this statement over `Valuation`
+(`ℚ`); a real-valued analogue is what is needed, plus the bookkeeping that `rowForm`'s
+`if q = 0 then [] else _` skip does not change the sum. Requires `WellFormed.FormDeclared`
+for the index bound and the variable-name `Nodup` so `colCoeff` does not pick up another
+column's entries.
+
+**4. `loBound bnds v.name = v.lo` and `hiBound bnds v.name = v.hi`.** The folds scan every
+entry and keep the last match, so this needs the variable-name `Nodup` from `WellFormed`:
+without it another variable's `LO` line could shadow this one's. Given that, an induction
+over the variable list.
+
+Then `mpsRoundTrip` is assembly. None of this is soundness-critical — see the file header.
+-/
+
 end LeanVIPR.Mps

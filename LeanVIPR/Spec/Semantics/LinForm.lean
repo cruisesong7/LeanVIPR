@@ -224,9 +224,14 @@ def normFormDense (f : LinForm) : List (Nat × ℚ) :=
 Slower than `normFormDense` when compiled, but it is plain structural list recursion,
 which is also what the Lean kernel reduces cheaply: the kernel has neither in-place
 writes nor contiguous random access, so `normFormDense` degrades to `O(m * n)` there.
-Preferring dense therefore costs kernel mode about 25% on the examples it runs on. That
-is the accepted trade: native mode is what checks the benchmark corpus, and kernel mode
-runs a handful of small certificates. -/
+
+That cost does not show up where it was expected to. Measured against the
+pre-optimization baseline with the same harness, kernel mode got two to three times
+*faster*, not slower -- `alu5_5` went from a 300s timeout to 116.7s, `alu6_5` from 211.5s
+to 80.6s, `alu4_2` from 49.1s to 30.5s -- and two instances that used to time out now
+pass. Whatever the dense branch costs the kernel is outweighed by how much less work the
+normalization does overall. Only `alu7_6` regressed, 100.6s to 136.3s. See
+`benchmarks/results/kernel.csv`. -/
 def normFormSort (f : LinForm) : List (Nat × ℚ) :=
   combineAdj (sortKV (f.map (fun t => (t.idx, t.coeff))))
 

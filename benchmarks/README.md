@@ -101,23 +101,23 @@ will not, so say which is being reported.
 
 | Infeasibility family | Files | C++ pipeline | Lean full | Lean sliced |
 |---|---:|---:|---:|---:|
-| `alu4` | 6 | 0.83 s | 2.68 s | 0.74 s |
-| `alu5` | 5 | 0.14 s | 0.44 s | 0.21 s |
-| `alu6` | 5 | 0.52 s | 1.61 s | 0.51 s |
-| `alu7` | 4 | 0.26 s | 0.84 s | 0.51 s |
-| **Total** | **20** | **1.75 s** | **5.57 s** | **1.97 s** |
+| `alu4` | 6 | 0.83 s | 1.82 s | 0.73 s |
+| `alu5` | 5 | 0.14 s | 0.35 s | 0.23 s |
+| `alu6` | 5 | 0.52 s | 1.14 s | 0.48 s |
+| `alu7` | 4 | 0.26 s | 0.87 s | 0.53 s |
+| **Total** | **20** | **1.75 s** | **4.18 s** | **1.97 s** |
 
 Range certificates currently use complete replay:
 
 | Certificate | Steps | C++ pipeline | Lean full |
 |---|---:|---:|---:|
-| `alu4_9` | 40,648 | 0.51 s | 2.14 s |
+| `alu4_9` | 40,648 | 0.51 s | 1.40 s |
 | `egout` | 372 | 0.04 s | 0.07 s |
-| `enigma` | 36,872 | 0.27 s | 3.15 s |
-| `flugpl` | 7,553 | 0.09 s | 0.17 s |
-| `gt2` | 3,284 | 0.20 s | 1.10 s |
-| `vpm1` | 6,416 | 0.59 s | 2.87 s |
-| **Total** | **95,145** | **1.70 s** | **9.50 s** |
+| `enigma` | 36,872 | 0.27 s | 3.02 s |
+| `flugpl` | 7,553 | 0.09 s | 0.18 s |
+| `gt2` | 3,284 | 0.20 s | 1.06 s |
+| `vpm1` | 6,416 | 0.59 s | 2.56 s |
+| **Total** | **95,145** | **1.70 s** | **8.29 s** |
 
 The C++ column is the official `viprcomp --soplex=off --threads=1` followed by
 `viprchk`, both built from scipopt/vipr `master` (`99eec19`), because every
@@ -137,6 +137,37 @@ python3 benchmarks/run_compiled.py \
   --output results/checker.csv
 ```
 
+## Kernel-mode results
+
+Kernel mode emits the parsed certificate as Lean data and has the kernel reduce the
+checker over it, yielding a machine-checked theorem. It is minutes per certificate
+rather than seconds, so it is measured separately and with a 300 s cap:
+
+```bash
+python3 benchmarks/run_kernel.py --output benchmarks/results/kernel.csv
+```
+
+18 of 21 runs complete within the cap.
+The three that do not are `kernel-full` on range certificates (`egout`, `flugpl`,
+`gt2`), where there is no reconstruction path and the whole certificate must reduce.
+
+| Certificate | Mode | Wall |
+|---|---|---:|
+| `alu4_5` | kernel-reconstruct | 61.6 s |
+| `alu4_6` | kernel-reconstruct | 62.8 s |
+| `alu6_5` | kernel-reconstruct | 80.6 s |
+| `alu5_5` | kernel-reconstruct | 116.7 s |
+| `alu7_6` | kernel-reconstruct | 136.3 s |
+| `alu5_6` | kernel-reconstruct | 255.2 s |
+
+These are two to three times faster than the same measurements before the
+normalization and tokenizer work, and two certificates that used to exceed the cap now
+complete: `alu5_5` went from a 300 s timeout to 116.7 s and `alu5_6` from a timeout to
+255.2 s. That was not the expected direction -- `Array` is a `List` to the kernel, so
+the dense normalization degrades there -- but less total work outweighs it. `alu7_6` is
+the one regression, 100.6 s to 136.3 s.
+
+Per-certificate numbers are in [`results/kernel.csv`](results/kernel.csv).
 ## The 112-certificate corpus
 
 The 26 certificates above are checked in under `benchmarks/infeas/` and

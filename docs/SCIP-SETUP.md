@@ -74,8 +74,25 @@ Consequences, all of which matter to `Impl.Encoder.Mps`:
   "SCIP read our file" is only meaningful once the binary is the exact build. Note that
   `scip --version` does **not** tell you: both builds report `[precision: 8 byte]` and
   neither mentions exact solving. Only the cmake output says "Building SCIP with support
-  for exact solving mode using exact LP solver SoPlex". Detect by behaviour — run the
-  `1/2` case above and see whether you get `0.5` or `1.0`.
+  for exact solving mode using exact LP solver SoPlex".
+
+  **Correction (2026-11-10).** An earlier version of this document said to detect the
+  exact build by running the `1/2` case above. That is wrong, and was measured to be
+  wrong: the `1/2` probe tests whether `set exact enable TRUE` is in effect, not which
+  binary is running. Without the flag both builds answer `-1` on `min -x s.t. x ≤ 1/2`;
+  with it both answer `-1/2`, and both produce a certificate `checkVipr` accepts for
+  `x ≥ 1/2 ∧ x ≤ 1/2` over ℤ. So the probe does not disqualify homebrew's build.
+
+  The log is no evidence either — `storing certificate information in file <…>` is
+  printed *before* the solve, so seeing it does not mean a certificate was produced.
+
+  Detect by **capability** instead: require that a certificate actually appears, parses,
+  agrees with the Lean `Mip`, and satisfies `checkVipr`. That is what the tactic's
+  binary probe does, and it is the only check that cannot be passed by a build that
+  merely accepts the flag.
+
+  One more trap while invoking it: SCIP resets its working directory mid-run, so a
+  *relative* `certificate filename` does not land where you expect. Pass absolute paths.
 
 For the record, the exact **LP** and **cip** readers are lossless too: `max (1/3)x + y`
 s.t. `(2/5)x + y ≤ 7/4`, `y ≤ 1/6` yields `Exact Primal Bound : 107/72` from an `.lp`

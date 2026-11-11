@@ -237,6 +237,12 @@ for competing on breadth.
 
 ### How to argue this is a contribution, specifically against `leanprover/lp`
 
+The claims below were checked by building and running `leanprover/lp`, not inferred from
+its README. That harness is a standalone Lake project pinning Lean v4.33.1 — it cannot
+share a workspace with this one, since Lean minor versions are not interchangeable — and
+it lives on the `lp-comparison` branch rather than here, to keep this change reviewable as
+the encoder alone.
+
 Three things, in descending order of strength. The first is the one to lead with.
 
 **0. The strongest form of the argument is a theorem, not a benchmark.** `leanprover/lp`'s
@@ -308,12 +314,7 @@ Then timings only where capability actually overlaps:
   took 0.12s to certify and 22s to kernel-check. Should be extended to a family to show a
   curve rather than a single point.
 * **vs `linarith`, rational LP infeasibility.** Not yet measured.
-* **vs `leanprover/lp`, pure LP.** Not yet measured — and note it is not trivial to set
-  up here: `lp` pins Lean **v4.33.1** against our v4.35.0, and on this machine its SoPlex
-  FFI fails to link because v4.33.1's bundled `ld64.lld` cannot parse the installed macOS
-  SDK's `.tbd` files ("unknown architecture"). Its pure-Lean side builds fine, so the
-  blocker is environmental, not theirs; the `lp-backend-soplex-json` backend would avoid
-  the native link. When measured, **we will lose** — they call
+* **vs `leanprover/lp`, pure LP.** Not yet measured, and when measured **we will lose** — they call
   SoPlex in-process and reconstruct a proof term, we fork a solver and parse a file.
   Report it anyway; disclosing the case where the specialised tool wins is what makes the
   rest of the comparison credible.

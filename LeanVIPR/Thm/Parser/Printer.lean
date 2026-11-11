@@ -354,6 +354,103 @@ theorem printDers_isDers : ∀ {ts : Toks} {ds : List ViprDer}, IsDers ts ds →
       rw [printDers_head? hs]
       exact hne
 
+/-! ## Every verbatim string of a certificate is a token of its stream
+
+`Printable (verbatimToks v)` is a hypothesis of the round trip, and for a certificate
+that was read from text it is not an assumption at all: each string the printer copies
+rather than generates was a token, and a tokenization's tokens are non-empty,
+whitespace-free, and never start with `%` -- which is exactly `PrintableTok`. These
+lemmas make that argument, so `toString_roundtrip_of_text` can state the round trip for
+anything the parser accepts, with no side conditions. -/
+
+/-- In a sequence, every element whose rendering begins with `f x` contributes `f x` to
+the whole. -/
+private theorem isSeq_mem_head {α : Type} {R : Toks → α → Prop} {f : α → String}
+    (hhead : ∀ (seg : Toks) (x : α), R seg x → seg.head? = some (f x))
+    {ts : Toks} {xs : List α} (h : IsSeq R ts xs) : ∀ x ∈ xs, f x ∈ ts := by
+  induction h with
+  | nil => simp
+  | @cons seg rest y ys hR hs ih =>
+      intro x hx
+      rcases List.mem_cons.mp hx with rfl | hx
+      · have hh := hhead seg x hR
+        cases seg with
+        | nil => simp at hh
+        | cons u ul =>
+            simp only [List.head?_cons, Option.some.injEq] at hh
+            subst hh
+            simp
+      · exact List.mem_append_right _ (ih x hx)
+
+private theorem isCon_head {seg : Toks} {c : ViprCon} (h : IsCon seg c) :
+    seg.head? = some c.name := by
+  obtain ⟨st, rt, body, he, -⟩ := h; rw [he]; simp
+
+private theorem isSol_head {seg : Toks} {s : String × List (Nat × ℚ)} (h : IsSol seg s) :
+    seg.head? = some s.1 := by
+  obtain ⟨cnt, body, he, -⟩ := h; rw [he]; simp
+
+private theorem isDers_mem_name : ∀ {ts : Toks} {ds : List ViprDer}, IsDers ts ds →
+    ∀ d ∈ ds, d.name ∈ ts
+  | _, _, IsDers.nil, _, hx => by simp at hx
+  | _, _, IsDers.globalFlag hc _ hs, x, hx => by
+      rcases List.mem_cons.mp hx with rfl | hx
+      · exact List.mem_of_mem_head? (isDerCore_head? hc _)
+      · exact List.mem_append_right _ (List.mem_cons_of_mem _ (isDers_mem_name hs x hx))
+  | _, _, IsDers.localFlag hc _ hs, x, hx => by
+      rcases List.mem_cons.mp hx with rfl | hx
+      · exact List.mem_of_mem_head? (isDerCore_head? hc _)
+      · exact List.mem_append_right _ (List.mem_cons_of_mem _ (isDers_mem_name hs x hx))
+  | _, _, IsDers.bare hc _ _ hs, x, hx => by
+      rcases List.mem_cons.mp hx with rfl | hx
+      · exact List.mem_of_mem_head? (isDerCore_head? hc _)
+      · exact List.mem_append_right _ (isDers_mem_name hs x hx)
+
+/-- Every string a certificate carries verbatim occurs as a token of any stream that
+derives it. -/
+theorem verbatimToks_subset {ts : Toks} {v : Vipr} (h : IsVipr ts v) :
+    ∀ t ∈ verbatimToks v, t ∈ ts := by
+  obtain ⟨sVer, sVar, sInt, sObj, sCon, sRtp, sSol, sDer, rfl,
+    hver, hvar, -, hobj, hcon, -, hsol, hder⟩ := h
+  obtain ⟨cntV, hvarE, -⟩ := hvar
+  obtain ⟨cntO, bodyO, hobjE, -⟩ := hobj
+  obtain ⟨cntC, bndC, bodyC, hconE, -, -, -, hseqC⟩ := hcon
+  obtain ⟨cntS, bodyS, hsolE, -, -, hseqS⟩ := hsol
+  obtain ⟨cntD, bodyD, hderE, -, hders⟩ := hder
+  intro t ht
+  simp only [verbatimToks, List.mem_cons, List.mem_append, List.mem_map] at ht
+  simp only [List.mem_append]
+  rcases ht with rfl | rfl | hv | hc | hs | hd
+  · have : v.version ∈ sVer := by rw [hver]; simp
+    tauto
+  · have : v.objSense ∈ sObj := by rw [hobjE]; simp
+    tauto
+  · have : t ∈ sVar := by rw [hvarE]; simp [hv]
+    tauto
+  · obtain ⟨c, hcm, rfl⟩ := hc
+    have : c.name ∈ sCon := by
+      rw [hconE]
+      exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _
+        (isSeq_mem_head (f := ViprCon.name) (fun _ _ h => isCon_head h) hseqC c hcm)))
+    tauto
+  · obtain ⟨sl, hsm, rfl⟩ := hs
+    have : sl.1 ∈ sSol := by
+      rw [hsolE]
+      exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _
+        (isSeq_mem_head (f := Prod.fst) (fun _ _ h => isSol_head h) hseqS sl hsm))
+    tauto
+  · obtain ⟨d, hdm, rfl⟩ := hd
+    have : d.name ∈ sDer := by
+      rw [hderE]
+      exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (isDers_mem_name hders d hdm))
+    tauto
+
+/-- A tokenization's tokens are exactly what the printer may copy. -/
+theorem printable_of_isTokenization {cs : List Char} {ts : Toks}
+    (h : IsTokenization cs ts) : Printable ts := by
+  intro t ht
+  exact ⟨by simpa using h.ne_empty t ht, h.no_ws t ht, h.no_pct t ht⟩
+
 /-! ## Sections -/
 
 private theorem printRat_mem_slash (q : ℚ) : '/' ∈ (printRat q).toList := by

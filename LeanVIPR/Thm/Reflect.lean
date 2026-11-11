@@ -99,17 +99,6 @@ def cons (c : SLe) {P : RealValuation → Prop} (v : VRows P) :
       · exact hc
       · exact (v.spec a).mpr hP d hd
 
-/-- The problem built from declared variables and a specified row list. The variables
-carry the bounds, so `conSLes` adds their rows on top of `v.rows`. -/
-def toMip (vars : Array Mip.Var) (objSense : Mip.ObjSense) (obj : LinForm)
-    (names : Array String) {P : RealValuation → Prop} (v : VRows P) : Mip where
-  vars := vars
-  objSense := objSense
-  obj := obj
-  rows := (v.rows.zipIdx.map (fun p =>
-    { name := names.getD p.2 s!"r{p.2}", sense := p.1.sense,
-      rhs := p.1.rhs, form := p.1.form })).toArray
-
 /-! ### What the index buys
 
 `absurd_of_infeasible` asks a caller for `∀ c ∈ m.conSLes, satReal c (valuationOfInts xs)`,

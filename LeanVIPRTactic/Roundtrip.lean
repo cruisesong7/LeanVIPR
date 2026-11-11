@@ -1,6 +1,7 @@
 module
 
 public import LeanVIPR.Thm.Encoder.Denote
+public import LeanVIPR.Thm.Reflect
 
 @[expose] public section
 
@@ -64,5 +65,21 @@ theorem isNameTok_accepts : IsNameTok "x" ∧ IsNameTok objRowName := by decide
 theorem isNameTok_rejects :
     ¬ IsNameTok "COLUMNS" ∧ ¬ IsNameTok "ENDATA" ∧ ¬ IsNameTok markerTok ∧
     ¬ IsNameTok "" ∧ ¬ IsNameTok "a b" ∧ ¬ IsNameTok "%x" := by decide
+
+/-! ## The `Prop`-facing API applies too
+
+`Mip.Build.VRows` carries the predicate its rows denote, and `absurd_of_spec` consumes
+that index. Exercising it here keeps both from being dead code, and shows the index is
+inferred rather than written out. -/
+
+open LeanVIPR.Mip.Build in
+/-- The knapsack's explicit rows, with their specification attached by `cons`. -/
+def knapsackRows :=
+  cons ⟨'E', [⟨0, 6⟩, ⟨1, 10⟩, ⟨2, 15⟩], 23⟩ <|
+  cons ⟨'G', [⟨0, 1⟩, ⟨1, 1⟩, ⟨2, 1⟩], 1⟩ <| nil
+
+/-- The rows the `Mip` carries are exactly the specified ones, so `absurd_of_spec` applies
+to this problem. -/
+theorem knapsack_rows_spec : knapsack.rowSLes = knapsackRows.rows := by rfl
 
 end LeanVIPR.Tactic.Roundtrip

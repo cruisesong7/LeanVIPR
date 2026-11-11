@@ -496,15 +496,6 @@ theorem stateAfter_append : ∀ (es1 es2 : List ColEntry) (b : Bool),
   | .coeff c r q :: rest, es2, b => by
       simpa [stateAfter] using stateAfter_append rest es2 b
 
-/-- Markers only: no columns declared, and the state is whatever the last marker said. -/
-theorem intColumns_markers_nil (n : String) (c b : Bool) :
-    intColumns [ColEntry.marker n c] b = [] := by simp [intColumns]
-
-theorem stateAfter_marker (n : String) (c b : Bool) :
-    stateAfter [ColEntry.marker n c] b = c := by simp [stateAfter]
-
-theorem stateAfter_nil (b : Bool) : stateAfter [] b = b := rfl
-
 /-- Coefficient entries never change the state. -/
 theorem stateAfter_coeffs : ∀ (es : List (String × ℚ)) (name : String) (b : Bool),
     stateAfter (es.map (fun e => ColEntry.coeff name e.1 e.2)) b = b
@@ -727,10 +718,6 @@ theorem evalReal_mapIdxFlatten (g : String → ℚ) (a : RealValuation) :
 theorem colCoeff_append (es1 es2 : List ColEntry) (col row : String) :
     colCoeff (es1 ++ es2) col row = colCoeff es1 col row + colCoeff es2 col row := by
   simp [colCoeff]
-
-/-- Marker entries contribute nothing. -/
-theorem colCoeff_marker (n : String) (b : Bool) (col row : String) :
-    colCoeff [ColEntry.marker n b] col row = 0 := by simp [colCoeff]
 
 /-- A column's own coefficient entries, summed for one row. -/
 theorem colCoeff_coeffs (name col row : String) :

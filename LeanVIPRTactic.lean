@@ -12,7 +12,14 @@ A separate library target from `LeanVIPR`, not a separate repository — see `la
 for why. Nothing in the checker imports this, so the trusted artifact stays free of
 metaprogramming, `IO` and any dependency on a solver being installed.
 
-Scaffold; the plan is `docs/TACTIC-TODO.md`. The intended shape:
+`Roundtrip` is the part that exists here: it runs the emitter and discharges the encoder's
+preconditions for a concrete problem, which is what keeps those theorems from being
+vacuous. The tactic proper — reflecting a goal, driving SCIP, turning the returned
+certificate into a proof term — is being built on the `mip-tactic` branch and is not in
+this one. `docs/TACTIC-TODO.md` is that roadmap, and is written from this branch's
+viewpoint, so treat it as stale with respect to `mip-tactic`.
+
+The intended shape:
 
 ```
 goal : Prop

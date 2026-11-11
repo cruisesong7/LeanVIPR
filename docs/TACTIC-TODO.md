@@ -1,3 +1,10 @@
+> **Stale.** This roadmap was written from the `scip-encoder` branch. Stages 1–5 have
+> since been built on the `mip-tactic` branch — `LeanVIPRTactic/{Scip,Reflect,Certify,
+> Eval,Command}.lean` — where the driver spawns exact SCIP, `#mip_scip` reports a run, and
+> `mip` closes a goal. Verified by running it: `examples/mip_prop_goals.lean` proves a goal
+> with `by mip` at `[propext, Classical.choice, Quot.sound]`. Read this for the shape of
+> the work, not for its status.
+
 # The `mip` tactic: plan
 
 Ordered so each step is testable on its own.

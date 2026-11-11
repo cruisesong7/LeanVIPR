@@ -375,7 +375,7 @@ theorem printable_columnsLines {n : String} (m : Mip) (h : Emittable m n) :
     obtain ⟨i, hi, he⟩ := List.mem_mapIdx.mp hp
     have hp2 : p.2 = m.vars.toList[i] := by rw [← he]
     rw [hp2]
-    exact h.varNames _ (by simpa using List.getElem_mem hi))
+    exact h.varNames _ (by simp))
 
 /-- The constraint-row lines on their own, without the leading free objective row:
 `simp` splits `rowsLines`' cons, so the tail needs its own lemma. -/
@@ -413,33 +413,22 @@ theorem printable_mpsToks {n : String} (m : Mip) (h : Emittable m n) :
     rcases ht with rfl | rfl
     · decide
     · exact h.probName
-  have hkw : ∀ k : String, PrintableTok k →
-      Printable (Encoder.Indent.none, [k]).2 := by
-    intro k hk t ht
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-    rcases ht with rfl
-    exact hk
   refine printable_flatten ?_
   intro l hl
   simp only [Encoder.mpsLines, List.cons_append, List.mem_cons,
     List.mem_append] at hl
   repeat' rcases hl with hl | hl
+  -- the section headers and the `NAME` line are all-literal, so `decide` closes them via
+  -- the `Decidable (Printable ts)` instance; each remaining goal is one section
   all_goals first
     | decide
     | exact hname
-    | exact hkw _ (by decide)
-    | (subst hl; exact hname)
-    | (subst hl; exact hkw _ (by decide))
     | exact printable_objSenseLines m l (by assumption)
-    | exact printable_rowsLines m
-        (fun r hr => ⟨h.rowNames r hr, h.senses r hr⟩) l (by assumption)
     | exact printable_rowEntryLines m
         (fun r hr => ⟨h.rowNames r hr, h.senses r hr⟩) l (by assumption)
     | exact printable_columnsLines m h l (by assumption)
     | exact printable_rhsLines m h.rowNames l (by assumption)
     | exact printable_boundsSection m h.varNames l (by assumption)
-    | simp_all
-    | (exfalso; simp_all)
 
 /-- **The tokenization half, with no hypotheses left but the names.** The emitted text
 tokenizes to exactly the tokens the file carries. -/

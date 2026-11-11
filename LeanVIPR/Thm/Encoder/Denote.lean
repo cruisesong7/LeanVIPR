@@ -462,7 +462,7 @@ theorem isColumnsSection (m : Mip) (hobj : IsNameTok Encoder.objRowName)
     obtain ⟨i, hi, he⟩ := List.mem_mapIdx.mp hp
     have hp2 : p.2 = m.vars.toList[i] := by rw [← he]
     rw [hp2]
-    exact hv _ (by simpa using List.getElem_mem hi))
+    exact hv _ (by simp))
 
 /-! ## The marker interleaving
 
@@ -546,7 +546,7 @@ theorem mem_intColumns_colEntriesOf (m : Mip) (x : String) :
           (if v.isInt && !inInt then [ColEntry.marker ("M" ++ printNat mk) true]
            else if !v.isInt && inInt then [ColEntry.marker ("M" ++ printNat mk) false]
            else []) inInt = [] := by
-        cases hv : v.isInt <;> cases inInt <;> simp [hv, intColumns]
+        cases hv : v.isInt <;> cases inInt <;> simp [intColumns]
       rw [hpre]
       cases hv : v.isInt <;> simp only [hv] at hrec
       · simpa [hv] using hrec
@@ -610,14 +610,12 @@ theorem sum_range_single (a : Nat → ℝ) (c : ℝ) : ∀ (k i : Nat),
       simp only [List.map_append, List.sum_append, List.map_cons, List.map_nil,
         List.sum_cons, List.sum_nil, add_zero, sum_range_single a c k i]
       rcases lt_trichotomy i k with h | h | h
-      · rw [if_pos h, if_pos (by omega : i < k + 1), if_neg (by omega : ¬ i = k)]
-        simp
+      · simp only [if_pos h]
+        simp [show i < k + 1 from by omega, show ¬ i = k from by omega]
       · subst h
-        rw [if_neg (by omega : ¬ i < i), if_pos (by omega : i < i + 1)]
-        simp
-      · rw [if_neg (by omega : ¬ i < k), if_neg (by omega : ¬ i = k),
-          if_neg (by omega : ¬ i < k + 1)]
-        simp
+        simp [show ¬ i < i from by omega, show i < i + 1 from by omega]
+      · simp [show ¬ i < k from by omega, show ¬ i = k from by omega,
+          show ¬ i < k + 1 from by omega]
 
 theorem sum_map_add {α : Type} (l : List α) (A B : α → ℝ) :
     (l.map (fun x => A x + B x)).sum = (l.map A).sum + (l.map B).sum := by
@@ -664,7 +662,7 @@ theorem sum_range_coeffAt (a : RealValuation) (k : Nat) : ∀ (f : LinForm),
               + ((coeffAt f j : ℚ) : ℝ) * a j) := by
         funext j
         by_cases hj : t.idx = j
-        · simp [coeffAt, hj]; push_cast; ring
+        · simp [coeffAt, hj]; ring
         · simp [coeffAt, hj]
       rw [hsplit, sum_map_add, sum_range_single a (t.coeff : ℝ) k t.idx, hrest]
       simp [ht, evalReal]
@@ -764,7 +762,7 @@ theorem colCoeff_ne (m : Mip) (col row : String) :
       have hw : w.name ≠ col := by
         intro h; exact hnot (by simp [← h])
       have hrest : col ∉ rest.map (fun p => p.2.name) := fun h => hnot (by simp [h])
-      simp only [colEntriesOf, colCoeff_append, colCoeff_pre, zero_add, colCoeff_coeffs,
+      simp only [colEntriesOf, colCoeff_append, colCoeff_pre, colCoeff_coeffs,
         if_neg hw, colCoeff_ne m col row rest w.isInt _ hrest, add_zero]
 
 /-- `colCoeff` over the whole section selects the matching column's block. `Nodup` is what

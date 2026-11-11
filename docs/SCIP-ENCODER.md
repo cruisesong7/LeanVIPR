@@ -4,15 +4,24 @@ Branch `scip-encoder`. Goal: turn LeanVIPR from "this certificate is valid" into
 mixed-integer program, as written in Lean, is infeasible / has its optimum in `[lb, ub]`",
 with exact SCIP as a fully untrusted oracle.
 
-**What is and is not proved.** The soundness-critical half is complete: `pipeline_infeasible`,
-the objective-bound results and `pipeline_optimal_*` are proved, with no `sorry`, no added
-axiom and no `native_decide`. The *emitter* is not yet proved correct — `Thm/Encoder/Emit.lean`
-proves the tokenization half of its round trip and the denotation half is open, so
-`mpsRoundTrip` is a statement in this document rather than a theorem in Lean. That gap is
-deliberate and bounded: no pipeline theorem mentions `encodeMps`, so a faulty emitter makes
-the agreement check *reject* rather than produce a wrong theorem. Calling this a "verified
-encoder" would overstate it; the verified thing is the agreement between a certificate and
-the problem we posed.
+**What is and is not proved.** No `sorry`, no added axiom, no `native_decide` anywhere.
+
+* The soundness-critical half is complete: `pipeline_infeasible`, the objective-bound
+  results and `pipeline_optimal_*`.
+* The emitter's round trip is complete in content: all nine obligations in `IsMpsToks` are
+  proved (see the status table in `Thm/Encoder/Denote.lean`), and the tokenization half is
+  `isTokenization_encodeMps'`. What is *not* written is the final assembly — instantiating
+  the nine at `m` and discharging `IsMpsToks`'s existential — so `mpsRoundTrip` is still a
+  statement in this document rather than a theorem. That last step is plumbing.
+* The hypotheses are not vacuous: `Mip.WellFormed`, `Mps.EncodableNames` and
+  `Mps.Emittable` are all `Decidable`, and `LeanVIPRTactic/Roundtrip.lean` discharges them
+  for a concrete problem by `decide`, then applies the tokenization theorem to it.
+
+Even so, "verified encoder" overstates the *pipeline*: no pipeline theorem mentions
+`encodeMps`, so none of the above is consumed by `pipeline_infeasible`. A faulty emitter
+makes the agreement check *reject* rather than produce a wrong theorem. The emitter's
+proofs buy completeness; the verified thing in the soundness chain is the agreement between
+a certificate and the problem we posed.
 
 ## The gap this closes
 

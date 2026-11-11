@@ -698,29 +698,29 @@ theorem sum_range_succ_front (h : Nat → ℝ) (k : Nat) :
 theorem evalReal_mapIdxFlatten (g : String → ℚ) (a : RealValuation) :
     ∀ (names : List String) (off : Nat),
       evalReal ((names.mapIdx (fun j n =>
-          if g n = 0 then ([] : LinForm) else [(⟨off + j, g n⟩ : Term)])).flatten) a
+          if g n = 0 then ([] : LinForm) else [(⟨j + off, g n⟩ : Term)])).flatten) a
         = ((List.range names.length).map
-            (fun j => ((g (names.getD j "") : ℚ) : ℝ) * a (off + j))).sum
+            (fun j => ((g (names.getD j "") : ℚ) : ℝ) * a (j + off))).sum
   | [], off => by simp [evalReal]
   | n :: ns, off => by
       have ih := evalReal_mapIdxFlatten g a ns (off + 1)
       have hrw : (ns.mapIdx fun i x =>
-            if g x = 0 then ([] : LinForm) else [(⟨off + (i + 1), g x⟩ : Term)])
+            if g x = 0 then ([] : LinForm) else [(⟨(i + 1) + off, g x⟩ : Term)])
           = ns.mapIdx (fun i x =>
-            if g x = 0 then ([] : LinForm) else [(⟨(off + 1) + i, g x⟩ : Term)]) := by
+            if g x = 0 then ([] : LinForm) else [(⟨i + (off + 1), g x⟩ : Term)]) := by
         congr 1
         funext i x
-        rw [show off + (i + 1) = (off + 1) + i from by omega]
-      have hhead : evalReal (if g n = 0 then ([] : LinForm) else [(⟨off + 0, g n⟩ : Term)]) a
-          = ((g n : ℚ) : ℝ) * a (off + 0) := by
+        rw [show (i + 1) + off = i + (off + 1) from by omega]
+      have hhead : evalReal (if g n = 0 then ([] : LinForm) else [(⟨0 + off, g n⟩ : Term)]) a
+          = ((g n : ℚ) : ℝ) * a (0 + off) := by
         split <;> rename_i hz <;> simp [evalReal, hz]
       rw [List.mapIdx_cons, List.flatten_cons, evalReal_append, hhead, hrw, ih,
         List.length_cons, sum_range_succ_front]
-      simp only [List.getD_cons_zero, List.getD_cons_succ, Nat.add_zero]
-      have hfun : (fun j => ((g (ns.getD j "") : ℚ) : ℝ) * a (off + 1 + j))
-          = (fun j => ((g (ns.getD j "") : ℚ) : ℝ) * a (off + (j + 1))) := by
+      simp only [List.getD_cons_zero, List.getD_cons_succ]
+      have hfun : (fun j => ((g (ns.getD j "") : ℚ) : ℝ) * a (j + (off + 1)))
+          = (fun j => ((g (ns.getD j "") : ℚ) : ℝ) * a ((j + 1) + off)) := by
         funext j
-        rw [show off + (j + 1) = off + 1 + j from by omega]
+        rw [show (j + 1) + off = j + (off + 1) from by omega]
       rw [hfun]
 
 /-- `colCoeff` splits along an append, like `intColumns` does. -/
@@ -752,50 +752,246 @@ theorem colCoeff_coeffs (name col row : String) :
         simp_all
 
 
-/-! ## What is still open
+/-! ## Selecting one column, and one row within it
 
-Eight of the nine obligations in `IsMpsToks` are discharged above, and the one
-remaining has had its missing ingredient supplied: the decomposition, and
-the `NAME`, `OBJSENSE`, `ROWS`, `RHS` and `BOUNDS` *syntax*. One remains, and it is the
-semantic one — each relates a section's recovered contents back to `m`, rather than
-saying which tokens derive which entries.
+`colCoeff` threads the same way `intColumns` did, so the section's entries decompose and
+only the matching column's block survives — `Nodup` on the variable names is what makes
+that block unique. Within the block, only the matching row's entry survives, by `Nodup` on
+the row names, with the objective row excluded separately. -/
 
-~~**1. `COLUMNS` syntax.**~~ **Done** — `isColumnsSection`, by a recursion carrying the
-marker state whose `split`s mirror the emitter's own `if opening … else if closing …`. The
-enabler was `isNameTok_markerName`: a marker's name must be readable back, and the
-argument for it is uniform rather than case-by-case over the keywords — every
-structurally-read token is digit-free, `printNat` emits digits, so they cannot coincide.
+theorem colCoeff_pre (v : Mip.Var) (inInt : Bool) (mk : Nat) (col row : String) :
+    colCoeff (if v.isInt && !inInt then [ColEntry.marker ("M" ++ printNat mk) true]
+              else if !v.isInt && inInt then [ColEntry.marker ("M" ++ printNat mk) false]
+              else []) col row = 0 := by
+  cases v.isInt <;> cases inInt <;> simp [colCoeff]
 
-~~**2. `DeclaresInt cols v.name ↔ v.isInt`.**~~ **Done** — `declaresInt_iff`. The property
-is about the *arrangement* of entries rather than any one entry, so the proof threads a
-marker state: `stateAfter` plus decomposition lemmas for it and `intColumns` over an
-append, after which the invariant (`stateAfter_pre`) is one line per case. `Nodup` is what
-rules out a different variable with the same name having been the one declared.
+/-- A column that appears nowhere in the section contributes nothing. -/
+theorem colCoeff_ne (m : Mip) (col row : String) :
+    ∀ (vs : List (Nat × Mip.Var)) (inInt : Bool) (mk : Nat),
+      col ∉ vs.map (fun p => p.2.name) →
+      colCoeff (colEntriesOf m vs inInt mk) col row = 0
+  | [], inInt, mk, _ => by
+      simp only [colEntriesOf]
+      split <;> simp [colCoeff]
+  | (i, w) :: rest, inInt, mk, hnot => by
+      have hw : w.name ≠ col := by
+        intro h; exact hnot (by simp [← h])
+      have hrest : col ∉ rest.map (fun p => p.2.name) := fun h => hnot (by simp [h])
+      simp only [colEntriesOf, colCoeff_append, colCoeff_pre, zero_add, colCoeff_coeffs,
+        if_neg hw, colCoeff_ne m col row rest w.isInt _ hrest, add_zero]
 
-**3. `FormEqReal (rowForm cols names r.name) r.form`.** The transpose. The ingredient this
-was blocked on is now **proved** — `sum_range_coeffAt`, the grouped sum over `ℝ`, together
-with `coeffOf_eq` relating the emitter's fold to a plain sum. Three steps remain, all
-bookkeeping rather than mathematics:
+/-- `colCoeff` over the whole section selects the matching column's block. `Nodup` is what
+makes that block unique. -/
+theorem colCoeff_select (m : Mip) (row : String) :
+    ∀ (vs : List (Nat × Mip.Var)) (inInt : Bool) (mk : Nat) (j : Nat) (v : Mip.Var),
+      (j, v) ∈ vs → (vs.map (fun p => p.2.name)).Nodup →
+      colCoeff (colEntriesOf m vs inInt mk) v.name row
+        = ((if (Encoder.colEntries m j).isEmpty then [(Encoder.objRowName, (0:ℚ))]
+            else Encoder.colEntries m j).map (fun e => if e.1 = row then e.2 else 0)).sum
+  | [], _, _, _, _, h, _ => by simp at h
+  | (i, w) :: rest, inInt, mk, j, v, hmem, hnd => by
+      have hwnot : w.name ∉ rest.map (fun p => p.2.name) :=
+        (List.nodup_cons.mp (by simpa using hnd)).1
+      have hnd' : (rest.map (fun p => p.2.name)).Nodup :=
+        (List.nodup_cons.mp (by simpa using hnd)).2
+      simp only [colEntriesOf, colCoeff_append, colCoeff_pre, zero_add, colCoeff_coeffs]
+      rcases List.mem_cons.mp hmem with heq | hmem
+      · obtain ⟨hij, hwv⟩ : j = i ∧ v = w := by simpa [Prod.ext_iff] using heq
+        rw [hij, hwv, if_pos rfl, colCoeff_ne m w.name row rest w.isInt _ hwnot,
+          add_zero]
+      · have hne : w.name ≠ v.name := by
+          intro h
+          exact hwnot (h ▸ List.mem_map_of_mem (f := fun p => p.2.name) hmem)
+        rw [if_neg hne, zero_add]
+        exact colCoeff_select m row rest w.isInt _ j v hmem hnd'
 
-* `evalReal (rowForm es names row) a = ∑_{j < names.length} colCoeff es names[j] row * a j`.
-  Two wrinkles: `rowForm`'s `if q = 0 then [] else _` skip (harmless, since a skipped
-  index would have contributed `0 * a j`), and `mapIdx`'s index shift, which needs the
-  statement generalized over an offset — `mapIdx f (x :: xs)` recurses with `f (·+1)`.
-  Verified on a concrete two-variable instance, so only the general induction is missing.
-* `colCoeff cols names[j] row = Encoder.coeffOf (that row's form) j`, from the emitter's
-  entries. Needs the variable-name `Nodup`, else another column's entries get summed in.
-* Then `FormEqReal` follows from `sum_range_coeffAt` with `k = m.vars.size`, whose index
-  bound is `WellFormed.FormDeclared`.
 
-~~**4. `loBound`/`hiBound` recovery.**~~ **Done** — `loBound_flatten` and
-`hiBound_flatten`. One wrinkle worth recording: the two halves are *not* symmetric. A
-variable's own block always sets its lower bound, whatever the accumulator held, but a
-continuous variable with no upper bound emits no upper entry at all, so `hiStep_foldl_own`
-has to require the initial `none` where `loStep_foldl_own` is accumulator-agnostic. The
-`Nodup` hypothesis is what supplies that `none`, by ruling out an earlier variable having
-set it.
+abbrev rowEnt (j : Nat) (s : Mip.Row) : Option (String × ℚ) :=
+  if Encoder.coeffOf s.form j == 0 then none else some (s.name, Encoder.coeffOf s.form j)
 
-Then `mpsRoundTrip` is assembly. None of this is soundness-critical — see the file header.
+/-- A row absent from the list contributes nothing. -/
+theorem sum_rowEnts_ne (j : Nat) (x : String) :
+    ∀ (rs : List Mip.Row), x ∉ rs.map Mip.Row.name →
+      (((rs.filterMap (rowEnt j)).map (fun e => if e.1 = x then e.2 else 0)).sum) = 0
+  | [], _ => by simp
+  | s :: rs, hnot => by
+      have hs : s.name ≠ x := fun h => hnot (by simp [← h])
+      have hrest : x ∉ rs.map Mip.Row.name := fun h => hnot (by simp [h])
+      rw [List.filterMap_cons]
+      split
+      · exact sum_rowEnts_ne j x rs hrest
+      · rename_i hv
+        simp only [List.map_cons, List.sum_cons, sum_rowEnts_ne j x rs hrest, add_zero]
+        simp only [rowEnt] at hv
+        split at hv
+        · simp at hv
+        · simp only [Option.some.injEq] at hv
+          subst hv
+          simp [hs]
+
+/-- Exactly the matching row's coefficient survives. -/
+theorem sum_rowEnts (j : Nat) (r : Mip.Row) :
+    ∀ (rs : List Mip.Row), r ∈ rs → (rs.map Mip.Row.name).Nodup →
+      (((rs.filterMap (rowEnt j)).map (fun e => if e.1 = r.name then e.2 else 0)).sum)
+        = Encoder.coeffOf r.form j
+  | [], h, _ => by simp at h
+  | s :: rs, hmem, hnd => by
+      have hsnot : s.name ∉ rs.map Mip.Row.name := (List.nodup_cons.mp hnd).1
+      have hnd' : (rs.map Mip.Row.name).Nodup := (List.nodup_cons.mp hnd).2
+      rcases List.mem_cons.mp hmem with rfl | hmem
+      · rw [List.filterMap_cons]
+        split
+        · rename_i hv
+          simp only [rowEnt] at hv
+          split at hv
+          · rename_i hz
+            have hz0 : Encoder.coeffOf r.form j = 0 := by simpa using hz
+            rw [sum_rowEnts_ne j r.name rs hsnot, hz0]
+          · simp at hv
+        · rename_i hv
+          simp only [rowEnt] at hv
+          split at hv
+          · simp at hv
+          · simp only [Option.some.injEq] at hv
+            subst hv
+            simp only [List.map_cons, List.sum_cons,
+              sum_rowEnts_ne j r.name rs hsnot, add_zero]
+            simp
+      · have hne : s.name ≠ r.name := fun h =>
+          hsnot (h ▸ List.mem_map_of_mem (f := Mip.Row.name) hmem)
+        rw [List.filterMap_cons]
+        split
+        · exact sum_rowEnts j r rs hmem hnd'
+        · rename_i hv
+          simp only [rowEnt] at hv
+          split at hv
+          · simp at hv
+          · simp only [Option.some.injEq] at hv
+            subst hv
+            simp only [List.map_cons, List.sum_cons, hne, if_false]
+            simpa using sum_rowEnts j r rs hmem hnd'
+
+
+/-- Within one column's entry list, selecting a row's coefficient recovers `coeffOf`. -/
+theorem sum_colEntries (m : Mip) (j : Nat) (r : Mip.Row) (hr : r ∈ m.rows)
+    (hnd : (m.rows.toList.map Mip.Row.name).Nodup)
+    (hobj : ∀ s ∈ m.rows, s.name ≠ Encoder.objRowName) :
+    ((if (Encoder.colEntries m j).isEmpty then [(Encoder.objRowName, (0:ℚ))]
+      else Encoder.colEntries m j).map (fun e => if e.1 = r.name then e.2 else 0)).sum
+      = Encoder.coeffOf r.form j := by
+  split
+  · rename_i hempty
+    have hall : ∀ s ∈ m.rows.toList, Encoder.coeffOf s.form j = 0 := by
+      intro s hs
+      by_contra hne
+      have hmemx : (s.name, Encoder.coeffOf s.form j) ∈ Encoder.colEntries m j := by
+        simp only [Encoder.colEntries, List.mem_append]
+        exact Or.inr (List.mem_filterMap.mpr ⟨s, hs, by simp [hne]⟩)
+      simp [List.isEmpty_iff] at hempty
+      rw [hempty] at hmemx
+      simp at hmemx
+    rw [hall r (by simpa using hr)]
+    simp
+  · -- the objective entry misses (its name differs), and exactly r's entry survives
+    simp only [Encoder.colEntries, List.map_append, List.sum_append]
+    rw [sum_rowEnts j r m.rows.toList (by simpa using hr) hnd]
+    have hobjzero : (((if Encoder.coeffOf m.obj j == 0 then []
+        else [(Encoder.objRowName, Encoder.coeffOf m.obj j)]).map
+          (fun e => if e.1 = r.name then e.2 else 0)).sum) = 0 := by
+      split
+      · simp
+      · simp [Ne.symm (hobj r hr)]
+    rw [hobjzero, zero_add]
+
+
+/-! ## The transpose
+
+Obligation 3, assembled: `rowForm` evaluates to the grouped sum (step 1), each column
+coefficient is the row's coefficient at that index (step 2, via block selection and row
+selection), and the grouped sum is the original form (step 3, `sum_range_coeffAt`). -/
+
+/-- Pairing a list with its indices leaves the elements in the second components. -/
+theorem map_snd_mapIdx {α : Type} : ∀ (l : List α) (f : Nat → α → Nat × α),
+    (∀ i x, (f i x).2 = x) → (l.mapIdx f).map Prod.snd = l
+  | [], _, _ => by simp
+  | x :: xs, f, hf => by
+      rw [List.mapIdx_cons, List.map_cons, hf 0 x,
+        map_snd_mapIdx xs (fun i => f (i + 1)) (fun i y => hf (i + 1) y)]
+
+theorem formEqReal_rowForm (m : Mip) (r : Mip.Row) (hr : r ∈ m.rows)
+    (hvnd : (m.vars.toList.map Mip.Var.name).Nodup)
+    (hrnd : (m.rows.toList.map Mip.Row.name).Nodup)
+    (hobj : ∀ s ∈ m.rows, s.name ≠ Encoder.objRowName)
+    (hdecl : ∀ t ∈ r.form, t.idx < m.vars.size) :
+    FormEqReal
+      (rowForm (colEntriesOf m (m.vars.toList.mapIdx (fun j v => (j, v))) false 1)
+        (m.vars.toList.map Mip.Var.name) r.name) r.form := by
+  intro a
+  have hlen : (m.vars.toList.map Mip.Var.name).length = m.vars.size := by simp
+  -- step 1: rowForm is the grouped sum over the column coefficients
+  have h1 := evalReal_mapIdxFlatten
+    (fun n => colCoeff (colEntriesOf m (m.vars.toList.mapIdx (fun j v => (j, v))) false 1)
+      n r.name) a (m.vars.toList.map Mip.Var.name) 0
+  simp only [Nat.add_zero] at h1
+  rw [rowForm]
+  rw [h1, hlen]
+  -- step 2: each column coefficient is the row's coefficient at that index
+  have h2 : ∀ j, j < m.vars.size →
+      colCoeff (colEntriesOf m (m.vars.toList.mapIdx (fun j v => (j, v))) false 1)
+        ((m.vars.toList.map Mip.Var.name).getD j "") r.name = coeffAt r.form j := by
+    intro j hj
+    have hjl : j < m.vars.toList.length := by simpa using hj
+    have hget : (m.vars.toList.map Mip.Var.name).getD j "" = (m.vars.toList[j]).name := by
+      rw [List.getD_eq_getElem?_getD, List.getElem?_map]
+      simp [List.getElem?_eq_getElem hjl]
+    rw [hget, colCoeff_select m r.name _ false 1 j (m.vars.toList[j])
+      (List.mem_mapIdx.mpr ⟨j, hjl, rfl⟩) (by
+        rw [show (List.mapIdx (fun j v => (j, v)) m.vars.toList).map (fun p => p.2.name)
+              = m.vars.toList.map Mip.Var.name from by
+            rw [show (fun (p : Nat × Mip.Var) => p.2.name)
+                  = (fun p => Mip.Var.name p) ∘ Prod.snd from rfl, ← List.map_map,
+              map_snd_mapIdx m.vars.toList _ (fun _ _ => rfl)]]
+        exact hvnd),
+      sum_colEntries m j r hr hrnd hobj, coeffOf_eq]
+  -- step 3: the grouped sum is the original form
+  have h3 := sum_range_coeffAt a m.vars.size r.form hdecl
+  rw [← h3]
+  congr 1
+  apply List.map_congr_left
+  intro j hj
+  rw [h2 j (by simpa using List.mem_range.mp hj)]
+
+
+/-! ## Status
+
+All nine obligations in `IsMpsToks` are now discharged:
+
+| | obligation | result |
+|---|---|---|
+| 0 | the token stream splits by section | `mpsToks_decompose` |
+| 1 | `COLUMNS` derives its entries | `isColumnsSection` |
+| 2 | the markers bracket the integer columns | `declaresInt_iff` |
+| 3 | the transpose | `formEqReal_rowForm` |
+| 4 | bound recovery | `loBound_flatten`, `hiBound_flatten` |
+| 5–8 | `NAME`, `OBJSENSE`, `ROWS`, `RHS`, `BOUNDS` syntax | `isNameSection` … `isBoundsSection` |
+
+Three hypotheses recur and are worth naming, since they are what `Mip.WellFormed` and
+`Mps.EncodableNames` exist to supply:
+
+* **variable-name `Nodup`** — block selection in `colCoeff_select` and `declaresInt_iff`,
+  and bound recovery. Without it another column's entries get summed in, or another
+  variable's `LO` line shadows this one's.
+* **row-name `Nodup`, plus the objective row distinct from every row** — row selection
+  inside a column's block, in `sum_colEntries`.
+* **`WellFormed.FormDeclared`** — the index bound `sum_range_coeffAt` needs.
+
+What is *not* here is the final assembly into `IsMpsToks` and `mpsRoundTrip` itself, which
+is plumbing: instantiate the nine results at `m` and discharge the existential. The
+mathematical content is complete.
+
+And the standing caveat: none of this is soundness-critical. No pipeline theorem mentions
+`encodeMps`, so a faulty emitter makes `agreesWith` reject rather than produce a wrong
+theorem. This buys completeness.
 -/
 
 end LeanVIPR.Mps

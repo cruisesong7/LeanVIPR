@@ -29,3 +29,9 @@ name = "LeanVIPRTactic"
 [[lean_exe]]
 name = "viprcheck"
 root = "LeanVIPRMain"
+
+# Gives `encodeMps` a caller. Without one the emitter was only ever mentioned by theorems,
+# so nothing exercised it and the "verified encoder" claim rested on scratch files.
+[[lean_exe]]
+name = "encode-mps"
+root = "EncodeMain"

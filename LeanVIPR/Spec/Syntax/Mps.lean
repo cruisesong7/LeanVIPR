@@ -74,6 +74,12 @@ def IsNameTok (t : String) : Prop :=
   t.toList ≠ [] ∧ NoWhitespace t.toList ∧ t.toList.head? ≠ some '%' ∧
     t ∉ sectionKeywords ∧ t ≠ markerTok
 
+/-- Decidable, which is what lets a caller discharge `EncodableNames` by `decide` rather
+than by hand — and what a front-end tactic would need in order to check its own
+precondition before invoking the solver. -/
+instance (t : String) : Decidable (IsNameTok t) := by
+  unfold IsNameTok; infer_instance
+
 /-- The objective sense, as `OBJSENSE` spells it. Absent means minimize, which is the
 MPS default. -/
 def IsSenseWord (t : String) (s : Mip.ObjSense) : Prop :=
@@ -261,5 +267,8 @@ def EncodableNames (m : Mip) (objRow : String) : Prop :=
   IsNameTok objRow ∧
   (∀ v ∈ m.vars, IsNameTok v.name) ∧
   (∀ r ∈ m.rows, IsNameTok r.name ∧ r.name ≠ objRow)
+
+instance (m : Mip) (objRow : String) : Decidable (EncodableNames m objRow) := by
+  unfold EncodableNames; infer_instance
 
 end LeanVIPR.Mps

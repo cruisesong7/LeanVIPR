@@ -278,6 +278,9 @@ will give back — are `LeanVIPR.Mps.EncodableNames`, stated where the grammar i
 def FormDeclared (m : Mip) (f : LinForm) : Prop :=
   ∀ t ∈ f, t.idx < m.vars.size
 
+instance (m : Mip) (f : LinForm) : Decidable (m.FormDeclared f) := by
+  unfold Mip.FormDeclared; infer_instance
+
 /-- Names are what a problem file refers to, so distinct variables need distinct names,
 and so do distinct rows. -/
 def WellFormed (m : Mip) : Prop :=
@@ -285,6 +288,13 @@ def WellFormed (m : Mip) : Prop :=
   (∀ r ∈ m.rows, m.FormDeclared r.form ∧ (r.sense = 'L' ∨ r.sense = 'G' ∨ r.sense = 'E')) ∧
   (m.vars.toList.map Var.name).Nodup ∧
   (m.rows.toList.map Row.name).Nodup
+
+/-- Decidable, so a concrete problem's well-formedness is a `by decide` away. Together
+with the instance for `Mps.EncodableNames` this means every hypothesis the encoder's
+theorems carry can be discharged automatically for any particular `Mip` — which is what
+makes those theorems non-vacuous in practice rather than only in principle. -/
+instance (m : Mip) : Decidable m.WellFormed := by
+  unfold Mip.WellFormed; infer_instance
 
 end Mip
 

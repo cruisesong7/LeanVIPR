@@ -1,6 +1,7 @@
 module
 
 public import LeanVIPR
+public import LeanVIPRTactic.Roundtrip
 
 @[expose] public section
 

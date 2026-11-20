@@ -69,12 +69,15 @@ Any other VIPR v1.0 `RTP infeas` file is the same command with a different path.
 
 Two small range examples exercise minimization and maximization, including
 `{ sol }`, and a third uses the one-unit cutoff that exact SCIP writes for integral
-objectives:
+objectives. In the fourth, the row that proves the claim is not the last. The VIPR
+specification requires it to be, but exact SCIP writes such certificates, so `viprcheck`
+accepts any closed row that proves the claim and warns when it is not the last:
 
 ```bash
 lake exe viprcheck examples/valid_min_range.vipr
 lake exe viprcheck examples/valid_max_range.vipr
 lake exe viprcheck examples/sol_integral_cutoff.vipr
+lake exe viprcheck examples/proving_row_not_last.vipr
 ```
 
 ## Modes and parameters

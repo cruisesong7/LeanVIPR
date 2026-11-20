@@ -89,34 +89,35 @@ def replaySteps? (v : Vipr) (pool : CheckerPool) : List SStep → Option Checker
       else
         none
 
-/-- `none` means that a step failed. `some last?` means replay succeeded, with the
-optional final pool entry. -/
-def replay? (v : Vipr) : Option (Option CheckerEntry) :=
-  (replaySteps? v (initialPool v) (viprSteps v)).map Array.back?
+/-- `none` means that a step failed. `some pool` means replay succeeded, with the final
+pool of original and derived rows. -/
+def replay? (v : Vipr) : Option CheckerPool :=
+  replaySteps? v (initialPool v) (viprSteps v)
 
-def closedAbsurd : Option CheckerEntry → Bool
-  | none => false
-  | some e => decide (e.2 = ∅) && isAbsurd e.1
+/-- Some entry of `pool` has no open assumptions and its row passes `p`. The last entry
+is tried first: the VIPR specification puts the proving row there and real certificates
+nearly always do, so scanning the whole pool is the rare path. -/
+def anyClosed (p : SLe → Bool) (pool : CheckerPool) : Bool :=
+  (match pool.back? with
+   | none => false
+   | some e => decide (e.2 = ∅) && p e.1) ||
+  pool.toList.any (fun e => decide (e.2 = ∅) && p e.1)
 
-def closedDominates (target : SLe) : Option CheckerEntry → Bool
-  | none => false
-  | some e => decide (e.2 = ∅) && dominates e.1 target
-
-def finalValid (v : Vipr) (last? : Option CheckerEntry) : Bool :=
+def finalValid (v : Vipr) (pool : CheckerPool) : Bool :=
   match v.rtp with
-  | .infeas => closedAbsurd last?
+  | .infeas => anyClosed isAbsurd pool
   | .range lb ub =>
       if v.objSense = "min" then
         match lb with
         | none => true
         | some lower =>
-            closedDominates (objectiveLowerRow v lower) last? &&
+            anyClosed (fun r => dominates r (objectiveLowerRow v lower)) pool &&
               v.sols.toList.all (fun s => decide (lower ≤ objectiveQ v s))
       else if v.objSense = "max" then
         match ub with
         | none => true
         | some upper =>
-            closedDominates (objectiveUpperRow v upper) last? &&
+            anyClosed (fun r => dominates r (objectiveUpperRow v upper)) pool &&
               v.sols.toList.all (fun s => decide (objectiveQ v s ≤ upper))
       else false
 
@@ -191,14 +192,14 @@ def checkViprPar (tasks : Nat) (v : Vipr) : Bool :=
    let final := buildPool v start steps
    allRefsBelow start.size steps &&
    parAll (parChunkSize tasks steps.length) (fun s => ruleCheck v final s) steps &&
-   finalValid v final.back?)
+   finalValid v final)
 
 /-- Production checker for both infeasibility and objective-range VIPR claims. -/
 def checkVipr (v : Vipr) : Bool :=
   solSection v &&
   match replay? v with
   | none => false
-  | some last? => finalValid v last?
+  | some final => finalValid v final
 
 /-- Checker for a backward-sliced infeasibility certificate: accept `sliced` as a
 refutation of `original`. The slicer itself is untrusted, so this re-establishes every

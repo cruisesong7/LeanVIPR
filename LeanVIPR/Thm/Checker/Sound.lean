@@ -124,36 +124,39 @@ theorem initialPool_eq (v : Vipr) :
     (initialPool v).toList = sinitPool (conSLes v) := by
   simp [initialPool, sinitPool, conSLes]
 
-theorem replay_refines {v : Vipr} {last? : Option CheckerEntry}
-    (h : replay? v = some last?) :
+theorem replay_refines {v : Vipr} {final : CheckerPool}
+    (h : replay? v = some final) :
     Vipr.DerivationValid v (sinitPool (conSLes v)) (viprSteps v) ∧
-      last? = (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? := by
-  unfold replay? at h
-  cases hr : replaySteps? v (initialPool v) (viprSteps v) with
-  | none => simp [hr] at h
-  | some final =>
-      have hrefine :=
-        replaySteps_refines v (initialPool v) (viprSteps v) final hr
-      simp only [hr, Option.map_some, Option.some.injEq] at h
-      refine ⟨?_, ?_⟩
-      · simpa [initialPool_eq] using hrefine.1
-      · rw [← h, back?_toList, hrefine.2, initialPool_eq]
+      final.toList = sfreplay (sinitPool (conSLes v)) (viprSteps v) := by
+  have hrefine := replaySteps_refines v (initialPool v) (viprSteps v) final h
+  rw [initialPool_eq] at hrefine
+  exact hrefine
 
-theorem finalValid_sound {v : Vipr} {last? : Option CheckerEntry}
-    (hlast : last? = (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast?)
-    (h : finalValid v last? = true) : FinalValid v := by
+/-- A closed entry found by `anyClosed` is a member of the pool. -/
+theorem anyClosed_sound {p : SLe → Bool} {pool : CheckerPool}
+    (h : anyClosed p pool = true) : ∃ e ∈ pool.toList, e.2 = ∅ ∧ p e.1 = true := by
+  unfold anyClosed at h
+  simp only [Bool.or_eq_true] at h
+  rcases h with h | h
+  · cases hb : pool.back? with
+    | none => simp [hb] at h
+    | some e =>
+        simp only [hb, Bool.and_eq_true, decide_eq_true_eq] at h
+        exact ⟨e, List.mem_of_getLast? (by rw [← back?_toList]; exact hb), h⟩
+  · obtain ⟨e, he, hp⟩ := List.any_eq_true.mp h
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at hp
+    exact ⟨e, he, hp⟩
+
+
+theorem finalValid_sound {v : Vipr} {pool : CheckerPool}
+    (hpool : pool.toList = sfreplay (sinitPool (conSLes v)) (viprSteps v))
+    (h : finalValid v pool = true) : FinalValid v := by
   cases hr : v.rtp with
   | infeas =>
       simp only [FinalValid, hr]
       simp only [finalValid, hr] at h
-      cases he : last? with
-      | none =>
-          rw [he] at h
-          simp [closedAbsurd] at h
-      | some e =>
-          simp only [he, closedAbsurd, Bool.and_eq_true, decide_eq_true_eq] at h
-          exact ⟨e, by rw [← hlast, he], h.1,
-            Rule.isAbsurd_sound_real h.2⟩
+      obtain ⟨e, he, hclosed, habs⟩ := anyClosed_sound h
+      exact ⟨e, hpool ▸ he, hclosed, Rule.isAbsurd_sound_real habs⟩
   | range lb ub =>
       simp only [FinalValid, hr]
       simp only [finalValid, hr] at h
@@ -163,34 +166,16 @@ theorem finalValid_sound {v : Vipr} {last? : Option CheckerEntry}
         | none => trivial
         | some lower =>
             simp only [Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at h
-            refine ⟨?_, h.2⟩
-            have h1 := h.1
-            cases he : last? with
-            | none =>
-                rw [he] at h1
-                simp [closedDominates] at h1
-            | some e =>
-                simp only [he, closedDominates, Bool.and_eq_true,
-                  decide_eq_true_eq] at h1
-                exact ⟨e, by rw [← hlast, he], h1.1,
-                  Rule.dominates_valid_real h1.2⟩
+            obtain ⟨e, he, hclosed, hdom⟩ := anyClosed_sound h.1
+            exact ⟨⟨e, hpool ▸ he, hclosed, Rule.dominates_valid_real hdom⟩, h.2⟩
       · by_cases hmax : v.objSense = "max"
         · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
           cases ub with
           | none => trivial
           | some upper =>
               simp only [Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at h
-              refine ⟨?_, h.2⟩
-              have h1 := h.1
-              cases he : last? with
-              | none =>
-                  rw [he] at h1
-                  simp [closedDominates] at h1
-              | some e =>
-                  simp only [he, closedDominates, Bool.and_eq_true,
-                    decide_eq_true_eq] at h1
-                  exact ⟨e, by rw [← hlast, he], h1.1,
-                    Rule.dominates_valid_real h1.2⟩
+              obtain ⟨e, he, hclosed, hdom⟩ := anyClosed_sound h.1
+              exact ⟨⟨e, hpool ▸ he, hclosed, Rule.dominates_valid_real hdom⟩, h.2⟩
         · simp [hmin, hmax] at h
 
 /-- The executable checker refines the declarative VIPR proof system. -/
@@ -199,8 +184,8 @@ theorem checkVipr_refines {v : Vipr} (h : checkVipr v = true) :
   simp only [checkVipr, Bool.and_eq_true] at h
   cases hr : replay? v with
   | none => simp [hr] at h
-  | some last? =>
-      have hrefine := replay_refines (v := v) (last? := last?) hr
+  | some final =>
+      have hrefine := replay_refines (v := v) (final := final) hr
       exact ⟨solSection_sound h.1, hrefine.1,
         finalValid_sound hrefine.2 (by simpa [hr] using h.2)⟩
 

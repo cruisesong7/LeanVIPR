@@ -160,21 +160,31 @@ theorem replaySteps_complete (v : Vipr) :
 
 theorem replay_complete {v : Vipr}
     (h : Vipr.DerivationValid v (sinitPool (conSLes v)) (viprSteps v)) :
-    replay? v = some (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? := by
+    ∃ final, replay? v = some final ∧
+      final.toList = sfreplay (sinitPool (conSLes v)) (viprSteps v) := by
   obtain ⟨final, hfinal, heq⟩ :=
     replaySteps_complete v (initialPool v) (viprSteps v) (by rwa [initialPool_eq])
-  unfold replay?
-  rw [hfinal, Option.map_some, back?_toList, heq, initialPool_eq]
+  exact ⟨final, hfinal, by rw [heq, initialPool_eq]⟩
+
+/-- A closed entry of the pool that passes the test makes `anyClosed` accept. -/
+theorem anyClosed_complete {p : SLe → Bool} {pool : CheckerPool} {e : CheckerEntry}
+    (he : e ∈ pool.toList) (hclosed : e.2 = ∅) (hp : p e.1 = true) :
+    anyClosed p pool = true := by
+  unfold anyClosed
+  simp only [Bool.or_eq_true]
+  exact Or.inr (List.any_eq_true.mpr ⟨e, he, by simp [hclosed, hp]⟩)
 
 /-! ## Final claim and the whole certificate -/
 
-theorem finalValid_complete {v : Vipr} (h : FinalValid v) :
-    finalValid v (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? = true := by
+theorem finalValid_complete {v : Vipr} {pool : CheckerPool}
+    (hpool : pool.toList = sfreplay (sinitPool (conSLes v)) (viprSteps v))
+    (h : FinalValid v) : finalValid v pool = true := by
   cases hr : v.rtp with
   | infeas =>
       simp only [FinalValid, hr] at h
-      obtain ⟨e, hlast, hclosed, habs⟩ := h
-      simp [finalValid, hr, hlast, closedAbsurd, hclosed, isAbsurd_complete habs]
+      obtain ⟨e, he, hclosed, habs⟩ := h
+      simp only [finalValid, hr]
+      exact anyClosed_complete (hpool ▸ he) hclosed (isAbsurd_complete habs)
   | range lb ub =>
       simp only [FinalValid, hr] at h
       by_cases hmin : v.objSense = "min"
@@ -182,17 +192,19 @@ theorem finalValid_complete {v : Vipr} (h : FinalValid v) :
         cases lb with
         | none => simp [finalValid, hr, hmin]
         | some lower =>
-            obtain ⟨⟨e, hlast, hclosed, hdom⟩, hlow⟩ := h
-            simp [finalValid, hr, hmin, hlast, closedDominates, hclosed,
-              dominates_complete hdom, hlow]
+            obtain ⟨⟨e, he, hclosed, hdom⟩, hlow⟩ := h
+            simp only [finalValid, hr, hmin, ite_true, Bool.and_eq_true, List.all_eq_true,
+              decide_eq_true_eq]
+            exact ⟨anyClosed_complete (hpool ▸ he) hclosed (dominates_complete hdom), hlow⟩
       · by_cases hmax : v.objSense = "max"
         · simp only [hmax, ite_true] at h
           cases ub with
           | none => simp [finalValid, hr, hmax]
           | some upper =>
-              obtain ⟨⟨e, hlast, hclosed, hdom⟩, hup⟩ := h
-              simp [finalValid, hr, hmax, hlast, closedDominates, hclosed,
-                dominates_complete hdom, hup]
+              obtain ⟨⟨e, he, hclosed, hdom⟩, hup⟩ := h
+              simp only [finalValid, hr, ite_eq_right hmin, ite_eq_left hmax, Bool.and_eq_true,
+                List.all_eq_true, decide_eq_true_eq]
+              exact ⟨anyClosed_complete (hpool ▸ he) hclosed (dominates_complete hdom), hup⟩
         · simp [hmin, hmax] at h
 
 /-- Every declaratively valid certificate is accepted by the checker. -/
@@ -200,7 +212,8 @@ theorem checkVipr_complete {v : Vipr} (h : Vipr.ProofValid v) : checkVipr v = tr
   obtain ⟨hsols, hder, hfinal⟩ := h
   simp only [checkVipr, Bool.and_eq_true]
   refine ⟨solSection_complete hsols, ?_⟩
-  rw [replay_complete hder]
-  exact finalValid_complete hfinal
+  obtain ⟨final, hreplay, hpool⟩ := replay_complete hder
+  rw [hreplay]
+  exact finalValid_complete hpool hfinal
 
 end LeanVIPR.Checker

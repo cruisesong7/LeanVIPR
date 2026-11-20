@@ -166,15 +166,19 @@ def DerivationValid (v : Vipr) (pool : SPool) : List SStep → Prop
       StepValid v pool s ∧
       DerivationValid v (pool ++ [sentryOf pool s]) ss
 
-def EndsInClosedAbsurdity (v : Vipr) : Prop :=
-  ∃ e,
-    (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? = some e ∧
-    e.2 = ∅ ∧ Absurd e.1
+/-- Some row of the replay, original or derived, is an absurdity with no open
+assumptions.
 
-def EndsInClosedDominatingRow (v : Vipr) (target : SLe) : Prop :=
-  ∃ e,
-    (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? = some e ∧
-    e.2 = ∅ ∧ Dominates e.1 target
+The VIPR specification asks for the *last* row. Any closed row proves the claim
+equally, and exact SCIP writes rows after the one that does, so the position is not
+required; `viprcheck` warns when it is not the last. -/
+def HasClosedAbsurdity (v : Vipr) : Prop :=
+  ∃ e ∈ sfreplay (sinitPool (conSLes v)) (viprSteps v), e.2 = ∅ ∧ Absurd e.1
+
+/-- Some row of the replay with no open assumptions dominates `target`. As for
+`HasClosedAbsurdity`, the row need not be the last. -/
+def HasClosedDominatingRow (v : Vipr) (target : SLe) : Prop :=
+  ∃ e ∈ sfreplay (sinitPool (conSLes v)) (viprSteps v), e.2 = ∅ ∧ Dominates e.1 target
 
 /-- The final-row condition depends on the relation to prove and objective
 direction.  A minimization lower bound and a maximization upper bound need a
@@ -186,19 +190,19 @@ themselves, so this check is what covers them. Without one-unit cutoffs it is im
 best listed solution satisfies every cutoff, so the derived bound already holds there. -/
 def FinalValid (v : Vipr) : Prop :=
   match v.rtp with
-  | .infeas => EndsInClosedAbsurdity v
+  | .infeas => HasClosedAbsurdity v
   | .range lb ub =>
       if v.objSense = "min" then
         match lb with
         | none => True
         | some lower =>
-            EndsInClosedDominatingRow v (objectiveLowerRow v lower) ∧
+            HasClosedDominatingRow v (objectiveLowerRow v lower) ∧
               ∀ s ∈ v.sols.toList, lower ≤ objectiveQ v s
       else if v.objSense = "max" then
         match ub with
         | none => True
         | some upper =>
-            EndsInClosedDominatingRow v (objectiveUpperRow v upper) ∧
+            HasClosedDominatingRow v (objectiveUpperRow v upper) ∧
               ∀ s ∈ v.sols.toList, objectiveQ v s ≤ upper
       else False
 

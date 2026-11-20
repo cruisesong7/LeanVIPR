@@ -100,3 +100,19 @@ into the generated proof is the parse of the exact source bytes. The compiled CL
 AST printer, and the OS/file plumbing sit outside this result and are not included in
 the benchmark below.
 
+
+## Optional: a smaller trusted base with con-leche
+
+Two ways to shrink what is trusted, both borrowed from
+[con-leche](https://github.com/leanprover/con-leche), an external Lean checker proven in
+Lean never to accept a proof of `False`. Neither is started; neither changes a verdict.
+
+- **Re-check kernel-mode theorems outside Lean's kernel.** con-leche reads `.olean`
+  files directly and accepts only the three axioms kernel mode already restricts to. A
+  `theorem LeanVIPR.Generated.certified` it accepts no longer rests on Lean's C++ kernel,
+  only on con-leche's own compiled code and the runtime.
+- **Verify the driver.** con-leche runs its `IO` driver over a `CheckerIO` type class
+  and proves, in a pure model of the file system, that the program cannot exit 0 on a bad
+  input. The per-run binding above — the CLI, its verdict logic and the file plumbing —
+  is exactly that gap here, and the same pattern would give a theorem from the input
+  bytes to `viprcheck`'s exit code.

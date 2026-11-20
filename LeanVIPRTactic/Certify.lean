@@ -52,14 +52,28 @@ meta def infeasibleGoal? (ty : Expr) : Option Expr :=
   | (``LeanVIPR.Mip.Infeasible, #[m]) => some m
   | _ => none
 
+/-- The first solution in a certificate, as `name = value` over its nonzero entries. SCIP
+prefixes transformed variables with `t_`, which is dropped. Untrusted: this only feeds a
+message. -/
+meta def solutionText? (v : Vipr) : Option String := do
+  let (_, entries) ← v.sols[0]?
+  let shown := entries.map fun (j, q) =>
+    let nm := v.varNames[j]?.getD s!"x{j}"
+    s!"{if nm.startsWith "t_" then nm.drop 2 else nm} = {q}"
+  return if shown.isEmpty then "every variable 0"
+    else ", ".intercalate shown ++ ", every other variable 0"
+
 /-- Report a run that cannot discharge infeasibility, saying which of the three
-hypotheses failed. A `range` answer is called out separately: it means the solver found
-the problem *feasible*, so the goal is not merely unproved, it is false. -/
+hypotheses failed. A `range` answer is called out separately: the solver found the problem
+*feasible*, and its solution is shown as a counterexample. -/
 meta def throwUnusableRun {α : Type} (r : ScipRun) : MetaM α := do
   if r.cert.rtp != .infeas then
-    throwError "exact SCIP did not report this problem infeasible — it answered `RTP \
-      {rtpSummary r.cert.rtp}`, so the goal is false unless the problem was mis-stated.\n\
-      {r.summary}"
+    let cex := match solutionText? r.cert with
+      | some s => m!" A solution: {s}."
+      | none => m!""
+    throwError "exact SCIP found the problem feasible (`RTP {rtpSummary r.cert.rtp}`), so it \
+      has no infeasibility certificate.{cex} Either the goal is false, or it depends on \
+      something that was not read into the problem.\n{r.summary}"
   else if !r.agrees then
     throwError "the certificate exact SCIP returned is not about this problem: \
       `agreesWith` rejected it. Compare `m.conSLes` against the certificate's `CON` \

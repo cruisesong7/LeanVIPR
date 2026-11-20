@@ -19,26 +19,30 @@ your Mip  ──encodeMps──▶  .mps  ──exact SCIP──▶  .vipr  ─�
 emitter, the file, the solver, the parser and the renaming guess are all outside that, so
 each of them can make the pipeline **fail**, and none can make it prove something false.
 
-**State of play.** The driver and a reporting command exist and are exercised against real
-SCIP; the tactic that closes a goal for you does not exist yet. So today the last step is
-three lines you write by hand, shown in [§4](#4-turn-it-into-a-theorem-today) and in full
-in [`examples/mip_prop_demo.lean`](../examples/mip_prop_demo.lean). The plan for removing
-them is [`docs/TACTIC-TODO.md`](TACTIC-TODO.md).
+**State of play.** `mip` closes linear goals over `ℕ`, `ℤ`, `ℚ` and `ℝ`, mixed freely:
 
-| | available | how |
-|---|---|---|
-| run SCIP on a Lean `Mip`, from `IO` | yes | `runScip` |
-| the same, reported in your editor | yes | `#mip_scip` |
-| a proof of `m.Infeasible` | by hand | `decide +kernel` ×2, then `pipeline_infeasible` |
-| a proof of your `¬ ∃ x y z : ℤ, …` | by hand | `Mip.absurd_of_infeasible` |
-| `mip_certify`, `mip` | not yet | stages 3–5 of the roadmap |
+```lean
+example (x y : ℤ) (h1 : 27 ≤ 11*x + 13*y) (h2 : 11*x + 13*y ≤ 45)
+    (h3 : -10 ≤ 7*x - 9*y) (h4 : 7*x - 9*y ≤ 4) : False := by mip
+```
 
-**Is this the right tool for your goal?** For a small all-integer question — the knapsack
-above included — `omega` closes it outright, and no solver is needed. Measured, with the
-proof, in [`examples/mip_prop_goals.lean`](../examples/mip_prop_goals.lean) §3. This route
-earns its place on what `omega` has no language for: rational coefficients and continuous
-variables, objective bounds and optimality rather than feasibility, and problems large
-enough that the search has to happen outside Lean.
+Goals may be a comparison, `False`, `¬ ∃ …` or `a ≠ b`; `∨` and `≠` hypotheses are split
+into cases; coefficients may be rational. Strict comparisons are exact over `ℕ` and `ℤ`
+and relaxed (soundly) over `ℚ` and `ℝ`. When SCIP finds the problem feasible, the error
+shows its solution and which hypotheses were read. The proof uses the three standard
+axioms. `mip_certify` closes `m.Infeasible` for a `Mip` you wrote; `#mip_scip m` reports
+without proving.
+
+**Is this the right tool for your goal?** Prefer `omega` for small integer goals and
+`linarith` or [`lp`](https://github.com/leanprover/lp) for rational ones: no solver
+needed. `mip` is for what they cannot prove, each case in
+[`examples/mip_tactic_tests.lean`](../examples/mip_tactic_tests.lean):
+
+| goal | `omega` | `linarith`, `lp` | `mip` |
+|---|---|---|---|
+| integer, needs the omega test's dark shadow (Pugh) | fails | fails: LP relaxation feasible | ✓ |
+| mixed integer and rational, infeasible by integrality | cannot state it | fails | ✓ |
+| large, search outside Lean | — | — | ✓ only the certificate is checked |
 
 ## Setup
 

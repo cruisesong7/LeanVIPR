@@ -37,10 +37,21 @@ and the staging is what makes that answerable.
 |---|---|---|---|
 | 1 | `Scip.lean` — `runScip : Mip → IO (Except ScipError ScipRun)` | a certificate, and the pipeline's `Bool`s | **done, run against real SCIP** |
 | 2 | `Command.lean` — `#mip_scip m` | the same, reported from Lean source; diagnosis | **done** |
-| 3 | `Certify.lean` — `mip_certify` on a goal `m.Infeasible` | the proof term | next |
-| 4 | `Reflect.lean` — a `Prop` goal to a `Mip` | the front end | after 3 |
-| 5 | `Mip.lean` — `mip` | the one tactic | after 4 |
-| 6 | bounds and optima — `mip_bound`, `mip_optimal` | `RTP range` results | after 5 |
+| 3 | `Certify.lean` — `mip_certify` on a goal `m.Infeasible` | the proof term | **done** |
+| 4 | `Reflect.lean` — a `Prop` goal to a `Mip` | the front end | **done**: `ℕ ℤ ℚ ℝ` mixed, rational coefficients, `∨`/`≠` splits |
+| 5 | `Reflect.lean` — `mip` | the one tactic | **done**: `examples/mip_tactic_tests.lean`, 16 cases |
+| 6 | bounds and optima — `mip_bound`, `mip_optimal` | `RTP range` results | next |
+
+After stage 6, in order of value:
+
+* **Verified modeling encodings**, the analogue of Trestle's `VEncCNF`: indicator
+  constraints, products with a binary, and disjunctions compiled to linear rows with
+  auxiliary variables, each with a proof that the rows say the same thing. This is the
+  part of the pipeline where an encoding *is* on the trusted path, unlike the MPS emitter.
+* **Re-check with [con-leche](https://github.com/leanprover/con-leche)**, an external
+  kernel proven consistent, so a `mip` proof does not rest on Lean's C++ kernel.
+* **A native option** (`decide +native`) for certificates too large to reduce in the
+  kernel, at the cost of trusting the compiler, as `bv_decide` does.
 
 ## 1. Drive SCIP from `IO` — done
 

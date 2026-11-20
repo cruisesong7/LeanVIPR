@@ -402,6 +402,15 @@ machinery. Our encoder introduces none; MPS is a direct transcription of a `Mip`
 `mpsRoundTrip` is plain denotation equality: strictly stronger, and much less work. Worth
 stating explicitly, since a reader who knows Trestle will expect the harder statement.
 
+**Where the analogy becomes real.** Auxiliary variables return as soon as a goal says
+more than a linear system: an indicator `z = 1 → a·x ≤ b` becomes a big-M row, a product
+with a binary becomes McCormick rows, a disjunction becomes a fresh binary. Those
+encodings change the problem, so their correctness *is* on the trusted path, exactly as a
+Tseitin encoding is in Trestle; `agreesWith` cannot help, since it compares the
+certificate with the encoded `Mip`, not with the goal. That layer — between the goal and
+the `Mip`, not between the `Mip` and the file — is where a `VEncCNF`-style index pays for
+itself, and it is the next item in `docs/TACTIC-TODO.md`.
+
 [Trestle]: https://github.com/JamesGallicchio/trestle
 
 ### The `Prop` front end, and which shape it should take

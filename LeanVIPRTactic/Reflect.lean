@@ -3,35 +3,41 @@ module
 public meta import LeanVIPRTactic.Certify
 public meta import Mathlib.Tactic.FinCases
 public meta import Mathlib.Tactic.Linarith
+public meta import Mathlib.Tactic.Rify
 
 @[expose] public section
 
 /-!
-# `mip`: close a `Prop` about integers with a solver certificate
+# `mip`: close a linear-arithmetic goal with a solver certificate
 
 Stages 4 and 5 of `docs/TACTIC-TODO.md`. The goal shapes are catalogued, with a proof of
-each, in `examples/mip_prop_goals.lean`.
+each, in `examples/mip_prop_goals.lean`, and exercised in `examples/mip_tactic_tests.lean`.
 
 ```
-⊢ ¬ ∃ x y z : ℤ, 0 ≤ x ∧ … ∧ 6*x + 10*y + 15*z = 23
-  │ intro, destructure                       (metacode)
+⊢ goal                                       (a comparison, False, ¬ ∃ …, ∀ … → False)
+  │ negate the goal, split ∨ and ≠           (metacode)
   │ read each hypothesis as a linear row     (metacode, untrusted)
   ▼
 m : Mip  ─ mip_certify ─▶  m.Infeasible      (kernel-checked)
-  │ Mip.absurd_of_infeasible
+  │ Mip.absurd_of_infeasible_mixed
   ▼ False
 ```
 
 **Why none of this needs trusting.** The reflector builds a `Mip` and *claims* it is the
-user's problem. That claim is never assumed: `Mip.absurd_of_infeasible` demands a proof
-that the integer tuple satisfies every row of `m.conSLes`, which is discharged against the
-hypotheses actually in context. A misread hypothesis gives a `Mip` whose rows cannot be
-proved, and the tactic fails. The only thing it can cost is a failure — the same contract
-the solver has.
+user's problem. That claim is never assumed: `Mip.absurd_of_infeasible_mixed` demands a proof that the
+user's own variables, cast to `ℝ`, satisfy every row of `m.conSLes`, discharged against the
+hypotheses actually in context; integrality holds by construction, since the integer
+variables are passed as integers. A misread hypothesis gives a `Mip` whose rows cannot be proved, and the tactic
+fails. The only thing it can cost is a failure — the same contract the solver has.
 
-Supported today: hypotheses that are linear relations over the bound integer variables
-with integer literal coefficients. Rational-coefficient goals stated over `ℝ` are
-`mip_certify` plus a hand-written bridge for now; see `examples/mip_prop_goals.lean` §2.
+**The fragment.** Variables of type `ℕ`, `ℤ`, `ℚ` or `ℝ`, mixed freely: an integer
+variable may appear, cast, in a rational or real hypothesis. Hypotheses are linear
+comparisons (`≤ < = ≥ >` and their negations) with rational literal coefficients,
+including `1/2`, `0.25` and division by a literal over `ℚ` and `ℝ`. Anything else in the
+context is ignored. Strict comparisons are exact over `ℕ` and `ℤ` (tightened by one) and
+*relaxed* to non-strict ones over `ℚ` and `ℝ`: sound, since a relaxed problem with no
+solution means the original has none, but a goal that depends on strictness fails. `∨` and
+`≠` hypotheses are split into cases, each solved separately.
 -/
 
 namespace LeanVIPR.Tactic
@@ -39,116 +45,198 @@ namespace LeanVIPR.Tactic
 open Lean Elab Tactic Meta
 open LeanVIPR LeanVIPR.Parser
 
-/-! ## Reading an integer linear expression
+/-! ## Variables
 
-A hand-rolled reader rather than `linear_combination`-style machinery, because what is
-needed is tiny — literals, `+`, `-`, unary minus, and multiplication by a literal — and a
-reader that silently accepts more than the `Mip` can express would turn a clear failure
-into a confusing one. -/
+A variable of the problem is one of the user's locals. Its type fixes whether the problem
+declares it integral and how it is cast to `ℝ` for the bridge theorem. -/
 
-/-- An integer literal, including negated and `OfNat` forms. -/
-meta partial def intLit? (e : Expr) : Option Int :=
+inductive Carrier where
+  | nat | int | rat | real
+
+meta def carrierOf? (ty : Expr) : Option Carrier :=
+  if ty.isConstOf ``Nat then some .nat
+  else if ty.isConstOf ``Int then some .int
+  else if ty.isConstOf ``Rat then some .rat
+  else if ty.isConstOf ``Real then some .real
+  else none
+
+meta def Carrier.isInt : Carrier → Bool
+  | .nat | .int => true
+  | .rat | .real => false
+
+meta def Carrier.isNat : Carrier → Bool
+  | .nat => true
+  | _ => false
+
+structure Atom where
+  fvar : FVarId
+  name : Name
+  carrier : Carrier
+
+/-! ## Reading a linear expression
+
+Hand-rolled rather than borrowed from `linarith`'s preprocessing, because what is needed is
+small and a reader that silently accepted more than a `Mip` can express would turn a clear
+failure into a confusing one. Two things are refused on purpose: subtraction over `ℕ`,
+which truncates, and division over `ℕ` or `ℤ`, which rounds. -/
+
+/-- Whether an arithmetic operation's type argument is `ℕ` or `ℤ`. -/
+meta def isDiscrete (α : Expr) : Bool := α.isConstOf ``Nat || α.isConstOf ``Int
+
+/-- A rational literal: numerals, casts of numerals, negation, `+ - * /`, `⁻¹` and decimal
+notation, so `(1/2 : ℚ)`, `0.25` and `((3 : ℤ) : ℝ)` all read as numbers. -/
+meta partial def ratLit? (e : Expr) : Option ℚ :=
   match e.getAppFnArgs with
-  | (``OfNat.ofNat, #[_, n, _]) => n.rawNatLit?.map Int.ofNat
-  | (``Neg.neg, #[_, _, a]) => (intLit? a).map (- ·)
-  | (``Int.negOfNat, #[n]) => n.rawNatLit?.map (fun k => -Int.ofNat k)
-  | (``Int.ofNat, #[n]) => n.rawNatLit?.map Int.ofNat
-  | _ => e.rawNatLit?.map Int.ofNat
+  | (``OfNat.ofNat, #[_, n, _]) => n.rawNatLit?.map (fun k => (k : ℚ))
+  | (``Neg.neg, #[_, _, a]) => (ratLit? a).map (- ·)
+  | (``HAdd.hAdd, #[_, _, _, _, a, b]) => do return (← ratLit? a) + (← ratLit? b)
+  | (``HSub.hSub, #[α, _, _, _, a, b]) => do
+      guard (!α.isConstOf ``Nat)
+      return (← ratLit? a) - (← ratLit? b)
+  | (``HMul.hMul, #[_, _, _, _, a, b]) => do return (← ratLit? a) * (← ratLit? b)
+  | (``HDiv.hDiv, #[α, _, _, _, a, b]) => do
+      guard (!isDiscrete α)
+      let qb ← ratLit? b
+      guard (qb != 0)
+      return (← ratLit? a) / qb
+  | (``Inv.inv, #[α, _, a]) => do
+      guard (!isDiscrete α)
+      let qa ← ratLit? a
+      guard (qa != 0)
+      return qa⁻¹
+  | (``OfScientific.ofScientific, #[_, _, m, s, x]) => do
+      let mv ← m.rawNatLit?
+      let xv ← x.rawNatLit?
+      if s.isConstOf ``Bool.true then return (mv : ℚ) / ((10 ^ xv : ℕ) : ℚ)
+      else return (mv : ℚ) * ((10 ^ xv : ℕ) : ℚ)
+  | (``Nat.cast, #[_, _, a]) | (``NatCast.natCast, #[_, _, a])
+  | (``Int.cast, #[_, _, a]) | (``IntCast.intCast, #[_, _, a])
+  | (``Rat.cast, #[_, _, a]) | (``RatCast.ratCast, #[_, _, a]) => ratLit? a
+  | (``Int.negOfNat, #[n]) => n.rawNatLit?.map (fun k => -(k : ℚ))
+  | (``Int.ofNat, #[n]) => ratLit? n
+  | _ => e.rawNatLit?.map (fun k => (k : ℚ))
 
-/-- The linear form of `e` over `vars`, as coefficients and a constant, or `none` if `e`
-is not linear in them. -/
-meta partial def linearOf (vars : Array FVarId) (e : Expr) :
-    Option (Array Int × Int) := do
-  let zero := vars.map (fun _ => (0 : Int))
-  if let some n := intLit? e then
-    return (zero, n)
+/-- The variable `e` stands for, seeing through casts: `x`, `(x : ℚ)` and `((x : ℤ) : ℝ)`
+are all the variable `x`. -/
+meta partial def atomOf? (atoms : Array Atom) (e : Expr) : Option Nat :=
   match e with
-  | .fvar fv =>
-      let some i := vars.idxOf? fv | none
-      return (zero.set! i 1, 0)
+  | .fvar fv => atoms.findIdx? (·.fvar == fv)
   | _ =>
     match e.getAppFnArgs with
-    | (``HAdd.hAdd, #[_, _, _, _, a, b]) => do
-        let (ca, ka) ← linearOf vars a
-        let (cb, kb) ← linearOf vars b
-        return (ca.zipWith (· + ·) cb, ka + kb)
-    | (``HSub.hSub, #[_, _, _, _, a, b]) => do
-        let (ca, ka) ← linearOf vars a
-        let (cb, kb) ← linearOf vars b
-        return (ca.zipWith (· - ·) cb, ka - kb)
-    | (``Neg.neg, #[_, _, a]) => do
-        let (ca, ka) ← linearOf vars a
-        return (ca.map (- ·), -ka)
-    | (``HMul.hMul, #[_, _, _, _, a, b]) =>
-        if let some n := intLit? a then do
-          let (cb, kb) ← linearOf vars b
-          return (cb.map (n * ·), n * kb)
-        else if let some n := intLit? b then do
-          let (ca, ka) ← linearOf vars a
-          return (ca.map (· * n), ka * n)
-        else none
+    | (``Nat.cast, #[_, _, a]) | (``NatCast.natCast, #[_, _, a])
+    | (``Int.cast, #[_, _, a]) | (``IntCast.intCast, #[_, _, a])
+    | (``Rat.cast, #[_, _, a]) | (``RatCast.ratCast, #[_, _, a]) => atomOf? atoms a
     | _ => none
 
-/-- A hypothesis read as `coeffs · x  sense  rhs`, with `sense` one of `'L'`, `'G'`,
-`'E'`. Strict inequalities over `ℤ` are tightened by one, which is why they can become
-bounds rather than rows. -/
-structure IntRow where
-  coeffs : Array Int
-  sense : Char
-  rhs : Int
+/-- The linear form of `e` over `atoms`, as coefficients and a constant, or `none` if `e`
+is not linear in them. Casts distribute: they are ring homomorphisms, and the one that is
+not — `ℕ` to anything, over subtraction — is refused where the subtraction occurs. -/
+meta partial def linearOf (atoms : Array Atom) (e : Expr) : Option (Array ℚ × ℚ) := do
+  let zero := atoms.map (fun _ => (0 : ℚ))
+  if let some q := ratLit? e then return (zero, q)
+  if let some i := atomOf? atoms e then return (zero.set! i 1, 0)
+  match e.getAppFnArgs with
+  | (``HAdd.hAdd, #[_, _, _, _, a, b]) => do
+      let (ca, ka) ← linearOf atoms a
+      let (cb, kb) ← linearOf atoms b
+      return (ca.zipWith (· + ·) cb, ka + kb)
+  | (``HSub.hSub, #[α, _, _, _, a, b]) => do
+      guard (!α.isConstOf ``Nat)
+      let (ca, ka) ← linearOf atoms a
+      let (cb, kb) ← linearOf atoms b
+      return (ca.zipWith (· - ·) cb, ka - kb)
+  | (``Neg.neg, #[_, _, a]) => do
+      let (ca, ka) ← linearOf atoms a
+      return (ca.map (- ·), -ka)
+  | (``HMul.hMul, #[_, _, _, _, a, b]) =>
+      if let some q := ratLit? a then do
+        let (cb, kb) ← linearOf atoms b
+        return (cb.map (q * ·), q * kb)
+      else if let some q := ratLit? b then do
+        let (ca, ka) ← linearOf atoms a
+        return (ca.map (· * q), ka * q)
+      else none
+  | (``HDiv.hDiv, #[α, _, _, _, a, b]) => do
+      guard (!isDiscrete α)
+      let q ← ratLit? b
+      guard (q != 0)
+      let (ca, ka) ← linearOf atoms a
+      return (ca.map (· / q), ka / q)
+  | (``Nat.cast, #[_, _, a]) | (``NatCast.natCast, #[_, _, a])
+  | (``Int.cast, #[_, _, a]) | (``IntCast.intCast, #[_, _, a])
+  | (``Rat.cast, #[_, _, a]) | (``RatCast.ratCast, #[_, _, a]) => linearOf atoms a
+  | _ => none
 
-/-- Read a hypothesis type as a row. `≤`, `<`, `≥`, `>` and `=` over `ℤ`, with the
-variables on either side. -/
-meta def rowOf (vars : Array FVarId) (ty : Expr) : Option IntRow := do
-  let intTy := Expr.const ``Int []
-  let side (a b : Expr) : Option (Array Int × Int) := do
-    let (ca, ka) ← linearOf vars a
-    let (cb, kb) ← linearOf vars b
-    return (ca.zipWith (· - ·) cb, kb - ka)
+/-! ## Reading a hypothesis -/
+
+/-- A hypothesis read as `coeffs · x  sense  rhs`, with `sense` one of `'L'`, `'G'`, `'E'`.
+`relaxed` records a strict comparison over `ℚ` or `ℝ` read as a non-strict one. -/
+structure LinRow where
+  coeffs : Array ℚ
+  sense : Char
+  rhs : ℚ
+  relaxed : Bool := false
+
+inductive Cmp where
+  | le | lt | ge | gt | eq
+
+/-- `a ⋈ b` over the type `t`, as a row. Over `ℕ` and `ℤ` both sides are integers, so a
+strict comparison is tightened by one; over a field it is relaxed. -/
+meta def cmpRow (atoms : Array Atom) (k : Cmp) (t a b : Expr) : Option LinRow := do
+  let c ← carrierOf? t
+  let (ca, ka) ← linearOf atoms a
+  let (cb, kb) ← linearOf atoms b
+  let coeffs := ca.zipWith (· - ·) cb
+  let rhs := kb - ka
+  match k with
+  | .le => return { coeffs, sense := 'L', rhs }
+  | .ge => return { coeffs, sense := 'G', rhs }
+  | .eq => return { coeffs, sense := 'E', rhs }
+  | .lt => return if c.isInt then { coeffs, sense := 'L', rhs := rhs - 1 }
+                  else { coeffs, sense := 'L', rhs, relaxed := true }
+  | .gt => return if c.isInt then { coeffs, sense := 'G', rhs := rhs + 1 }
+                  else { coeffs, sense := 'G', rhs, relaxed := true }
+
+/-- Read a hypothesis type as a row: a comparison, or the negation of one. -/
+meta def rowOf (atoms : Array Atom) (ty : Expr) : Option LinRow :=
   match ty.getAppFnArgs with
-  | (``LE.le, #[t, _, a, b]) =>
-      if t != intTy then none else do
-        let (c, k) ← side a b; return ⟨c, 'L', k⟩
-  | (``LT.lt, #[t, _, a, b]) =>
-      if t != intTy then none else do
-        let (c, k) ← side a b; return ⟨c, 'L', k - 1⟩
-  | (``GE.ge, #[t, _, a, b]) =>
-      if t != intTy then none else do
-        let (c, k) ← side a b; return ⟨c, 'G', k⟩
-  | (``GT.gt, #[t, _, a, b]) =>
-      if t != intTy then none else do
-        let (c, k) ← side a b; return ⟨c, 'G', k + 1⟩
-  | (``Eq, #[t, a, b]) =>
-      if t != intTy then none else do
-        let (c, k) ← side a b; return ⟨c, 'E', k⟩
+  | (``LE.le, #[t, _, a, b]) => cmpRow atoms .le t a b
+  | (``LT.lt, #[t, _, a, b]) => cmpRow atoms .lt t a b
+  | (``GE.ge, #[t, _, a, b]) => cmpRow atoms .ge t a b
+  | (``GT.gt, #[t, _, a, b]) => cmpRow atoms .gt t a b
+  | (``Eq, #[t, a, b]) => cmpRow atoms .eq t a b
+  | (``Not, #[p]) =>
+      match p.getAppFnArgs with
+      | (``LE.le, #[t, _, a, b]) => cmpRow atoms .gt t a b
+      | (``LT.lt, #[t, _, a, b]) => cmpRow atoms .ge t a b
+      | (``GE.ge, #[t, _, a, b]) => cmpRow atoms .lt t a b
+      | (``GT.gt, #[t, _, a, b]) => cmpRow atoms .le t a b
+      | _ => none
   | _ => none
 
 /-! ## Building the problem
 
-Rows with a single `±1` coefficient become variable *bounds* rather than constraint rows,
-which is both what MPS wants and what keeps the emitted file close to what a person would
-write. Anything else — including `2*x ≤ 5` — stays a row: dividing it out would be sound
-but would put a non-integer bound on an integer variable for no gain. -/
+Rows with a single `±1` coefficient become variable *bounds*, which is what MPS wants; any
+other row stays a row. A natural-number variable gets the lower bound `0`. Variables that
+occur in no row are dropped, so they cost the solver nothing. -/
 
-/-- A variable's accumulated bounds. -/
 structure VarBounds where
-  lo : Option Int := none
-  hi : Option Int := none
+  lo : Option ℚ := none
+  hi : Option ℚ := none
 
-meta def VarBounds.withLo (b : VarBounds) (l : Int) : VarBounds :=
+meta def VarBounds.withLo (b : VarBounds) (l : ℚ) : VarBounds :=
   { b with lo := some (match b.lo with | none => l | some l' => max l l') }
 
-meta def VarBounds.withHi (b : VarBounds) (u : Int) : VarBounds :=
+meta def VarBounds.withHi (b : VarBounds) (u : ℚ) : VarBounds :=
   { b with hi := some (match b.hi with | none => u | some u' => min u u') }
 
 /-- Split rows into bounds and constraint rows. -/
-meta def classify (n : Nat) (rows : Array IntRow) :
-    Array VarBounds × Array IntRow := Id.run do
+meta def classify (n : Nat) (rows : Array LinRow) : Array VarBounds × Array LinRow :=
+  Id.run do
   let mut bounds : Array VarBounds := .replicate n {}
-  let mut rest : Array IntRow := #[]
+  let mut rest : Array LinRow := #[]
   for r in rows do
-    let nz := (r.coeffs.zipIdx.filter (fun p => p.1 != 0))
-    match nz.toList with
+    match (r.coeffs.zipIdx.filter (fun p => p.1 != 0)).toList with
     | [(c, j)] =>
       if c == 1 then
         match r.sense with
@@ -166,35 +254,52 @@ meta def classify (n : Nat) (rows : Array IntRow) :
   return (bounds, rest)
 
 /-- An MPS-safe name for a variable: the user's own if it is a plain identifier and
-unique, else positional. Names only have to be tokens a reader gives back, and
-`Mip.WellFormed` additionally wants them distinct. -/
-meta def varNames (vars : Array (FVarId × Name)) : Array String :=
-  let raw := vars.map (fun p => p.2.toString)
+unique, else positional. -/
+meta def varNames (names : Array Name) : Array String :=
+  let raw := names.map (·.toString)
   let ok := raw.all (fun s =>
     s.length > 0 && s.length ≤ 8 && s.all (fun c => c.isAlphanum || c == '_')) &&
     raw.toList.Nodup
   if ok then raw else raw.mapIdx (fun i _ => s!"v{i}")
 
-/-- The `Mip` a list of read hypotheses stands for: every variable integral, bounds
-folded in, everything else a row, and no objective — infeasibility does not use one. -/
-meta def buildMip (names : Array String) (rows : Array IntRow) : Mip :=
-  let (bounds, rest) := classify names.size rows
-  { vars := names.zipIdx.map (fun (nm, j) =>
-      { name := nm, isInt := true,
-        lo := (bounds.getD j {}).lo.map (fun k => (k : ℚ)),
-        hi := (bounds.getD j {}).hi.map (fun k => (k : ℚ)) })
-    objSense := .min
-    obj := []
-    rows := rest.zipIdx.map (fun (r, i) =>
-      { name := s!"r{i}", sense := r.sense, rhs := (r.rhs : ℚ),
-        form := (r.coeffs.zipIdx.filter (fun p => p.1 != 0)).toList.map
-          (fun (c, j) => ⟨j, (c : ℚ)⟩) }) }
+/-- The `Mip` a list of read hypotheses stands for, over the atoms they use. Returns the
+used atoms, in order, with the problem. No objective: infeasibility does not use one. -/
+meta def buildMip (atoms : Array Atom) (rows : Array LinRow) : Array Atom × Mip := Id.run do
+  let occurs := (List.range atoms.size).filter
+    (fun j => rows.any (fun r => r.coeffs.getD j 0 != 0))
+  -- integer variables first: the bridge theorem takes their values as a `List ℤ`
+  let isIntAt := fun j => (atoms[j]?.map (·.carrier.isInt)).getD false
+  let used := occurs.filter isIntAt ++ occurs.filter (!isIntAt ·)
+  let usedAtoms := used.toArray.filterMap (fun j => atoms[j]?)
+  let rows := rows.map
+    (fun r => { r with coeffs := used.toArray.map (fun j => r.coeffs.getD j 0) })
+  let (bounds, rest) := classify usedAtoms.size rows
+  -- Contradictory bounds (`lo > hi`) are left as rows: exact SCIP then declares the problem
+  -- infeasible without deriving anything (scipopt/scip#305), while as rows it proves it.
+  let conflict := bounds.any fun b => match b.lo, b.hi with
+    | some l, some u => u < l
+    | _, _ => false
+  let (bounds, rest) := if conflict then (.replicate usedAtoms.size {}, rows) else (bounds, rest)
+  let names := varNames (usedAtoms.map (·.name))
+  let vars := usedAtoms.zipIdx.map fun (a, j) =>
+    let b := bounds.getD j {}
+    let b := if a.carrier.isNat then b.withLo 0 else b
+    ({ name := names[j]!, isInt := a.carrier.isInt, lo := b.lo, hi := b.hi } : Mip.Var)
+  let mip : Mip :=
+    { vars, objSense := .min, obj := []
+      rows := rest.zipIdx.map (fun (r, i) =>
+        { name := s!"r{i}", sense := r.sense, rhs := r.rhs,
+          form := (r.coeffs.zipIdx.filter (fun p => p.1 != 0)).toList.map
+            (fun (c, j) => ⟨j, c⟩) }) }
+  return (usedAtoms, mip)
 
-/-! ## The tactic -/
+/-! ## Getting to `False`
 
-/-- Reduce the goal to `False` with the user's data in context: introduce every binder,
-then split every `∃` and `∧` hypothesis. This is `rintro ⟨…⟩` done in `MetaM`, so the
-arity does not have to be guessed. -/
+`¬ P`, `a ≠ b` and `∀ x, … → False` become `False` by introduction; `∃` and `∧`
+hypotheses are split; and a goal that is still not `False` — a comparison — is replaced by
+`False` with its negation assumed. -/
+
+/-- Introduce every binder, then split every `∃` and `∧` hypothesis. -/
 meta partial def toFalse (goal : MVarId) : MetaM MVarId := do
   -- `¬ P` and `a ≠ b` are implications only after unfolding, and neither `whnfR` nor
   -- `intros` unfolds them: `Not` is a plain definition, not reducible.
@@ -202,9 +307,8 @@ meta partial def toFalse (goal : MVarId) : MetaM MVarId := do
     let ty ← instantiateMVars (← goal.getType)
     match ty.getAppFnArgs with
     | (``Not, #[p]) => goal.change (.forallE `h p (.const ``False []) .default)
-    | (``Ne, #[t, a, b]) =>
+    | (``Ne, #[_, a, b]) =>
         let eq ← mkEq a b
-        let _ := t
         goal.change (.forallE `h eq (.const ``False []) .default)
     | _ => pure goal
   let (introduced, goal) ← goal.intros
@@ -221,94 +325,225 @@ meta partial def toFalse (goal : MVarId) : MetaM MVarId := do
         return ← toFalse s.mvarId
   return goal
 
-/-- The row obligation `Mip.absurd_of_infeasible` leaves: one real (in)equality per row of
-`conSLes`, with the hypotheses in context. `fin_cases` enumerates the rows — `conSLes`
-computes — and the alternatives cover the integer case (`norm_cast` back to `ℤ`, then
-`omega`) and the rational-coefficient one (stay in `ℝ` and use `linarith`). -/
+/-- Make the goal `False`, assuming the negation of a goal that is a comparison. -/
+meta def negateGoal (goal : MVarId) : MetaM MVarId := do
+  let goal ← toFalse goal
+  let ty ← goal.withContext do whnfR (← instantiateMVars (← goal.getType))
+  if ty.isConstOf ``False then return goal
+  let [g] ← goal.apply (mkConst ``Classical.byContradiction)
+    | throwError "internal: by contradiction did not leave one goal"
+  let (_, g) ← g.intro `hmip
+  toFalse g
+
+/-! ## Case splits -/
+
+/-- `a ≠ b` or `¬ a = b`, with the type. -/
+meta def neq? (ty : Expr) : Option (Expr × Expr × Expr) :=
+  match ty.getAppFnArgs with
+  | (``Ne, #[t, a, b]) => some (t, a, b)
+  | (``Not, #[p]) =>
+      match p.getAppFnArgs with
+      | (``Eq, #[t, a, b]) => some (t, a, b)
+      | _ => none
+  | _ => none
+
+/-- Split one `∨` hypothesis, or one `≠` between numbers into `<` and `>`. `none` when there
+is nothing to split. -/
+meta def splitOnce? (goal : MVarId) : MetaM (Option (Array MVarId)) := goal.withContext do
+  for d in (← getLCtx) do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    if ty.isAppOf ``Or then
+      let subs ← goal.cases d.fvarId
+      return some (subs.map (·.mvarId))
+    if let some (t, _, _) := neq? ty then
+      if (carrierOf? t).isSome then
+        let orProof ← mkAppM ``lt_or_gt_of_ne #[.fvar d.fvarId]
+        let g ← goal.assert `hmip_split (← inferType orProof) orProof
+        let (orFv, g) ← g.intro1
+        let g ← g.clear d.fvarId
+        let subs ← g.cases orFv
+        return some (subs.map (·.mvarId))
+  return none
+
+/-! ## Discharging the bridge's obligations -/
+
+/-- The row obligation: one real (in)equality per row of `conSLes`, over the user's
+variables cast to `ℝ`. Integer rows go back to `ℤ` for `omega`, which also knows the
+tightening of strict comparisons; the others are lifted to `ℝ` with the hypotheses and
+closed by `linarith`. -/
 meta def rowScript : TacticM Unit := do
   evalTactic (← `(tactic|
     intro c hc <;>
     fin_cases hc <;>
-      simp only [LeanVIPR.Semantics.System.satReal, LeanVIPR.Semantics.System.evalReal,
-        List.map, List.sum_cons, List.sum_nil,
-        LeanVIPR.Mip.valuationOfInts_cons_zero,
-        LeanVIPR.Mip.valuationOfInts_cons_succ] <;>
+      simp (config := { decide := true }) only [LeanVIPR.Semantics.System.satReal,
+        LeanVIPR.Semantics.System.evalReal, List.map, List.sum_cons, List.sum_nil,
+        LeanVIPR.Mip.valuationOfReals_cons_zero, LeanVIPR.Mip.valuationOfReals_cons_succ,
+        LeanVIPR.Mip.valuationOfReals_cons_one, LeanVIPR.Mip.valuationOfReals_cons_ofNat,
+        List.map_cons, List.map_nil, List.cons_append, List.nil_append,
+        Array.size_push, Array.size_empty, ↓reduceIte, ite_true, ite_false] <;>
       first
         | (norm_cast; omega)
         | (push_cast; linarith)
-        | (norm_num; linarith)))
+        | (rify at *; (try push_cast at *); linarith)
+        | (norm_num at *; linarith)))
+
+/-! ## The tactic -/
 
 syntax (name := mipTac) "mip"
   (" (" &"dir" " := " str ")")? (" (" &"timeout" " := " num ")")? : tactic
 
-/-- The built `Mip` as a term. Uses the derived `Repr`, which round-trips for the same
-reason the certificate's does. -/
+/-- A rational as a term that parses back unambiguously in any position. `ℚ`'s `Repr`
+ignores precedence (`some (1/4)` prints as `some 1 / 4`), so the problem is printed here
+rather than through `repr`. -/
+meta def ratStx (q : ℚ) : TacticM Term := do
+  let n := Syntax.mkNumLit (toString q.num.natAbs)
+  let d := Syntax.mkNumLit (toString q.den)
+  let base ← if q.den == 1 then `(($n : ℚ)) else `((($n : ℚ) / $d))
+  if q.num < 0 then `((-$base)) else pure base
+
+/-- The built `Mip` as a term. -/
 meta def mipSyntax (m : Mip) : TacticM Term := do
-  match Parser.runParserCategory (← getEnv) `term (repr m).pretty "<mip>" with
-  | .error err => throwError "internal: could not print the reflected problem\n{err}"
-  | .ok stx => return ⟨stx⟩
+  let optStx (o : Option ℚ) : TacticM Term := do
+    match o with
+    | none => `(none)
+    | some q => do let t ← ratStx q; `(some $t)
+  let vars ← m.vars.mapM fun v => do
+    let lo ← optStx v.lo
+    let hi ← optStx v.hi
+    let nm := Syntax.mkStrLit v.name
+    if v.isInt then `(({ name := $nm, isInt := true, lo := $lo, hi := $hi } : LeanVIPR.Mip.Var))
+    else `(({ name := $nm, isInt := false, lo := $lo, hi := $hi } : LeanVIPR.Mip.Var))
+  let rows ← m.rows.mapM fun r => do
+    let terms ← r.form.toArray.mapM fun t => do
+      let i := Syntax.mkNumLit (toString t.idx)
+      let c ← ratStx t.coeff
+      `(({ idx := $i, coeff := $c } : LeanVIPR.Semantics.Term))
+    let nm := Syntax.mkStrLit r.name
+    let sense := Syntax.mkCharLit r.sense
+    let rhs ← ratStx r.rhs
+    `(({ name := $nm, sense := $sense, rhs := $rhs, form := [$terms,*] } : LeanVIPR.Mip.Row))
+  `(({ vars := #[$vars,*], objSense := .min, obj := [], rows := #[$rows,*] } : LeanVIPR.Mip))
 
-/-- Read the goal and its hypotheses into a problem: the integer variables in the order
-they were introduced, every hypothesis that parses as a linear relation over them. -/
-meta def reflectGoal : TacticM (Array FVarId × Mip) := withMainContext do
-  let goal ← getMainGoal
-  unless (← whnfR (← goal.getType)).isConstOf ``False do
-    throwError "`mip` expects a goal that reduces to `False` once the binders are \
-      introduced — `¬ ∃ x … : ℤ, …`, `∀ x … : ℤ, … → False`, or `… ≠ …`.\n\
-      Goal:{indentExpr (← goal.getType)}"
-  let decls := (← getLCtx).decls.toList.filterMap id
-  let intVars := decls.filterMap (fun d =>
-    if d.type.isConstOf ``Int && !d.isImplementationDetail then
-      some (d.fvarId, d.userName) else none)
-  if intVars.isEmpty then
-    throwError "`mip` found no integer variables to build a problem from"
-  let fvars := (intVars.map Prod.fst).toArray
-  let mut rows : Array IntRow := #[]
+/-- What `mip` made of the context: the atoms, the rows, and which hypotheses it read and
+which it could not. -/
+structure Reading where
+  atoms : Array Atom
+  rows : Array LinRow
+  used : Array Name
+  ignored : Array Name
+
+/-- Read the hypotheses into rows over the numeric variables in context. -/
+meta def readContext : TacticM Reading := withMainContext do
+  let decls := (← getLCtx).decls.toList.filterMap id |>.filter (!·.isImplementationDetail)
+  let atoms := decls.toArray.filterMap fun d =>
+    (carrierOf? d.type).map (fun c => { fvar := d.fvarId, name := d.userName, carrier := c })
+  let mut rows := #[]
+  let mut used := #[]
+  let mut ignored := #[]
   for d in decls do
-    unless d.isImplementationDetail do
-      if ← isProp d.type then
-        if let some r := rowOf fvars (← instantiateMVars d.type) then
+    if ← isProp d.type then
+      match rowOf atoms (← instantiateMVars d.type) with
+      | some r =>
           rows := rows.push r
-  if rows.isEmpty then
-    throwError "`mip` could not read any hypothesis as a linear relation over the \
-      {fvars.size} integer variables in context"
-  return (fvars, buildMip (varNames intVars.toArray) rows)
+          used := used.push d.userName
+      | none => ignored := ignored.push d.userName
+  return { atoms, rows, used, ignored }
 
-/-- **The bundled tactic.** Reflect the goal into a `Mip`, certify its infeasibility with
-exact SCIP, and close the goal. -/
+/-- One sentence on what was read, for failure messages. -/
+meta def Reading.describe (r : Reading) : MessageData :=
+  let relaxed := r.rows.any (·.relaxed)
+  m!"`mip` read {r.used.size} hypotheses {r.used.toList} over {r.atoms.size} variables" ++
+  (if r.ignored.isEmpty then m!"" else m!", and ignored {r.ignored.toList}") ++
+  (if relaxed then m!". Strict comparisons over ℚ or ℝ were read as non-strict, so a goal \
+    that depends on strictness cannot be proved this way" else m!"") ++ m!"."
+
+/-- Solve one goal that is already `False` and has nothing left to split. -/
+meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := withMainContext do
+  let reading ← readContext
+  if reading.rows.isEmpty then
+    throwError "`mip` could not read any hypothesis as a linear comparison. \
+      {reading.describe}"
+  let (atoms, m) := buildMip reading.atoms reading.rows
+  let mStx ← mipSyntax m
+  let zs ← (atoms.filter (·.carrier.isInt)).mapM fun a => do
+    let x ← Term.exprToSyntax (.fvar a.fvar)
+    if a.carrier.isNat then `(($x : ℤ)) else pure x
+  let rs ← (atoms.filter (!·.carrier.isInt)).mapM fun a => do
+    let x ← Term.exprToSyntax (.fvar a.fvar)
+    match a.carrier with
+    | .real => pure x
+    | _ => `(($x : ℝ))
+  let n := Syntax.mkNumLit (toString zs.size)
+  evalTactic (← `(tactic|
+    refine LeanVIPR.Mip.absurd_of_infeasible_mixed (m := $mStx) ?_ $n ?_ [$zs,*] rfl
+      [$rs,*] ?_))
+  -- identify the goals by type, not by position or tag
+  let mut infGoal? := none
+  let mut hintGoal? := none
+  let mut rowsGoal? := none
+  for g in ← getUnsolvedGoals do
+    let ty ← instantiateMVars (← g.getType)
+    if (infeasibleGoal? ty).isSome then infGoal? := some g
+    else if ty.getUsedConstants.contains ``LeanVIPR.Semantics.System.satReal then
+      rowsGoal? := some g
+    else hintGoal? := some g
+  let some infGoal := infGoal? | throwError "internal: no infeasibility goal after refine"
+  let some hintGoal := hintGoal? | throwError "internal: no integrality goal after refine"
+  let some rowsGoal := rowsGoal? | throwError "internal: no row goal after refine"
+  -- integrality: a fact about the problem alone, so `decide` settles it
+  setGoals [hintGoal]
+  evalTactic (← `(tactic| decide))
+  -- the solver half, kernel-checked
+  setGoals [infGoal]
+  try certifyMainGoal cfg
+  catch e => throwError "{e.toMessageData}\n{reading.describe}"
+  -- the arithmetic half, against the user's own hypotheses
+  setGoals [rowsGoal]
+  rowScript
+  unless (← getUnsolvedGoals).isEmpty do
+    throwError "the problem was certified infeasible, but its rows could not be matched \
+      back to your hypotheses — an unsupported hypothesis shape, or a reflection bug. \
+      The problem solved was:{indentD (repr m).pretty}"
+  setGoals []
+
+/-- At most this many cases are split before `mip` gives up: every `∨` and `≠` doubles
+the number of problems sent to the solver. -/
+meta def maxLeaves : Nat := 64
+
+/-- Close the main goal: make it `False`, split cases, and solve each leaf. -/
+meta partial def solveGoal (cfg : ScipConfig) (leaves : IO.Ref Nat) : TacticM Unit := do
+  let g ← negateGoal (← getMainGoal)
+  match ← splitOnce? g with
+  | some subs =>
+      leaves.modify (· + subs.size - 1)
+      if (← leaves.get) > maxLeaves then
+        throwError "`mip` would need more than {maxLeaves} cases to split every `∨` and \
+          `≠` in the context"
+      for s in subs do
+        setGoals [s]
+        solveGoal cfg leaves
+        let left ← getUnsolvedGoals
+        unless left.isEmpty do
+          throwError "internal: a case split left {left.length} goals open"
+  | none =>
+      setGoals [g]
+      solveLeaf cfg
+
+/-- **The tactic.** Close a linear-arithmetic goal over `ℕ`, `ℤ`, `ℚ` and `ℝ` by asking
+exact SCIP for an infeasibility certificate and checking it in the kernel. -/
 @[tactic mipTac]
-meta def evalMipTac : Tactic := fun stx => withMainContext do
+meta def evalMipTac : Tactic := fun stx => do
   let cfg := scipConfigOf stx[1] stx[2]
-  replaceMainGoal [← toFalse (← getMainGoal)]
-  let (fvars, m) ← reflectGoal
-  withMainContext do
-    let mStx ← mipSyntax m
-    let xs ← fvars.mapM (fun fv => Term.exprToSyntax (.fvar fv))
-    evalTactic (← `(tactic|
-      refine LeanVIPR.Mip.absurd_of_infeasible (m := $mStx) ?inf [$xs,*] ?rows))
-    -- `?inf` and `?rows` come back in order, but identify them by type rather than by
-    -- position or tag: one is an infeasibility claim, the other the row obligation.
-    let gs ← getUnsolvedGoals
-    let mut infGoal? : Option MVarId := none
-    let mut rowsGoal? : Option MVarId := none
-    for g in gs do
-      if (infeasibleGoal? (← instantiateMVars (← g.getType))).isSome then
-        infGoal? := some g
-      else
-        rowsGoal? := some g
-    let some infGoal := infGoal? | throwError "internal: no infeasibility goal after refine"
-    let some rowsGoal := rowsGoal? | throwError "internal: no row goal after refine"
-    -- the solver half, kernel-checked
-    setGoals [infGoal]
-    certifyMainGoal cfg
-    -- the arithmetic half, against the user's own hypotheses
-    setGoals [rowsGoal]
-    rowScript
-    let remaining ← getUnsolvedGoals
-    unless remaining.isEmpty do
-      throwError "the problem was certified infeasible, but its rows could not be matched \
-        back to your hypotheses — an unsupported hypothesis shape, or a reflection bug. \
-        The problem solved was:{indentD (repr m).pretty}"
-    setGoals []
+  let leaves ← IO.mkRef 1
+  match ← getGoals with
+  | [] => throwError "no goals"
+  | g :: rest =>
+      setGoals [g]
+      solveGoal cfg leaves
+      let left ← getUnsolvedGoals
+      unless left.isEmpty do
+        throwError "internal: `mip` left {left.length} goals open"
+      setGoals rest
 
 end LeanVIPR.Tactic

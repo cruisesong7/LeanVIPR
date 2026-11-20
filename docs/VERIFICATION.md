@@ -100,7 +100,6 @@ into the generated proof is the parse of the exact source bytes. The compiled CL
 AST printer, and the OS/file plumbing sit outside this result and are not included in
 the benchmark below.
 
-
 ## Optional: a smaller trusted base with con-leche
 
 Two ways to shrink what is trusted, both borrowed from

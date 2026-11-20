@@ -44,8 +44,10 @@ The exact MPS reader parses coefficients via `RatSetString`, which accepts exact
 
 ### The float reader truncates fractions, silently
 
-Measured on homebrew `scip` 10.0.3 `[precision: 8 byte]`, i.e. a non-`EXACTSOLVE` build.
-Given
+Measured on homebrew `scip` 10.0.3 `[precision: 8 byte]` **without** `set exact enable
+TRUE`. See "What actually distinguishes the builds" below: the truncation tracks the
+*mode*, not the build, so this is what a run with exact mode off looks like, whichever
+binary does it. Given
 
 ```
 ROWS
@@ -64,12 +66,12 @@ dropped.
 
 Consequences, all of which matter to `Impl.Encoder.Mps`:
 
-* **A float build cannot be used to sanity-check the encoder**, except on problems whose
+* **A run with exact mode off cannot sanity-check the encoder**, except on problems whose
   every coefficient, right-hand side and bound is an integer. Those come out as `n/1`,
   which truncates to `n` and is right by luck.
-* A float build given an exact-ℚ file will **answer a different problem and report
-  success**. `examples/uns_knapsack.mps` happens to be all-integer, so this is invisible
-  on the one example in the repo.
+* Such a run given an exact-ℚ file will **answer a different problem and report success**.
+  `examples/uns_knapsack.mps` happens to be all-integer, so this is invisible on the one
+  example in the repo.
 * This is not an argument against MPS — the *exact* MPS reader is fine — but it means
   "SCIP read our file" is only meaningful once the binary is the exact build. Note that
   `scip --version` does **not** tell you: both builds report `[precision: 8 byte]` and
@@ -99,8 +101,32 @@ s.t. `(2/5)x + y ≤ 7/4`, `y ≤ 1/6` yields `Exact Primal Bound : 107/72` from
 file as readily as from the equivalent `.mps`. MPS is chosen for being cheaper to
 formalize, not for rational fidelity — see `docs/SCIP-ENCODER.md`.
 
-So: check for the exact build before trusting any encoder round-trip, and prefer an
-all-integer example when a float build is all that is available.
+### What actually distinguishes the builds
+
+**Not the `1/2` probe, and this document said otherwise until 2026-11-10.** Measured that
+day on both binaries:
+
+| | `scip` 10.0.3 (homebrew) | 10.0.1, `-DEXACTSOLVE=ON` |
+|---|---|---|
+| `min -x` s.t. `x ≤ 1/2`, no `exact enable` | `-1` | `-1` |
+| the same with `set exact enable TRUE` | `-1/2` | `-1/2` |
+| `x ≥ 1/2 ∧ x ≤ 1/2`, `x` integer, exact on | `RTP infeas`, accepted | `RTP infeas`, accepted |
+
+So the truncation tracks whether exact mode is **on**, not which binary is running, and
+the `1/2` answer is evidence about the flag only. Homebrew's 10.0.3 produced a certificate
+this checker accepts; on that evidence it is not disqualified, though nothing harder than
+the probe has been tried on it.
+
+What a build without `-DEXACTSOLVE=ON` does is still worth stating: it cannot write a
+certificate at all. And its log is no help — `storing certificate information in file
+<out.vipr>` is printed before the solve, so it appears either way.
+
+**Detect by capability.** `LeanVIPRTactic.Tactic.probeBinary` asks for exactly what a
+caller needs: solve `x ≥ 1/2 ∧ x ≤ 1/2` over the integers — infeasible only if `1/2`
+survives the round trip — and require a certificate that appears, parses, agrees with the
+Lean problem, and satisfies `checkVipr`. Also note **SCIP resets the working directory
+mid-run**, so a relative `certificate filename` does not land where the caller expects;
+pass absolute paths.
 
 ## Real certificate observed (infeasible `2x≤1 ∧ 2x≥1`, x integer)
 

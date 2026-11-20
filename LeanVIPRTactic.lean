@@ -2,6 +2,11 @@ module
 
 public import LeanVIPR
 public import LeanVIPRTactic.Roundtrip
+public import LeanVIPRTactic.Scip
+public import LeanVIPRTactic.Eval
+public import LeanVIPRTactic.Command
+public import LeanVIPRTactic.Certify
+public import LeanVIPRTactic.Reflect
 
 @[expose] public section
 
@@ -12,14 +17,12 @@ A separate library target from `LeanVIPR`, not a separate repository — see `la
 for why. Nothing in the checker imports this, so the trusted artifact stays free of
 metaprogramming, `IO` and any dependency on a solver being installed.
 
-`Roundtrip` is the part that exists here: it runs the emitter and discharges the encoder's
-preconditions for a concrete problem, which is what keeps those theorems from being
-vacuous. The tactic proper — reflecting a goal, driving SCIP, turning the returned
-certificate into a proof term — is being built on the `mip-tactic` branch and is not in
-this one. `docs/TACTIC-TODO.md` is that roadmap, and is written from this branch's
-viewpoint, so treat it as stale with respect to `mip-tactic`.
-
-The intended shape:
+The roadmap is `docs/TACTIC-TODO.md`, and its stages are the files here: `Scip.lean`
+drives the solver from `IO`, `Command.lean` reports what came back without proving
+anything, `Certify.lean` turns a returned certificate into a proof of `m.Infeasible`, and
+`Reflect.lean` turns a `Prop` goal into a `Mip`. `Roundtrip.lean` runs the emitter and
+discharges the encoder's preconditions for a concrete problem, which keeps those theorems
+from being vacuous. The shape all of them serve:
 
 ```
 goal : Prop

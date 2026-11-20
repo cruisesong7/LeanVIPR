@@ -1,0 +1,252 @@
+# Proving your own problem (`LeanVIPRTactic`)
+
+`viprcheck` re-checks a certificate someone else produced. This target does the other
+direction: you write a mixed-integer program *in Lean*, exact SCIP is asked about it, and
+what comes back becomes a theorem about the problem you wrote — not about whatever problem
+the certificate says it is about.
+
+```
+your Mip  ──encodeMps──▶  .mps  ──exact SCIP──▶  .vipr  ──parse──▶  v : Vipr
+   │                                                                  │
+   └───────────── agreesWith m v  (verified) ─────────────────────────┘
+                              │  checkVipr v  (verified)
+                              ▼
+                          m.Infeasible
+```
+
+`Mip.pipeline_infeasible` depends on two `Bool`s only — `agreesWith m v` and
+`checkVipr v` — and both are decided against the `Mip` and the certificate *as data*. The
+emitter, the file, the solver, the parser and the renaming guess are all outside that, so
+each of them can make the pipeline **fail**, and none can make it prove something false.
+
+**State of play.** The driver and a reporting command exist and are exercised against real
+SCIP; the tactic that closes a goal for you does not exist yet. So today the last step is
+three lines you write by hand, shown in [§4](#4-turn-it-into-a-theorem-today) and in full
+in [`examples/mip_prop_demo.lean`](../examples/mip_prop_demo.lean). The plan for removing
+them is [`docs/TACTIC-TODO.md`](TACTIC-TODO.md).
+
+| | available | how |
+|---|---|---|
+| run SCIP on a Lean `Mip`, from `IO` | yes | `runScip` |
+| the same, reported in your editor | yes | `#mip_scip` |
+| a proof of `m.Infeasible` | by hand | `decide +kernel` ×2, then `pipeline_infeasible` |
+| a proof of your `¬ ∃ x y z : ℤ, …` | by hand | `Mip.absurd_of_infeasible` |
+| `mip_certify`, `mip` | not yet | stages 3–5 of the roadmap |
+
+**Is this the right tool for your goal?** For a small all-integer question — the knapsack
+above included — `omega` closes it outright, and no solver is needed. Measured, with the
+proof, in [`examples/mip_prop_goals.lean`](../examples/mip_prop_goals.lean) §3. This route
+earns its place on what `omega` has no language for: rational coefficients and continuous
+variables, objective bounds and optimality rather than feasibility, and problems large
+enough that the search has to happen outside Lean.
+
+## Setup
+
+A certifying SCIP build is required, and only for this target — `viprcheck` never needs
+one. Build it as in [`docs/SCIP-SETUP.md`](SCIP-SETUP.md), then:
+
+```bash
+export LEANVIPR_SCIP=~/scip-exact/scipoptsuite-10.0.1/build/bin/scip
+lake build LeanVIPRTactic
+```
+
+With `LEANVIPR_SCIP` unset, `scip` from `PATH` is tried instead. Either way the binary is
+checked by *capability* before use: a one-variable problem is solved and the certificate
+must appear, parse, agree and be accepted. A build that cannot certify is rejected with a
+message saying so, rather than quietly answering a different question. (Why this is not a
+`--version` check, and why the fraction probe the docs used to recommend does not work, is
+in [`docs/SCIP-SETUP.md`](SCIP-SETUP.md#what-actually-distinguishes-the-builds).)
+
+Nothing in the `LeanVIPR` library imports `LeanVIPRTactic`, so the checker stays free of
+metaprogramming, `IO`, and any dependency on a solver being installed.
+
+## 1. Write the problem as a `Mip`
+
+```lean
+import LeanVIPRTactic
+open LeanVIPR LeanVIPR.Tactic
+
+def knapsack : Mip where
+  vars := #[{ name := "x", isInt := true, lo := some 0, hi := some 3 },
+            { name := "y", isInt := true, lo := some 0, hi := some 2 },
+            { name := "z", isInt := true, lo := some 0, hi := some 1 }]
+  objSense := .min
+  obj := []
+  rows := #[{ name := "c0", sense := 'E', rhs := 23,
+              form := [⟨0, 6⟩, ⟨1, 10⟩, ⟨2, 15⟩] },   -- 6x + 10y + 15z = 23
+            { name := "c1", sense := 'G', rhs := 1,
+              form := [⟨0, 1⟩, ⟨1, 1⟩, ⟨2, 1⟩] }]      -- x + y + z ≥ 1
+```
+
+* **Variables are indices.** A `form` is a list of `⟨index into vars, coefficient⟩`
+  pairs, and coefficients are exact `ℚ` — `1/3` means a third, not `0.333…`.
+* **Bounds live on the variable, not in `rows`.** `lo`/`hi` are `Option ℚ` with `none`
+  meaning infinite, and the defaults are MPS's own: continuous, `lo := some 0`,
+  `hi := none`. `Mip.conSLes` is `rows` followed by one row per finite bound, lower before
+  upper, in index order — that list is what the certificate gets compared against.
+* **Senses** are `'L'`, `'G'`, `'E'`.
+* Distinct variables need distinct names and so do distinct rows (`Mip.WellFormed`), since
+  names are what the problem file refers to. Well-formedness is what the *emitter* needs;
+  no soundness result assumes it.
+* The objective may be empty, as here. An infeasibility question does not use it.
+
+## 2. Ask the solver
+
+```lean
+#mip_scip knapsack
+```
+
+```
+/Users/you/scip-exact/scipoptsuite-10.0.1/build/bin/scip
+certificate: 3 vars, 8 cons, 32 ders, RTP infeas, OBJ min
+agreesWith: yes   checkVipr: yes   relaxedByWith: yes
+objAgreesWith: yes   objAgreesNegWith: yes
+pipeline_infeasible applies: true
+```
+
+`#mip_scip (dir := "/tmp/run") knapsack` leaves the `.mps` and `.vipr` in `/tmp/run` to
+look at. The command only logs — it proves nothing, and is the thing to reach for when a
+run needs diagnosing.
+
+Reading the report: each `yes` is a hypothesis some pipeline theorem wants, and together
+they say which conclusions are available.
+
+| certificate says | plus | gives you | theorem |
+|---|---|---|---|
+| `RTP infeas` | `agreesWith`, `checkVipr` | `m.Infeasible` | `pipeline_infeasible` |
+| `RTP range l u`, `OBJ min` | `objAgreesWith` | `l ≤ obj` at every feasible point | `pipeline_lower_bound` |
+| `RTP range l u`, `OBJ min`, your problem maximizes | `objAgreesNegWith` | `obj ≤ -l` | `pipeline_upper_bound_of_min` |
+| `RTP range z z` | a feasible point attaining `z` | `m.IsOptimal a` | `pipeline_optimal_min` / `_max` |
+| any, with a `SOL` entry | `relaxedByWith` | that entry is feasible for *your* problem | `feasible_of_solution` |
+
+Two things worth knowing about what SCIP returns:
+
+* **It renames and permutes your variables.** The knapsack comes back declaring
+  `t_y t_x t_z`, so the certificate's `C0` lists `(0, 10)` before `(1, 6)` where yours
+  lists `6x` first. `agreesWith` recovers the renaming itself and compares rows as linear
+  functions, so none of this needs handling. A wrong guess can only cause a rejection.
+* **A maximization comes back as a minimization.** Exact SCIP negates the objective, so
+  the certificate says `OBJ min` whatever you asked, with its bounds negated. That is why
+  `objAgreesNegWith` and the `_of_min` theorems exist, and why they are the ones that fire
+  on real output.
+
+## 3. Drive it from `IO`
+
+`#mip_scip` is a thin wrapper over the driver, which is plain `IO` and `#eval`-able:
+
+```lean
+#eval show IO Unit from do
+  match ← runScip knapsack with
+  | .error e => IO.println e.message
+  | .ok r =>
+    IO.println r.summary
+    if !r.provesInfeasible then throw (IO.userError "expected infeasibility")
+```
+
+`ScipRun` carries the certificate (`cert`), the emitted file (`mps`, for diagnostics
+only), and the five decisions: `agrees`, `relaxedBy`, `accepted`, `objAgrees`,
+`objAgreesNeg`. `provesInfeasible` is the conjunction `pipeline_infeasible` needs.
+
+`runScip m cfg` takes a `ScipConfig`:
+
+| field | default | meaning |
+|---|---|---|
+| `binary` | `none` | the solver to use; `none` means `LEANVIPR_SCIP` then `scip` |
+| `timeLimit` | `none` | seconds, passed as `set limits time` |
+| `verifyBinary` | `true` | run the capability probe (cached per binary per process) |
+| `workDir` | `none` | keep the `.mps`/`.vipr` here instead of a temporary directory |
+| `problemName` | `"leanvipr"` | the `NAME` field, and the file stem |
+
+`findScip cfg` resolves a binary without solving anything, and `probeBinary` is the
+capability check on its own.
+
+## 4. Turn it into a theorem today
+
+Until stage 3 lands, this part is manual, and it is short.
+[`examples/mip_prop_demo.lean`](../examples/mip_prop_demo.lean) is the whole thing,
+compiling in a few seconds with `#print axioms` reporting the standard three.
+
+Paste the certificate in as Lean data — `(repr r.cert).pretty` prints it in re-readable
+form — and then:
+
+```lean
+theorem agreed   : agreesWith knapsack cert = true := by decide +kernel
+theorem accepted : checkVipr cert = true           := by decide +kernel
+theorem isInfeas : cert.rtp = .infeas              := by decide +kernel
+
+theorem knapsack_infeasible : knapsack.Infeasible :=
+  Mip.pipeline_infeasible agreed accepted isInfeas
+```
+
+`decide +kernel`, not `decide`: Lean's kernel performs the check, so the compiler is not
+trusted for it. `native_decide` would add a per-theorem axiom and is used nowhere in this
+development.
+
+From there to the statement you wanted, `Mip.absurd_of_infeasible` is the bridge — and
+integrality is free, because a valuation built by casting integers is integral at every
+index:
+
+```lean
+theorem knapsack_unsolvable :
+    ¬ ∃ x y z : ℤ, 0 ≤ x ∧ x ≤ 3 ∧ 0 ≤ y ∧ y ≤ 2 ∧ 0 ≤ z ∧ z ≤ 1 ∧
+                   6*x + 10*y + 15*z = 23 ∧ x + y + z ≥ 1 := by
+  rintro ⟨x, y, z, hx0, hx3, hy0, hy2, hz0, hz1, heq, hge⟩
+  refine Mip.absurd_of_infeasible knapsack_infeasible [x, y, z] ?_
+  -- rows live over ℝ: move each hypothesis across the cast, then close them row by row
+  …
+```
+
+What is left after `refine` is one real inequality per row of `conSLes`, which
+`norm_num`/`linarith` close. `knapsack.conSLes = […] := by rfl` holds — the row list
+computes — which is what makes that step mechanical rather than merely finite.
+
+## When it fails
+
+The pipeline is **not** a decision procedure, and will not become one: exact SCIP can time
+out or return something that fails agreement, and then you get a refusal. Same status as
+`bv_decide`, `polyrith` and Trestle. Every failure names which stage it came from, because
+the remedies are unrelated:
+
+| message | means | do |
+|---|---|---|
+| `no SCIP binary found` | nothing spawnable at `LEANVIPR_SCIP` or on `PATH` | build one ([SCIP-SETUP](SCIP-SETUP.md)) and export `LEANVIPR_SCIP` |
+| `did not pass the certificate probe` | it runs but cannot certify, or does not read `1/2` exactly | use a `-DEXACTSOLVE=ON` build |
+| `SCIP … exited with code N` | solver error, or the time limit | read the log tail in the message; raise `timeLimit` |
+| `reported success but wrote no certificate` | no `.vipr` appeared | almost always a non-certifying build |
+| `does not parse` | the file is not VIPR v1.0 as we read it | keep it with `(dir := …)` and open it; this is a bug report |
+| `agreesWith: NO` | the certificate is not about your problem | compare `conSLes` with the certificate's `CON` block; check for an emitter bug |
+| `checkVipr: NO` | the certificate itself does not check out | a certificate this checker cannot verify — see the known shape in [TACTIC-TODO](TACTIC-TODO.md#open-items-this-roadmap-inherits-or-found) |
+
+Two limits that are not errors: the kernel route caps out around 6–7k certificate lines
+(measured in [`docs/SCIP-ENCODER.md`](SCIP-ENCODER.md)), and VIPR v1.0 cannot express
+unboundedness — `RTP` is `infeas` or `range`, so there is nothing to transfer.
+
+## Examples
+
+| file | shows |
+|---|---|
+| [`examples/mip_prop_goals.lean`](../examples/mip_prop_goals.lean) | **the goals `mip` must take** — one problem in five phrasings, a rational-coefficient goal proved end to end, and what `omega` already does |
+| [`examples/mip_prop_demo.lean`](../examples/mip_prop_demo.lean) | the whole path from a certificate to `¬ ∃ x y z : ℤ, …`, by hand |
+| [`examples/mip_scip_smoke.lean`](../examples/mip_scip_smoke.lean) | `runScip` and `#mip_scip` on an infeasible problem, a feasible one, and the probe problem |
+
+`mip_scip_smoke.lean` needs a solver, so it is not part of `lake build`:
+
+```bash
+LEANVIPR_SCIP=~/scip-exact/scipoptsuite-10.0.1/build/bin/scip \
+  lake env lean examples/mip_scip_smoke.lean
+```
+
+`mip_prop_demo.lean` carries its certificate inline and needs no solver:
+
+```bash
+lake env lean examples/mip_prop_demo.lean
+```
+
+## Further reading
+
+| Document | Contents |
+|---|---|
+| [`docs/TACTIC-TODO.md`](TACTIC-TODO.md) | the roadmap to the bundled tactic, stage by stage |
+| [`docs/SCIP-ENCODER.md`](SCIP-ENCODER.md) | why a `Mip` type, the theorems, and what is and is not proved |
+| [`docs/SCIP-SETUP.md`](SCIP-SETUP.md) | building exact SCIP, and how to tell a certifying build |
+| [`docs/VERIFICATION.md`](VERIFICATION.md) | the trust boundary of the checker itself |

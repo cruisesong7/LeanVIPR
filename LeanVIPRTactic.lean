@@ -1,6 +1,11 @@
 module
 
 public import LeanVIPR
+public import LeanVIPRTactic.Scip
+public import LeanVIPRTactic.Eval
+public import LeanVIPRTactic.Command
+public import LeanVIPRTactic.Certify
+public import LeanVIPRTactic.Reflect
 
 @[expose] public section
 
@@ -11,7 +16,10 @@ A separate library target from `LeanVIPR`, not a separate repository — see `la
 for why. Nothing in the checker imports this, so the trusted artifact stays free of
 metaprogramming, `IO` and any dependency on a solver being installed.
 
-Scaffold; the plan is `docs/TACTIC-TODO.md`. The intended shape:
+The roadmap is `docs/TACTIC-TODO.md`, and the stages there are the files here:
+`Scip.lean` drives the solver from `IO` (stage 1, done), `Command.lean` reports what came
+back without proving anything (stage 2, done), and the tactic that closes a goal is stage
+3. The shape all of them serve:
 
 ```
 goal : Prop

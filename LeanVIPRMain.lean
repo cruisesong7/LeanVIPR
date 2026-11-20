@@ -135,6 +135,30 @@ def materializeWeakVipr (v : Vipr) : Vipr :=
           { d with reason := .lin (comb.map fun p => (p.2, p.1)) }
       | _ => d }
 
+/-- The test a closed row must pass for the claim: an absurdity for infeasibility, the
+claimed objective bound for a range; `none` when the claim needs no derived row. Mirrors
+the cases of `finalValid`. Untrusted: used only to root the slice and for the last-row
+warning, never for the verdict. -/
+def finalRowTest (v : Vipr) : Option (SLe → Bool) :=
+  match v.rtp with
+  | .infeas => some isAbsurd
+  | .range lb ub =>
+      if v.objSense = "min" then lb.map fun lower r => dominates r (objectiveLowerRow v lower)
+      else if v.objSense = "max" then ub.map fun upper r => dominates r (objectiveUpperRow v upper)
+      else none
+
+/-- The last derivation whose stated row passes `finalRowTest`, which is the row the claim
+rests on; the last derivation if none does. The VIPR specification puts that row last, but
+exact SCIP sometimes writes further rows after it. -/
+def provingDer (v : Vipr) : Nat := Id.run do
+  let nder := v.ders.size
+  let some test := finalRowTest v | return nder - 1
+  for k in [:nder] do
+    let i := nder - 1 - k
+    if test (derStated v (v.ders.getD i default)) then
+      return i
+  return nder - 1
+
 /-- Untrusted proof-producing slice. The generated reconstruction theorem separately
 kernel-checks both the sliced replay and its row-subset relation to the original. -/
 def sliceVipr (input : Vipr) : Vipr := Id.run do
@@ -151,7 +175,8 @@ def sliceVipr (input : Vipr) : Vipr := Id.run do
     | .range _ _ => true
   let mut keepCon := Array.replicate ncon keepAllCon
   let mut keepDer := Array.replicate nder false
-  let mut todo : List Nat := [nder - 1]
+  -- Root at the proving row, so rows written after it do not drop it from the slice.
+  let mut todo : List Nat := [provingDer v]
   while !todo.isEmpty do
     let i := todo.headD 0
     todo := todo.tail
@@ -301,6 +326,29 @@ def taskCount : IO Nat := do
   | some s => return (s.toNat?.getD 8).max 1
   | none => return 8
 
+/-- The VIPR specification requires the *last* row to prove the claim; the checker accepts
+any closed row (`HasClosedDominatingRow`). Say so when an accepted certificate relies on
+that. Only when the last row cannot prove the claim at all is the pool rebuilt to name the
+row that does, so conforming certificates cost nothing. A last row that passes the test but
+still has open assumptions is not reported. -/
+def warnIfNotLastRow (v : Vipr) : IO Unit := do
+  let some test := finalRowTest v | return
+  if (v.ders.back?.map (derStated v)).any test then return
+  let pool := buildPool v (initialPool v) (viprSteps v)
+  -- the last proving row: the one closest to where the specification expects it
+  for k in [:pool.size] do
+    let i := pool.size - 1 - k
+    let e := pool.getD i default
+    if decide (e.2 = ∅) && test e.1 then
+      if i + 1 < pool.size then
+        let name := if i < v.cons.size then (v.cons.getD i default).name
+          else (v.ders.getD (i - v.cons.size) default).name
+        let after := pool.size - 1 - i
+        IO.eprintln (s!"warning: row {name} proves the claim but is not the last row, "
+          ++ s!"which the VIPR specification requires ({after} "
+          ++ (if after = 1 then "row follows" else "rows follow") ++ " it)")
+      return
+
 /-- Check with the compiled checker.
 
 `useSlice` backward-slices an `RTP infeas` certificate and checks the slice. That
@@ -331,6 +379,7 @@ def checkFileNative (path : String) (useSlice : Bool := true) : IO UInt32 := do
         else
           pure (checkViprPar tasks v)
       if accepted then
+        warnIfNotLastRow v
         IO.println "NATIVE ACCEPT  (verified array-backed checker; trusts the Lean compiler and runtime)"
         return 0
       else
@@ -395,7 +444,7 @@ def debugFirstInvalid (path : String) : IO UInt32 := do
         pool := pool.push (entryOf pool step)
         idx := idx + 1
       IO.println "all derivation steps pass"
-      IO.println s!"final result: {solSection v && finalValid v pool.back?}"
+      IO.println s!"final result: {solSection v && finalValid v pool}"
       return 0
 
 /-- The axioms reported for the generated theorem must be among Lean's standard
@@ -495,6 +544,7 @@ def checkFileKernel (path proofDir : String) (mode : KernelMode) : IO UInt32 := 
           if !certifiedAxiomsOk log then
             IO.eprintln "REJECT  (generated theorem uses a nonstandard axiom or its axiom report is missing)"
             return 2
+          warnIfNotLastRow v
           IO.println (s!"ACCEPT  (kernel-checked {kernelModeName effectiveMode}; "
             ++ "theorem LeanVIPR.Generated.certified)")
           IO.println s!"proof artifact: {generatedSourcePath proofDir "Proof"}"

@@ -95,22 +95,39 @@ def SolSectionValid (v : Vipr) : Prop :=
         | some lower => ∃ s ∈ v.sols.toList, lower ≤ objectiveQ v s
       else False
 
+/-- The objective takes an integer value at every valuation that is integral on the
+integer variables: integer coefficients, on integer variables only. Then "strictly better
+than `q`" means "at least one unit better than `q`". -/
+def ObjectiveIntegral (v : Vipr) : Prop :=
+  FormIntegralReal v.intVars (objectiveForm v)
+
+/-- A `{ sol }` row states an objective cutoff justified by a listed solution `s`: no
+worse than `s`, or, when the objective is integral, one unit better.
+
+The VIPR specification lists `{ sol }` without giving it a meaning. The one-unit cutoff
+is what `viprchk` implements and exact SCIP emits. It is sound only together with the
+check in `FinalValid` that the claimed bound does not pass any listed solution: without
+it, a cutoff that excludes every solution would let a certificate prove any bound. -/
 def SolReasonValid (v : Vipr) (stated : SLe) : Prop :=
   if v.objSense = "min" then
     ∃ s ∈ v.sols.toList,
-      Dominates ⟨'L', objectiveForm v, objectiveQ v s⟩ stated
+      Dominates ⟨'L', objectiveForm v, objectiveQ v s⟩ stated ∨
+      (ObjectiveIntegral v ∧ Dominates ⟨'L', objectiveForm v, objectiveQ v s - 1⟩ stated)
   else if v.objSense = "max" then
     ∃ s ∈ v.sols.toList,
-      Dominates ⟨'G', objectiveForm v, objectiveQ v s⟩ stated
+      Dominates ⟨'G', objectiveForm v, objectiveQ v s⟩ stated ∨
+      (ObjectiveIntegral v ∧ Dominates ⟨'G', objectiveForm v, objectiveQ v s + 1⟩ stated)
   else False
 
-/-- The objective at `a` is at least as good as at every listed solution.  Every
-`{ sol }` row holds at such a valuation. -/
+/-- The objective at `a` is at least as good as at every listed solution, and when the
+objective is integral one unit better. Every `{ sol }` row holds at such a valuation. -/
 def SolBounded (v : Vipr) (a : RealValuation) : Prop :=
   if v.objSense = "min" then
-    ∀ s ∈ v.sols.toList, objectiveReal v a ≤ (objectiveQ v s : ℝ)
+    ∀ s ∈ v.sols.toList, objectiveReal v a ≤ (objectiveQ v s : ℝ) ∧
+      (ObjectiveIntegral v → objectiveReal v a ≤ (objectiveQ v s : ℝ) - 1)
   else if v.objSense = "max" then
-    ∀ s ∈ v.sols.toList, (objectiveQ v s : ℝ) ≤ objectiveReal v a
+    ∀ s ∈ v.sols.toList, (objectiveQ v s : ℝ) ≤ objectiveReal v a ∧
+      (ObjectiveIntegral v → (objectiveQ v s : ℝ) + 1 ≤ objectiveReal v a)
   else False
 
 /-- Valuations at which every derived row is guaranteed: feasible valuations for
@@ -149,31 +166,44 @@ def DerivationValid (v : Vipr) (pool : SPool) : List SStep → Prop
       StepValid v pool s ∧
       DerivationValid v (pool ++ [sentryOf pool s]) ss
 
-def EndsInClosedAbsurdity (v : Vipr) : Prop :=
-  ∃ e,
-    (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? = some e ∧
-    e.2 = ∅ ∧ Absurd e.1
+/-- Some row of the replay, original or derived, is an absurdity with no open
+assumptions.
 
-def EndsInClosedDominatingRow (v : Vipr) (target : SLe) : Prop :=
-  ∃ e,
-    (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? = some e ∧
-    e.2 = ∅ ∧ Dominates e.1 target
+The VIPR specification asks for the *last* row. Any closed row proves the claim
+equally, and exact SCIP writes rows after the one that does, so the position is not
+required; `viprcheck` warns when it is not the last. -/
+def HasClosedAbsurdity (v : Vipr) : Prop :=
+  ∃ e ∈ sfreplay (sinitPool (conSLes v)) (viprSteps v), e.2 = ∅ ∧ Absurd e.1
+
+/-- Some row of the replay with no open assumptions dominates `target`. As for
+`HasClosedAbsurdity`, the row need not be the last. -/
+def HasClosedDominatingRow (v : Vipr) (target : SLe) : Prop :=
+  ∃ e ∈ sfreplay (sinitPool (conSLes v)) (viprSteps v), e.2 = ∅ ∧ Dominates e.1 target
 
 /-- The final-row condition depends on the relation to prove and objective
 direction.  A minimization lower bound and a maximization upper bound need a
-closed derived row; the opposite bound is witnessed by `SOL`. -/
+closed derived row; the opposite bound is witnessed by `SOL`.
+
+The derived bound must also not pass any listed solution. A derivation proves the bound
+only at valuations that satisfy every cutoff, and a one-unit cutoff excludes the solutions
+themselves, so this check is what covers them. Without one-unit cutoffs it is implied: the
+best listed solution satisfies every cutoff, so the derived bound already holds there. -/
 def FinalValid (v : Vipr) : Prop :=
   match v.rtp with
-  | .infeas => EndsInClosedAbsurdity v
+  | .infeas => HasClosedAbsurdity v
   | .range lb ub =>
       if v.objSense = "min" then
         match lb with
         | none => True
-        | some lower => EndsInClosedDominatingRow v (objectiveLowerRow v lower)
+        | some lower =>
+            HasClosedDominatingRow v (objectiveLowerRow v lower) ∧
+              ∀ s ∈ v.sols.toList, lower ≤ objectiveQ v s
       else if v.objSense = "max" then
         match ub with
         | none => True
-        | some upper => EndsInClosedDominatingRow v (objectiveUpperRow v upper)
+        | some upper =>
+            HasClosedDominatingRow v (objectiveUpperRow v upper) ∧
+              ∀ s ∈ v.sols.toList, objectiveQ v s ≤ upper
       else False
 
 def ProofValid (v : Vipr) : Prop :=

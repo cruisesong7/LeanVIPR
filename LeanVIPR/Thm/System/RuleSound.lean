@@ -181,7 +181,7 @@ private theorem evalALReal_isInt (al : List (Nat × ℚ)) (a : RealValuation)
       · exact ⟨m, by simp [hp]⟩
       · exact ⟨c * v + m, by rw [hc, hv]; push_cast; ring⟩
 
-private theorem formIsInt_sound_real {intVars : List Nat} {f : LinForm}
+theorem formIsInt_sound_real {intVars : List Nat} {f : LinForm}
     (h : formIsInt intVars f = true) : FormIntegralReal intVars f := by
   intro a hint
   rw [← normForm_eval_real]

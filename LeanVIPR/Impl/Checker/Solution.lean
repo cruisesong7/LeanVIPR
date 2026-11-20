@@ -56,10 +56,14 @@ def solSection (v : Vipr) : Bool :=
 def solReason (v : Vipr) (stated : SLe) : Bool :=
   if v.objSense = "min" then
     v.sols.toList.any (fun s =>
-      dominates ⟨'L', objectiveForm v, objectiveQ v s⟩ stated)
+      dominates ⟨'L', objectiveForm v, objectiveQ v s⟩ stated ||
+        (formIsInt v.intVars (objectiveForm v) &&
+          dominates ⟨'L', objectiveForm v, objectiveQ v s - 1⟩ stated))
   else if v.objSense = "max" then
     v.sols.toList.any (fun s =>
-      dominates ⟨'G', objectiveForm v, objectiveQ v s⟩ stated)
+      dominates ⟨'G', objectiveForm v, objectiveQ v s⟩ stated ||
+        (formIsInt v.intVars (objectiveForm v) &&
+          dominates ⟨'G', objectiveForm v, objectiveQ v s + 1⟩ stated))
   else false
 
 end LeanVIPR.Parser.Vipr

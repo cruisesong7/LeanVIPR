@@ -1,0 +1,16 @@
+% min x subject to x >= 1: the optimum is 1. d1 proves OBJ >= 1, and d2 then states a
+% weaker bound, so the proving row is not the last. The VIPR specification asks for the
+% last row to prove the claim; exact SCIP writes such trailing rows, and viprcheck accepts
+% with a warning that names d1.
+VER 1.0
+VAR 1 x
+INT 0
+OBJ min 1 0 1
+CON 1 0
+c1 G 1 1 0 1
+RTP range 1 1
+SOL 1
+s1 1 0 1
+DER 2
+d1 G 1 OBJ { lin 1 0 1 } -1
+d2 G 0 OBJ { lin 1 0 1 } -1

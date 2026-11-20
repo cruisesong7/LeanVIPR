@@ -149,12 +149,12 @@ private theorem closedFinal_holds {v : Vipr} {a : RealValuation}
     (hsols : SolSectionValid v) (hcand : Candidate v a)
     (hder : DerivationValid v (sinitPool (conSLes v)) (viprSteps v))
     {e : SLe × SAsm}
-    (hlast : (sfreplay (sinitPool (conSLes v)) (viprSteps v)).getLast? = some e)
+    (hmem : e ∈ sfreplay (sinitPool (conSLes v)) (viprSteps v))
     (hclosed : e.2 = ∅) : satReal e.1 a := by
   have hall := replay_sound v a hsols hcand
     (sinitPool (conSLes v)) (viprSteps v) hder
     (initialPool_holds (conSLes v) a)
-  have he : EntryHolds (conSLes v) a e := hall e (List.mem_of_getLast? hlast)
+  have he : EntryHolds (conSLes v) a e := hall e hmem
   exact he (candidate_feasible hcand).2 (by simp [hclosed])
 
 /-- Between integers, exceeding `y - 1` means reaching `y`. -/

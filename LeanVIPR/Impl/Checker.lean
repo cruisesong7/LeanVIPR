@@ -109,11 +109,15 @@ def finalValid (v : Vipr) (last? : Option CheckerEntry) : Bool :=
       if v.objSense = "min" then
         match lb with
         | none => true
-        | some lower => closedDominates (objectiveLowerRow v lower) last?
+        | some lower =>
+            closedDominates (objectiveLowerRow v lower) last? &&
+              v.sols.toList.all (fun s => decide (lower ≤ objectiveQ v s))
       else if v.objSense = "max" then
         match ub with
         | none => true
-        | some upper => closedDominates (objectiveUpperRow v upper) last?
+        | some upper =>
+            closedDominates (objectiveUpperRow v upper) last? &&
+              v.sols.toList.all (fun s => decide (objectiveQ v s ≤ upper))
       else false
 
 /-! ## Parallel replay

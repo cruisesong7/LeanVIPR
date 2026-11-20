@@ -55,17 +55,21 @@ theorem solReasonValid_sound {v : Vipr} {stated : SLe} {a : RealValuation}
       simp only [SolReasonValid] at hreason
       split_ifs at hreason with hmin hmax
       · obtain ⟨s, hs, hdom⟩ := hreason
-        have hall' : ∀ t ∈ v.sols.toList, objectiveReal v a ≤ (objectiveQ v t : ℝ) := by
-          simpa [SolBounded, hmin] using hbounded
-        have hle := hall' s hs
-        exact dominates_sound hdom (by
-          simpa [satReal, objectiveReal] using hle)
+        have hb : objectiveReal v a ≤ (objectiveQ v s : ℝ) ∧
+            (ObjectiveIntegral v → objectiveReal v a ≤ (objectiveQ v s : ℝ) - 1) := by
+          rw [SolBounded, ite_eq_left hmin] at hbounded
+          exact hbounded s hs
+        rcases hdom with hdom | ⟨hint, hdom⟩
+        · exact dominates_sound hdom (by simpa [satReal, objectiveReal] using hb.1)
+        · exact dominates_sound hdom (by simpa [satReal, objectiveReal] using hb.2 hint)
       · obtain ⟨s, hs, hdom⟩ := hreason
-        have hall' : ∀ t ∈ v.sols.toList, (objectiveQ v t : ℝ) ≤ objectiveReal v a := by
-          simpa [SolBounded, hmin, hmax] using hbounded
-        have hge := hall' s hs
-        exact dominates_sound hdom (by
-          simpa [satReal, objectiveReal] using hge)
+        have hb : (objectiveQ v s : ℝ) ≤ objectiveReal v a ∧
+            (ObjectiveIntegral v → (objectiveQ v s : ℝ) + 1 ≤ objectiveReal v a) := by
+          rw [SolBounded, ite_eq_right hmin, ite_eq_left hmax] at hbounded
+          exact hbounded s hs
+        rcases hdom with hdom | ⟨hint, hdom⟩
+        · exact dominates_sound hdom (by simpa [satReal, objectiveReal] using hb.1)
+        · exact dominates_sound hdom (by simpa [satReal, objectiveReal] using hb.2 hint)
 
 /-- Every entry produced by a declaratively valid full-result replay is sound at
 the relevant candidate valuations: feasible valuations for infeasibility results,
@@ -153,35 +157,31 @@ private theorem closedFinal_holds {v : Vipr} {a : RealValuation}
   have he : EntryHolds (conSLes v) a e := hall e (List.mem_of_getLast? hlast)
   exact he (candidate_feasible hcand).2 (by simp [hclosed])
 
-private theorem list_exists_min {α : Type} (f : α → ℚ) :
-    ∀ l : List α, l ≠ [] → ∃ x ∈ l, ∀ y ∈ l, f x ≤ f y
-  | [], h => absurd rfl h
-  | x :: rest, _ => by
-      by_cases hrest : rest = []
-      · subst hrest
-        exact ⟨x, by simp, by simp⟩
-      · obtain ⟨m, hm, hmin⟩ := list_exists_min f rest hrest
-        by_cases hx : f x ≤ f m
-        · refine ⟨x, by simp, ?_⟩
-          intro y hy
-          rcases List.mem_cons.mp hy with rfl | hy
-          · exact le_rfl
-          · exact hx.trans (hmin y hy)
-        · refine ⟨m, List.mem_cons_of_mem _ hm, ?_⟩
-          intro y hy
-          rcases List.mem_cons.mp hy with rfl | hy
-          · exact (lt_of_not_ge hx).le
-          · exact hmin y hy
+/-- Between integers, exceeding `y - 1` means reaching `y`. -/
+private theorem le_of_not_le_sub_one {x y : ℝ} (hx : IsIntReal x) (hy : IsIntReal y)
+    (h : ¬ x ≤ y - 1) : y ≤ x := by
+  obtain ⟨m, rfl⟩ := hx
+  obtain ⟨n, rfl⟩ := hy
+  have hlt : ((n - 1 : ℤ) : ℝ) < m := by push_cast; exact lt_of_not_ge h
+  have : n - 1 < m := by exact_mod_cast hlt
+  exact_mod_cast (show n ≤ m by omega)
 
-/-- A finite nonempty solution list has a solution of least objective value. -/
-private theorem exists_min_solution (v : Vipr) (hne : v.sols.toList ≠ []) :
-    ∃ s ∈ v.sols.toList, ∀ t ∈ v.sols.toList, objectiveQ v s ≤ objectiveQ v t :=
-  list_exists_min (objectiveQ v) _ hne
+/-- Between integers, falling short of `y + 1` means not exceeding `y`. -/
+private theorem le_of_not_add_one_le {x y : ℝ} (hx : IsIntReal x) (hy : IsIntReal y)
+    (h : ¬ y + 1 ≤ x) : x ≤ y := by
+  obtain ⟨m, rfl⟩ := hx
+  obtain ⟨n, rfl⟩ := hy
+  have hlt : (m : ℝ) < ((n + 1 : ℤ) : ℝ) := by push_cast; exact lt_of_not_ge h
+  have : m < n + 1 := by exact_mod_cast hlt
+  exact_mod_cast (show m ≤ n by omega)
 
-private theorem exists_max_solution (v : Vipr) (hne : v.sols.toList ≠ []) :
-    ∃ s ∈ v.sols.toList, ∀ t ∈ v.sols.toList, objectiveQ v t ≤ objectiveQ v s := by
-  obtain ⟨s, hs, hmin⟩ := list_exists_min (fun s => -objectiveQ v s) _ hne
-  exact ⟨s, hs, fun t ht => neg_le_neg_iff.mp (hmin t ht)⟩
+/-- A listed solution's objective value is an integer when the objective is integral. -/
+private theorem objectiveQ_isInt {v : Vipr} (hint : ObjectiveIntegral v)
+    (hall : AllSolutionsValid v) {t : NamedSolution} (ht : t ∈ v.sols.toList) :
+    IsIntReal (objectiveQ v t : ℝ) := by
+  have h := hint (solutionValuation t) (hall t ht).1
+  rw [evalReal_solution] at h
+  exact h
 
 /-- Soundness of the full declarative VIPR proof system, including `SOL`,
 `{ sol }`, infeasibility results, and objective ranges. -/
@@ -215,7 +215,7 @@ theorem proofSystem_sound (v : Vipr)
         | some lower =>
             have hfinalData := hfinal
             simp only [FinalValid, hr, ite_eq_left hmin] at hfinalData
-            obtain ⟨e, hlast, hclosed, hdom⟩ := hfinalData
+            obtain ⟨⟨e, hlast, hclosed, hdom⟩, hsolsLower⟩ := hfinalData
             -- the closed final row holds at every candidate valuation
             have hat : ∀ a, Candidate v a → (lower : ℝ) ≤ objectiveReal v a := by
               intro a hcand
@@ -225,20 +225,20 @@ theorem proofSystem_sound (v : Vipr)
             intro a hfeas
             by_cases hb : SolBounded v a
             · exact hat a (hcandOf a hfeas hb)
-            · -- some listed solution is strictly better than `a`; the best one is a
-              -- candidate, and it bounds `a` from below
-              simp only [SolBounded, ite_eq_left hmin, not_forall, not_le] at hb
-              obtain ⟨t, ht, hlt⟩ := hb
-              have hne : v.sols.toList ≠ [] := List.ne_nil_of_mem ht
-              obtain ⟨s, hs, hsmin⟩ := exists_min_solution v hne
-              have hsCand : Candidate v (solutionValuation s) := by
-                refine hcandOf _ (hall s hs) ?_
-                simp only [SolBounded, ite_eq_left hmin, objectiveReal_solution]
-                exact fun u hu => by exact_mod_cast hsmin u hu
-              have hs_le := hat _ hsCand
-              rw [objectiveReal_solution] at hs_le
-              have hst : (objectiveQ v s : ℝ) ≤ objectiveQ v t := by
-                exact_mod_cast hsmin t ht
+            · -- `a` does not beat some listed solution `t`, and the bound does not pass `t`
+              simp only [SolBounded, ite_eq_left hmin, not_forall] at hb
+              obtain ⟨t, ht, hnot⟩ := hb
+              have hlow : (lower : ℝ) ≤ objectiveQ v t := by exact_mod_cast hsolsLower t ht
+              have hta : (objectiveQ v t : ℝ) ≤ objectiveReal v a := by
+                by_cases hle : objectiveReal v a ≤ objectiveQ v t
+                · have hint : ObjectiveIntegral v := by
+                    by_contra hint
+                    exact hnot ⟨hle, fun h => absurd h hint⟩
+                  have hsub : ¬ objectiveReal v a ≤ (objectiveQ v t : ℝ) - 1 :=
+                    fun h => hnot ⟨hle, fun _ => h⟩
+                  exact le_of_not_le_sub_one (hint a hfeas.1)
+                    (objectiveQ_isInt hint hall ht) hsub
+                · exact (lt_of_not_ge hle).le
               linarith
       · rw [ite_eq_right hmin]
         by_cases hmax : v.objSense = "max"
@@ -248,7 +248,7 @@ theorem proofSystem_sound (v : Vipr)
           | some upper =>
               have hfinalData := hfinal
               simp only [FinalValid, hr, ite_eq_right hmin, ite_eq_left hmax] at hfinalData
-              obtain ⟨e, hlast, hclosed, hdom⟩ := hfinalData
+              obtain ⟨⟨e, hlast, hclosed, hdom⟩, hsolsUpper⟩ := hfinalData
               have hat : ∀ a, Candidate v a → objectiveReal v a ≤ (upper : ℝ) := by
                 intro a hcand
                 have hgoal := System.dominates_sound hdom
@@ -257,20 +257,19 @@ theorem proofSystem_sound (v : Vipr)
               intro a hfeas
               by_cases hb : SolBounded v a
               · exact hat a (hcandOf a hfeas hb)
-              · simp only [SolBounded, ite_eq_right hmin, ite_eq_left hmax, not_forall,
-                  not_le] at hb
-                obtain ⟨t, ht, hlt⟩ := hb
-                have hne : v.sols.toList ≠ [] := List.ne_nil_of_mem ht
-                obtain ⟨s, hs, hsmax⟩ := exists_max_solution v hne
-                have hsCand : Candidate v (solutionValuation s) := by
-                  refine hcandOf _ (hall s hs) ?_
-                  simp only [SolBounded, ite_eq_right hmin, ite_eq_left hmax,
-                    objectiveReal_solution]
-                  exact fun u hu => by exact_mod_cast hsmax u hu
-                have hs_le := hat _ hsCand
-                rw [objectiveReal_solution] at hs_le
-                have hts : (objectiveQ v t : ℝ) ≤ objectiveQ v s := by
-                  exact_mod_cast hsmax t ht
+              · simp only [SolBounded, ite_eq_right hmin, ite_eq_left hmax, not_forall] at hb
+                obtain ⟨t, ht, hnot⟩ := hb
+                have hup : (objectiveQ v t : ℝ) ≤ upper := by exact_mod_cast hsolsUpper t ht
+                have hat' : objectiveReal v a ≤ (objectiveQ v t : ℝ) := by
+                  by_cases hle : (objectiveQ v t : ℝ) ≤ objectiveReal v a
+                  · have hint : ObjectiveIntegral v := by
+                      by_contra hint
+                      exact hnot ⟨hle, fun h => absurd h hint⟩
+                    have hadd : ¬ (objectiveQ v t : ℝ) + 1 ≤ objectiveReal v a :=
+                      fun h => hnot ⟨hle, fun _ => h⟩
+                    exact le_of_not_add_one_le (hint a hfeas.1)
+                      (objectiveQ_isInt hint hall ht) hadd
+                  · exact (lt_of_not_ge hle).le
                 linarith
         · simp [SolSectionValid, hr, hmin, hmax] at hsols
 
@@ -401,12 +400,18 @@ theorem solReason_sound {v : Vipr} {stated : SLe}
   unfold SolReasonValid
   by_cases hmin : v.objSense = "min"
   · simp only [ite_eq_left hmin] at h ⊢
-    obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-    exact ⟨s, hs, Rule.dominates_valid_real hdom⟩
+    obtain ⟨s, hs, hor⟩ := List.any_eq_true.mp h
+    simp only [Bool.or_eq_true, Bool.and_eq_true] at hor
+    rcases hor with hdom | ⟨hint, hdom⟩
+    · exact ⟨s, hs, Or.inl (Rule.dominates_valid_real hdom)⟩
+    · exact ⟨s, hs, Or.inr ⟨Rule.formIsInt_sound_real hint, Rule.dominates_valid_real hdom⟩⟩
   · by_cases hmax : v.objSense = "max"
     · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
-      obtain ⟨s, hs, hdom⟩ := List.any_eq_true.mp h
-      exact ⟨s, hs, Rule.dominates_valid_real hdom⟩
+      obtain ⟨s, hs, hor⟩ := List.any_eq_true.mp h
+      simp only [Bool.or_eq_true, Bool.and_eq_true] at hor
+      rcases hor with hdom | ⟨hint, hdom⟩
+      · exact ⟨s, hs, Or.inl (Rule.dominates_valid_real hdom)⟩
+      · exact ⟨s, hs, Or.inr ⟨Rule.formIsInt_sound_real hint, Rule.dominates_valid_real hdom⟩⟩
     · simp [hmin, hmax] at h
 
 end LeanVIPR.Parser.Vipr

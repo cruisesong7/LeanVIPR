@@ -162,29 +162,35 @@ theorem finalValid_sound {v : Vipr} {last? : Option CheckerEntry}
         cases lb with
         | none => trivial
         | some lower =>
+            simp only [Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at h
+            refine ⟨?_, h.2⟩
+            have h1 := h.1
             cases he : last? with
             | none =>
-                rw [he] at h
-                simp [closedDominates] at h
+                rw [he] at h1
+                simp [closedDominates] at h1
             | some e =>
                 simp only [he, closedDominates, Bool.and_eq_true,
-                  decide_eq_true_eq] at h
-                exact ⟨e, by rw [← hlast, he], h.1,
-                  Rule.dominates_valid_real h.2⟩
+                  decide_eq_true_eq] at h1
+                exact ⟨e, by rw [← hlast, he], h1.1,
+                  Rule.dominates_valid_real h1.2⟩
       · by_cases hmax : v.objSense = "max"
         · simp only [ite_eq_right hmin, ite_eq_left hmax] at h ⊢
           cases ub with
           | none => trivial
           | some upper =>
+              simp only [Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at h
+              refine ⟨?_, h.2⟩
+              have h1 := h.1
               cases he : last? with
               | none =>
-                  rw [he] at h
-                  simp [closedDominates] at h
+                  rw [he] at h1
+                  simp [closedDominates] at h1
               | some e =>
                   simp only [he, closedDominates, Bool.and_eq_true,
-                    decide_eq_true_eq] at h
-                  exact ⟨e, by rw [← hlast, he], h.1,
-                    Rule.dominates_valid_real h.2⟩
+                    decide_eq_true_eq] at h1
+                  exact ⟨e, by rw [← hlast, he], h1.1,
+                    Rule.dominates_valid_real h1.2⟩
         · simp [hmin, hmax] at h
 
 /-- The executable checker refines the declarative VIPR proof system. -/

@@ -75,11 +75,19 @@ theorem solReason_complete {v : Vipr} {stated : SLe}
   by_cases hmin : v.objSense = "min"
   · simp only [hmin, ite_true] at h ⊢
     obtain ⟨s, hs, hdom⟩ := h
-    exact List.any_eq_true.mpr ⟨s, hs, dominates_complete hdom⟩
+    refine List.any_eq_true.mpr ⟨s, hs, ?_⟩
+    rcases hdom with hdom | ⟨hint, hdom⟩
+    · simp [dominates_complete hdom]
+    · simp [formIsInt_complete_real (show FormIntegralReal v.intVars (objectiveForm v) from hint),
+        dominates_complete hdom]
   · by_cases hmax : v.objSense = "max"
     · simp only [hmax, ite_true] at h ⊢
       obtain ⟨s, hs, hdom⟩ := h
-      exact List.any_eq_true.mpr ⟨s, hs, dominates_complete hdom⟩
+      refine List.any_eq_true.mpr ⟨s, hs, ?_⟩
+      rcases hdom with hdom | ⟨hint, hdom⟩
+      · simp [dominates_complete hdom]
+      · simp [formIsInt_complete_real (show FormIntegralReal v.intVars (objectiveForm v) from hint),
+          dominates_complete hdom]
     · simp [hmin, hmax] at h
 
 /-! ## Single steps and replay -/
@@ -174,17 +182,17 @@ theorem finalValid_complete {v : Vipr} (h : FinalValid v) :
         cases lb with
         | none => simp [finalValid, hr, hmin]
         | some lower =>
-            obtain ⟨e, hlast, hclosed, hdom⟩ := h
+            obtain ⟨⟨e, hlast, hclosed, hdom⟩, hlow⟩ := h
             simp [finalValid, hr, hmin, hlast, closedDominates, hclosed,
-              dominates_complete hdom]
+              dominates_complete hdom, hlow]
       · by_cases hmax : v.objSense = "max"
         · simp only [hmax, ite_true] at h
           cases ub with
           | none => simp [finalValid, hr, hmax]
           | some upper =>
-              obtain ⟨e, hlast, hclosed, hdom⟩ := h
+              obtain ⟨⟨e, hlast, hclosed, hdom⟩, hup⟩ := h
               simp [finalValid, hr, hmax, hlast, closedDominates, hclosed,
-                dominates_complete hdom]
+                dominates_complete hdom, hup]
         · simp [hmin, hmax] at h
 
 /-- Every declaratively valid certificate is accepted by the checker. -/

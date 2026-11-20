@@ -68,11 +68,13 @@ listed under [Modes and parameters](#modes-and-parameters).
 Any other VIPR v1.0 `RTP infeas` file is the same command with a different path.
 
 Two small range examples exercise minimization and maximization, including
-`{ sol }`:
+`{ sol }`, and a third uses the one-unit cutoff that exact SCIP writes for integral
+objectives:
 
 ```bash
 lake exe viprcheck examples/valid_min_range.vipr
 lake exe viprcheck examples/valid_max_range.vipr
+lake exe viprcheck examples/sol_integral_cutoff.vipr
 ```
 
 ## Modes and parameters

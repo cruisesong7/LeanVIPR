@@ -1,0 +1,17 @@
+% min x subject to x >= 5, x integer: the optimum is 5, attained by s1.
+% The objective is integral, so "better than s1" means x <= 5 - 1 = 4: that is the
+% { sol } cutoff d1. Rows derived from it hold only at solutions better than s1, and
+% there are none, so d2 = 2*c1 - d1 may state x >= 6, which dominates OBJ >= 5.
+% The claimed lower bound 5 does not pass s1, as it must.
+VER 1.0
+VAR 1 x
+INT 1 0
+OBJ min 1 0 1
+CON 1 0
+c1 G 5 1 0 1
+RTP range 5 5
+SOL 1
+s1 1 0 5
+DER 2
+d1 L 4 OBJ { sol } -1
+d2 G 6 OBJ { lin 2 0 2 1 -1 } -1

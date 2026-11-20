@@ -48,8 +48,9 @@ After stage 6, in order of value:
   constraints, products with a binary, and disjunctions compiled to linear rows with
   auxiliary variables, each with a proof that the rows say the same thing. This is the
   part of the pipeline where an encoding *is* on the trusted path, unlike the MPS emitter.
-* **Re-check with [con-leche](https://github.com/leanprover/con-leche)**, an external
-  kernel proven consistent, so a `mip` proof does not rest on Lean's C++ kernel.
+* *Optional:* **re-check with [con-leche](https://github.com/leanprover/con-leche)**, an
+  external kernel proven consistent, so a `mip` proof does not rest on Lean's C++ kernel.
+  The checker-side items are in `docs/VERIFICATION.md`.
 * **A native option** (`decide +native`) for certificates too large to reduce in the
   kernel, at the cost of trusting the compiler, as `bv_decide` does.
 

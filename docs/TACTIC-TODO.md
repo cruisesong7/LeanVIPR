@@ -46,8 +46,9 @@ After stage 6, in order of value:
 
 * ~~**Verified modeling encodings**~~ **done** for indicators and products with a binary
   (`addEncodings`, `examples/mip_encoding_tests.lean`), checked per instance rather than
-  proved once in general. Not yet: encoding a disjunction with a fresh binary instead of
-  splitting it into cases, which would save the `2^k` solver calls.
+  proved once in general; and for disjunctions, each a fresh binary with an indicator per
+  side where both sides are bounded, so `k` of them cost one solver call rather than `2^k`
+  (`encodeDisjunctions`, `examples/mip_disjunction_tests.lean`).
 * ~~**`mip?` and `(cert := "…")`**~~ **done**, as `bv_decide?` and `bv_check` do for LRAT
   proofs: the certificates are saved next to the source, and the suggested call reads them
   back, so the file builds without SCIP. A stale file fails `agreesWith`, so nothing new

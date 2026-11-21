@@ -47,6 +47,10 @@ structure MipConfig where
   /-- Take the certificates from this file instead of running the solver. Relative to the
   Lean file's directory, as for `bv_check`; `mip?` writes the file and suggests the call. -/
   cert : String := ""
+  /-- Encode a disjunction of two comparisons with a fresh binary, where both sides have a
+  finite big-M, rather than splitting it into cases: one solver call instead of two.
+  `mip -encodeDisjunctions` splits every one. -/
+  encodeDisjunctions : Bool := true
 
 /-- Elaborate the options of a `mip` tactic. -/
 declare_config_elab elabMipConfig MipConfig
@@ -57,7 +61,8 @@ declare_command_config_elab elabMipCommandConfig MipConfig
 /-- The solver settings the options ask for, leaving `cert` aside. -/
 def MipConfig.toScipConfig (c : MipConfig) : ScipConfig :=
   { workDir := if c.dir.isEmpty then none else some ⟨c.dir⟩
-    timeLimit := if c.timeout == 0 then none else some c.timeout }
+    timeLimit := if c.timeout == 0 then none else some c.timeout
+    encodeDisjunctions := c.encodeDisjunctions }
 
 /-- The directory of the Lean file being elaborated. -/
 def srcDirOf (fileName : String) : System.FilePath :=

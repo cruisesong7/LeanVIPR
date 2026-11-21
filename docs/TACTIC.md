@@ -26,8 +26,11 @@ example (x y : ℤ) (h1 : 27 ≤ 11*x + 13*y) (h2 : 11*x + 13*y ≤ 45)
     (h3 : -10 ≤ 7*x - 9*y) (h4 : 7*x - 9*y ≤ 4) : False := by mip
 ```
 
-Goals may be a comparison, `False`, `¬ ∃ …` or `a ≠ b`; `∨` and `≠` hypotheses are split
-into cases; coefficients may be rational. Strict comparisons are exact over `ℕ` and `ℤ`
+Goals may be a comparison, `False`, `¬ ∃ …` or `a ≠ b`; coefficients may be rational. A
+`∨` of two comparisons, or a `≠` over `ℕ` or `ℤ`, becomes a fresh binary with an indicator
+per side when both sides are bounded, so `k` of them cost one solver call; any other `∨`
+or `≠` is split into cases (`mip -encodeDisjunctions` splits them all). Cases are in
+[`examples/mip_disjunction_tests.lean`](../examples/mip_disjunction_tests.lean). Strict comparisons are exact over `ℕ` and `ℤ`
 and relaxed (soundly) over `ℚ` and `ℝ`. When SCIP finds the problem feasible, the error
 shows its solution and which hypotheses were read. The proof uses the three standard
 axioms. `mip` also closes `m.Infeasible` for a `Mip` you wrote, and `#mip_scip m` reports
@@ -67,6 +70,7 @@ needed. `mip` is for what they cannot prove, each case in
 | integer, needs the omega test's dark shadow (Pugh) | fails | fails: LP relaxation feasible | ✓ |
 | mixed integer and rational, infeasible by integrality | cannot state it | fails | ✓ |
 | an indicator, with a binary on/off variable | cannot state it | ignored; `lp`'s `maximize` gives 30, 150/7 with big-M by hand, where the optimum is 19 | ✓ `mip_maximize` gives 19 |
+| seven reals, each outside an interval: 128 cases | cannot state it | no case splits | ✓ one solver call, seven binaries |
 | large, search outside Lean | — | — | ✓ only the certificate is checked |
 
 ## The tactics

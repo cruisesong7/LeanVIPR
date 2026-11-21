@@ -75,6 +75,9 @@ structure ScipConfig where
   saved? : Option SavedCertificates := none
   /-- Append the text of every certificate the solver writes here, for `mip?`. -/
   record? : Option (IO.Ref (Array String)) := none
+  /-- For the tactics, not the solver: encode a disjunction with a binary where possible,
+  rather than splitting it into cases. -/
+  encodeDisjunctions : Bool := true
   deriving Inhabited
 
 /-! ## Failure, as something a user can act on -/

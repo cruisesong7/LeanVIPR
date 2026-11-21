@@ -38,8 +38,9 @@ comparisons (`≤ < = ≥ >` and their negations) with rational literal coeffici
 including `1/2`, `0.25` and division by a literal over `ℚ` and `ℝ`. Anything else in the
 context is ignored. Strict comparisons are exact over `ℕ` and `ℤ` (tightened by one) and
 *relaxed* to non-strict ones over `ℚ` and `ℝ`: sound, since a relaxed problem with no
-solution means the original has none, but a goal that depends on strictness fails. `∨` and
-`≠` hypotheses are split into cases, each solved separately.
+solution means the original has none, but a goal that depends on strictness fails. A `∨`
+of two bounded comparisons, or a `≠` over `ℕ` or `ℤ`, is encoded with a fresh binary; any
+other `∨` or `≠` is split into cases, each solved separately.
 -/
 
 namespace LeanVIPR.Tactic
@@ -671,6 +672,93 @@ meta def addEncodings (extra : Array Expr := #[]) : TacticM Unit := withMainCont
     try evalTactic (← `(tactic| have $n : $ty := by $seq))
     catch _ => pure ()
 
+/-! ## Disjunctions as binaries
+
+`P ∨ Q`, for comparisons `P` and `Q`, becomes a fresh `δ : ℤ` with `0 ≤ δ ≤ 1`,
+`δ = 0 → P` and `δ = 1 → Q`, obtained by cases on the disjunction; the indicator encoding
+above then gives the big-M rows. So `k` disjunctions cost one solver call rather than
+`2^k`. A strict comparison over `ℕ` or `ℤ` is restated as `a + 1 ≤ b` first, and `a ≠ b`
+over `ℕ` or `ℤ` is read as `a < b ∨ a > b`, so neither loses its strength. A disjunction
+with a side that has no finite big-M over the bounds in context is left to be split. -/
+
+/-- The kind, type and sides of a comparison. -/
+meta def cmpKind? (p : Expr) : Option (Cmp × Expr × Expr × Expr) :=
+  match p.getAppFnArgs with
+  | (``LE.le, #[t, _, a, b]) => some (.le, t, a, b)
+  | (``LT.lt, #[t, _, a, b]) => some (.lt, t, a, b)
+  | (``GE.ge, #[t, _, a, b]) => some (.ge, t, a, b)
+  | (``GT.gt, #[t, _, a, b]) => some (.gt, t, a, b)
+  | (``Eq, #[t, a, b]) => some (.eq, t, a, b)
+  | _ => none
+
+/-- One side of a disjunction, restated for an indicator: the statement, a tactic proving
+it from the side itself (in context as `hside`), and the `a - b` forms it bounds above by
+zero, each of which needs a finite big-M. -/
+structure IndSide where
+  stmt : Term
+  proof : TSyntax `tactic
+  forms : List (Array ℚ × ℚ)
+
+meta def indSide? (atoms : Array Atom) (hside : Ident) (p : Expr) :
+    TacticM (Option IndSide) := do
+  let some (k, t, a, b) := cmpKind? p | return none
+  let some c := carrierOf? t | return none
+  let some (ca, ka) := linearOf atoms a | return none
+  let some (cb, kb) := linearOf atoms b | return none
+  let minus (x y : Array ℚ × ℚ) : Array ℚ × ℚ := (x.1.zipWith (· - ·) y.1, x.2 - y.2)
+  let aS ← Term.exprToSyntax a
+  let bS ← Term.exprToSyntax b
+  let pS ← Term.exprToSyntax p
+  let same ← `(tactic| exact $hside)
+  let relax ← `(tactic| exact le_of_lt $hside)
+  return some <| ← match k with
+    | .le => pure ⟨pS, same, [minus (ca, ka) (cb, kb)]⟩
+    | .ge => pure ⟨pS, same, [minus (cb, kb) (ca, ka)]⟩
+    | .eq => pure ⟨pS, same, [minus (ca, ka) (cb, kb), minus (cb, kb) (ca, ka)]⟩
+    | .lt => if c.isInt then do pure ⟨← `($aS + 1 ≤ $bS), ← `(tactic| omega),
+                                        [minus (ca, ka + 1) (cb, kb)]⟩
+             else do pure ⟨← `($aS ≤ $bS), relax, [minus (ca, ka) (cb, kb)]⟩
+    | .gt => if c.isInt then do pure ⟨← `($bS + 1 ≤ $aS), ← `(tactic| omega),
+                                        [minus (cb, kb + 1) (ca, ka)]⟩
+             else do pure ⟨← `($bS ≤ $aS), relax, [minus (cb, kb) (ca, ka)]⟩
+
+/-- Replace every `∨` of two comparisons, and every `≠` over `ℕ` or `ℤ`, by a binary, where
+both sides have a finite big-M. -/
+meta def encodeDisjunctions : TacticM Unit := withMainContext do
+  let reading ← readContext
+  let bounds := atomBounds reading.atoms reading.rows
+  let finite (s : IndSide) := s.forms.all fun (c, k) => (boxMax bounds c k).isSome
+  let hside := mkIdent (← mkFreshUserName `hside)
+  for d in (← getLCtx) do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    let h ← Term.exprToSyntax (.fvar d.fvarId)
+    -- the two sides, and the disjunction as a term
+    let pair? : Option (Expr × Expr × Term) ← match ty.getAppFnArgs, neq? ty with
+      | (``Or, #[p, q]), _ => pure (some (p, q, h))
+      | _, some (t, a, b) =>
+          if (carrierOf? t).any (·.isInt) then
+            pure (some (← mkAppM ``LT.lt #[a, b], ← mkAppM ``GT.gt #[a, b],
+              ← `(lt_or_gt_of_ne $h)))
+          else pure none
+      | _, _ => pure none
+    let some (p, q, orStx) := pair? | continue
+    let some sp ← indSide? reading.atoms hside p | continue
+    let some sq ← indSide? reading.atoms hside q | continue
+    unless finite sp && finite sq do continue
+    let δ := mkIdent (← mkFreshUserName `δ)
+    try
+      evalTactic (← `(tactic|
+        obtain ⟨$δ, _, _, _, _⟩ : ∃ δ : ℤ, 0 ≤ δ ∧ δ ≤ 1 ∧ (δ = 0 → $(sp.stmt)) ∧
+            (δ = 1 → $(sq.stmt)) := by
+          rcases $orStx:term with $hside:ident | $hside:ident
+          · exact ⟨0, le_refl 0, zero_le_one, fun _ => by $(sp.proof):tactic,
+              fun e => absurd e (by decide)⟩
+          · exact ⟨1, zero_le_one, le_refl 1, fun e => absurd e (by decide),
+              fun _ => by $(sq.proof):tactic⟩))
+      replaceMainGoal [← (← getMainGoal).clear d.fvarId]
+    catch _ => pure ()
+
 /-- Solve one goal that is already `False` and has nothing left to split. -/
 meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := do
   addEncodings
@@ -726,15 +814,33 @@ meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := do
 the number of problems sent to the solver. -/
 meta def maxLeaves : Nat := 64
 
+/-- How many hypotheses `splitOnce?` would split. Each one left doubles the cases. -/
+meta def splittable (goal : MVarId) : MetaM Nat := goal.withContext do
+  let mut k := 0
+  for d in (← getLCtx) do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    if ty.isAppOf ``Or then k := k + 1
+    else if let some (t, _, _) := neq? ty then
+      if (carrierOf? t).isSome then k := k + 1
+  return k
+
 /-- Close the main goal: make it `False`, split cases, and solve each leaf. -/
 meta partial def solveGoal (cfg : ScipConfig) (leaves : IO.Ref Nat) : TacticM Unit := do
-  let g ← negateGoal (← getMainGoal)
+  setGoals [← negateGoal (← getMainGoal)]
+  if cfg.encodeDisjunctions then encodeDisjunctions
+  let g ← getMainGoal
+  -- fail before solving any case, not after the first `maxLeaves`
+  let k ← splittable g
+  let tooMany (n : Nat) : MessageData :=
+    m!"`mip` would need {n} cases, more than {maxLeaves}, to split the `∨` and `≠` in the \
+      context that it does not encode with a binary: those with a side that has no finite \
+      bound over the bounds in context, or all of them under `-encodeDisjunctions`"
+  if (← leaves.get) - 1 + 2 ^ k > maxLeaves then throwError (tooMany (2 ^ k))
   match ← splitOnce? g with
   | some subs =>
       leaves.modify (· + subs.size - 1)
-      if (← leaves.get) > maxLeaves then
-        throwError "`mip` would need more than {maxLeaves} cases to split every `∨` and \
-          `≠` in the context"
+      if (← leaves.get) > maxLeaves then throwError (tooMany (← leaves.get))
       for s in subs do
         setGoals [s]
         solveGoal cfg leaves

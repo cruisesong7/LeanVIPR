@@ -66,7 +66,21 @@ needed. `mip` is for what they cannot prove, each case in
 |---|---|---|---|
 | integer, needs the omega test's dark shadow (Pugh) | fails | fails: LP relaxation feasible | ✓ |
 | mixed integer and rational, infeasible by integrality | cannot state it | fails | ✓ |
+| an indicator, with a binary on/off variable | cannot state it | ignored; `lp`'s `maximize` gives 30, 150/7 with big-M by hand, where the optimum is 19 | ✓ `mip_maximize` gives 19 |
 | large, search outside Lean | — | — | ✓ only the certificate is checked |
+
+## The tactics
+
+| tactic | closes, or adds | options |
+|---|---|---|
+| `mip` | a linear goal — a comparison, `False`, `¬ ∃ …`, `a ≠ b` — over `ℕ ℤ ℚ ℝ` | `(dir := "…")` keeps the `.mps` and `.vipr`; `(timeout := n)` seconds |
+| `mip_maximize e` | adds `hbound : e ≤ N`, `N` the certified maximum; `mip_maximize h : e` names it `h` | as `mip` |
+| `mip_minimize e` | adds `hbound : N ≤ e`, `N` the certified minimum | as `mip` |
+| `mip_certify` | `m.Infeasible`, for a `Mip` you wrote | as `mip` |
+| `#mip_scip m` | nothing: runs SCIP on `m` and reports the certificate and its checks | `(dir := "…")` |
+
+All of them need a certifying SCIP (below), and every proof uses the three standard
+axioms.
 
 ## Setup
 

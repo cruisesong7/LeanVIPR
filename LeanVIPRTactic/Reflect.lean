@@ -2,6 +2,7 @@ module
 
 public meta import LeanVIPRTactic.Certify
 public meta import LeanVIPRTactic.Config
+public meta import Lean.Meta.Tactic.TryThis
 public meta import Mathlib.Tactic.FinCases
 public meta import Mathlib.Tactic.Linarith
 public meta import Mathlib.Tactic.Rify
@@ -440,8 +441,13 @@ meta def rowScript : TacticM Unit := do
 
 /-- Close a linear-arithmetic goal over `ℕ`, `ℤ`, `ℚ` and `ℝ`, or a goal `m.Infeasible`
 for a closed `m : Mip`, with an exact SCIP certificate checked in the kernel. Options:
-`(timeout := n)` seconds, `(dir := "…")` to keep the `.mps` and `.vipr`. -/
+`(timeout := n)` seconds, `(dir := "…")` to keep the `.mps` and `.vipr`, and
+`(cert := "…")` to read the certificates `mip?` saved instead of running the solver. -/
 syntax (name := mipTac) "mip" Lean.Parser.Tactic.optConfig : tactic
+
+/-- `mip`, saving the certificates next to the Lean file and suggesting the
+`mip (cert := "…")` call that reads them back, so the file then builds without SCIP. -/
+syntax (name := mipTrace) "mip?" Lean.Parser.Tactic.optConfig : tactic
 
 /-- A rational as a term that parses back unambiguously in any position. `ℚ`'s `Repr`
 ignores precedence (`some (1/4)` prints as `some 1 / 4`), so the problem is printed here
@@ -739,12 +745,10 @@ meta partial def solveGoal (cfg : ScipConfig) (leaves : IO.Ref Nat) : TacticM Un
       setGoals [g]
       solveLeaf cfg
 
-/-- **The tactic.** Close a linear-arithmetic goal over `ℕ`, `ℤ`, `ℚ` and `ℝ` by asking
-exact SCIP for an infeasibility certificate and checking it in the kernel. A goal that is
-already `m.Infeasible` goes to the certify step directly. -/
-@[tactic mipTac]
-meta def evalMipTac : Tactic := fun stx => do
-  let cfg := (← elabMipConfig stx[1]).toScipConfig
+/-- Close the main goal by asking exact SCIP, or the saved certificates, for an
+infeasibility certificate and checking it in the kernel. A goal that is already
+`m.Infeasible` goes to the certify step directly. -/
+meta def runMipOn (cfg : ScipConfig) : TacticM Unit := do
   let leaves ← IO.mkRef 1
   match ← getGoals with
   | [] => throwError "no goals"
@@ -758,5 +762,20 @@ meta def evalMipTac : Tactic := fun stx => do
       unless left.isEmpty do
         throwError "internal: `mip` left {left.length} goals open"
       setGoals rest
+
+/-- **The tactic.** -/
+@[tactic mipTac]
+meta def evalMipTac : Tactic := fun stx => do
+  runMipOn (← (← elabMipConfig stx[1]).resolve)
+
+@[tactic mipTrace]
+meta def evalMipTrace : Tactic := fun stx => do
+  let file ← savedFileName
+  let (cfg, r) ← (← elabMipConfig stx[1]).recording
+  runMipOn cfg
+  saveRecorded r file
+  -- `cert` as a plain identifier: quoted, hygiene would print it `cert✝`
+  let sugg ← `(tactic| mip ($(mkIdent `cert):ident := $(quote file)))
+  Meta.Tactic.TryThis.addSuggestion stx[0] sugg (origSpan? := stx)
 
 end LeanVIPR.Tactic

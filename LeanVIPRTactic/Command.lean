@@ -47,7 +47,7 @@ syntax (name := mipScipCmd) "#mip_scip" mipTermConfig ppSpace term : command
 meta def elabMipScip : CommandElab := fun stx => do
   match stx with
   | `(#mip_scip $_cfg:mipTermConfig $t:term) => do
-    let cfg := (← elabMipCommandConfig stx[1]).toScipConfig
+    let cfg ← (← elabMipCommandConfig stx[1]).resolve
     let m ← liftTermElabM (elabMip t)
     match ← liftM (m := IO) (runScip m cfg) with
     | .error e => logError e.message

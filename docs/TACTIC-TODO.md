@@ -48,10 +48,11 @@ After stage 6, in order of value:
   (`addEncodings`, `examples/mip_encoding_tests.lean`), checked per instance rather than
   proved once in general. Not yet: encoding a disjunction with a fresh binary instead of
   splitting it into cases, which would save the `2^k` solver calls.
-* **`mip?` and `(cert := "…")`**, as `bv_decide?` and `bv_check` do for LRAT proofs: save
-  the certificates next to the source and suggest the call that reads them back, so the
-  file builds without SCIP. A stale file fails `agreesWith`, so nothing new is trusted. An
-  option rather than a separate `mip_check`, so it serves all three tactics.
+* ~~**`mip?` and `(cert := "…")`**~~ **done**, as `bv_decide?` and `bv_check` do for LRAT
+  proofs: the certificates are saved next to the source, and the suggested call reads them
+  back, so the file builds without SCIP. A stale file fails `agreesWith`, so nothing new
+  is trusted. An option rather than a separate `mip_check`, so it serves all three
+  tactics. `examples/mip_cert_tests.lean` checks with no solver.
 * *Optional:* **re-check with [con-leche](https://github.com/leanprover/con-leche)**, an
   external kernel proven consistent, so a `mip` proof does not rest on Lean's C++ kernel.
   The checker-side items are in `docs/VERIFICATION.md`.

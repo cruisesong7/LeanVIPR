@@ -25,7 +25,8 @@ it relaxes to `e ≥ N`, which the optimum satisfies. For an integer-valued obje
 bound is rounded to the nearest integer that still holds.
 
 If the hypotheses are inconsistent, the goal is closed outright, as `lp`'s `maximize`
-does. If SCIP finds no finite bound, the tactic fails and says so.
+does. If SCIP finds no finite bound, the tactic fails and says so. `mip_maximize?` and
+`mip_minimize?` save the certificates, as `mip?` does.
 
 Nothing here is trusted beyond what `mip` trusts: `pipeline_upper_bound_of_min` and
 `pipeline_lower_bound` carry the certificate to the `Mip`, and the rows are proved back
@@ -47,6 +48,15 @@ syntax (name := mipMaximizeTac) "mip_maximize" mipTermConfig
 the hypotheses; `mip_minimize h : e` names it `h`. Options as for `mip`, in the
 `(opt := v)` form only. -/
 syntax (name := mipMinimizeTac) "mip_minimize" mipTermConfig
+  (atomic(ppSpace ident " : "))? ppSpace term : tactic
+
+/-- `mip_maximize`, saving the certificates next to the Lean file and suggesting the
+`mip_maximize (cert := "…")` call that reads them back, as `mip?` does. -/
+syntax (name := mipMaximizeTrace) "mip_maximize?" mipTermConfig
+  (atomic(ppSpace ident " : "))? ppSpace term : tactic
+
+/-- `mip_minimize`, saving the certificates as `mip?` does. -/
+syntax (name := mipMinimizeTrace) "mip_minimize?" mipTermConfig
   (atomic(ppSpace ident " : "))? ppSpace term : tactic
 
 /-- Turn the certificate's bound into one on `e`, in `e`'s own type. Rounded inward for an
@@ -71,11 +81,10 @@ meta def closeBound : TacticM Unit := do
          rify at hc'; push_cast at hR hc'; linarith)
       | omega))
 
-meta def evalOptimize (maximize : Bool) : Tactic := fun stx => do
+/-- Add the certified bound on `eStx` as `hName`, under `cfg`. -/
+meta def optimizeWith (maximize : Bool) (cfg : ScipConfig) (hName : Name) (eStx : Term) :
+    TacticM Unit := do
   let name := if maximize then "mip_maximize" else "mip_minimize"
-  let cfg := (← elabMipConfig stx[1]).toScipConfig
-  let hName : Name := if stx[2].isNone then `hbound else stx[2][0].getId
-  let eStx : Term := ⟨stx[3]⟩
   let (e, T, carrier) ← withMainContext do
     let e ← instantiateMVars (← Term.elabTermAndSynthesize eStx none)
     let T ← instantiateMVars (← inferType e)
@@ -122,8 +131,16 @@ meta def evalOptimize (maximize : Bool) : Tactic := fun stx => do
       if carrier.isInt then
         let bStx ← typedLit (userBound maximize carrier (fb + ok)) Tstx
         let tyStx ← if maximize then `($eStx ≤ $bStx) else `($bStx ≤ $eStx)
+        -- `mip`'s procedure under this call's `cfg`, so a recording or a saved file
+        -- covers this solve too
         try
-          evalTactic (← `(tactic| have $(mkIdent hName) : $tyStx := by mip))
+          let ty ← instantiateMVars (← Term.elabTermAndSynthesize tyStx (some (mkSort .zero)))
+          let pf ← mkFreshExprSyntheticOpaqueMVar ty
+          let main ← getMainGoal
+          setGoals [pf.mvarId!]
+          runMipOn cfg
+          let (_, main) ← (← main.assert hName ty pf).intro1P
+          setGoals [main]
           return
         catch _ => pure ()
     throwError "`{name}` could not certify a bound: {why}\n{r.summary}\n{reading.describe}"
@@ -177,7 +194,32 @@ meta def evalOptimize (maximize : Bool) : Tactic := fun stx => do
     throwError "internal: the certified bound could not be restated in the objective's terms"
   setGoals [main]
 
-@[tactic mipMaximizeTac] meta def evalMipMaximize : Tactic := evalOptimize true
-@[tactic mipMinimizeTac] meta def evalMipMinimize : Tactic := evalOptimize false
+/-- The four tactics: `maximize` picks the direction, `trace` the `?` form, which records
+the certificates and suggests the call that reads them back. -/
+meta def evalOptimize (maximize trace : Bool) : Tactic := fun stx => do
+  let hStx? : Option Ident := if stx[2].isNone then none else some ⟨stx[2][0]⟩
+  let hName := hStx?.map (·.getId) |>.getD `hbound
+  let eStx : Term := ⟨stx[3]⟩
+  let mcfg ← elabMipConfig stx[1]
+  unless trace do
+    optimizeWith maximize (← mcfg.resolve) hName eStx
+    return
+  let file ← savedFileName
+  let (cfg, r) ← mcfg.recording
+  optimizeWith maximize cfg hName eStx
+  saveRecorded r file
+  let f := quote file
+  let c := mkIdent `cert
+  let sugg ← match maximize, hStx? with
+    | true, none => `(tactic| mip_maximize ($c:ident := $f) $eStx:term)
+    | true, some h => `(tactic| mip_maximize ($c:ident := $f) $h:ident : $eStx:term)
+    | false, none => `(tactic| mip_minimize ($c:ident := $f) $eStx:term)
+    | false, some h => `(tactic| mip_minimize ($c:ident := $f) $h:ident : $eStx:term)
+  Meta.Tactic.TryThis.addSuggestion stx[0] sugg (origSpan? := stx)
+
+@[tactic mipMaximizeTac] meta def evalMipMaximize : Tactic := evalOptimize true false
+@[tactic mipMinimizeTac] meta def evalMipMinimize : Tactic := evalOptimize false false
+@[tactic mipMaximizeTrace] meta def evalMipMaximizeTrace : Tactic := evalOptimize true true
+@[tactic mipMinimizeTrace] meta def evalMipMinimizeTrace : Tactic := evalOptimize false true
 
 end LeanVIPR.Tactic

@@ -49,6 +49,14 @@ open LeanVIPR LeanVIPR.Parser LeanVIPR.Checker LeanVIPR.Impl.Encoder
 
 /-! ## Configuration -/
 
+/-- Certificates read back from a file `mip?` wrote, handed out in the order they were
+recorded: the `k`-th solver call of a tactic gets the `k`-th certificate. Untrusted, like
+the solver's own output — each still goes through `agreesWith` and `checkVipr`. -/
+structure SavedCertificates where
+  path : String
+  certs : Array Vipr
+  next : IO.Ref Nat
+
 /-- How to find and run the solver.
 
 `binary := none` means: take `LEANVIPR_SCIP` if it is set, else `scip` from `PATH`.
@@ -63,6 +71,10 @@ structure ScipConfig where
   workDir : Option System.FilePath := none
   /-- The `NAME` field of the emitted problem. -/
   problemName : String := "leanvipr"
+  /-- Answer from these instead of running the solver. -/
+  saved? : Option SavedCertificates := none
+  /-- Append the text of every certificate the solver writes here, for `mip?`. -/
+  record? : Option (IO.Ref (Array String)) := none
   deriving Inhabited
 
 /-! ## Failure, as something a user can act on -/
@@ -85,6 +97,12 @@ inductive ScipError where
   the parser rightly rejects: VIPR v1.0 can state infeasibility or a range, not
   unboundedness. -/
   | unbounded (binary : String) (path : String)
+  /-- A saved certificate file could not be read, or a certificate in it does not parse. -/
+  | savedUnreadable (path : String) (msg : String)
+  /-- A call needed more certificates than the saved file holds. -/
+  | savedExhausted (path : String) (count : Nat)
+  /-- The `index`-th saved certificate is not about the problem this call built. -/
+  | savedStale (path : String) (index : Nat)
   deriving Inhabited
 
 /-- Trim a log to its last `n` lines, so an error message stays readable. -/
@@ -113,6 +131,15 @@ def ScipError.message : ScipError → String
       "exact SCIP (" ++ binary ++ ") reports the objective unbounded: the certificate it " ++
       "wrote at " ++ path ++ " says `RTP range -inf -infinity`, and VIPR cannot certify " ++
       "unboundedness"
+  | .savedUnreadable path msg =>
+      "the saved certificates in " ++ path ++ " cannot be read: " ++ msg
+  | .savedExhausted path count =>
+      path ++ " holds " ++ toString count ++ " certificates, and this call needs more: " ++
+      "the goal or its hypotheses changed since `mip?` wrote it. Run `mip?` again."
+  | .savedStale path index =>
+      "certificate " ++ toString index ++ " in " ++ path ++ " is not about this problem " ++
+      "(`agreesWith` rejects it): the goal or its hypotheses changed since `mip?` wrote " ++
+      "it. Run `mip?` again."
 
 /-- Whether a certificate's text is SCIP's report of an unbounded objective: an `RTP` line
 whose upper bound is `-infinity`. Only chooses an error message. -/
@@ -242,7 +269,9 @@ def runScipWith (cfg : ScipConfig) (binary : String) (m : Mip) :
     | .error msg =>
         if reportsUnbounded text then return .error (.unbounded binary certPath.toString)
         return .error (.parseFailed binary certPath.toString msg)
-    | .ok v => return .ok (ScipRun.of binary mps m v)
+    | .ok v =>
+        if let some r := cfg.record? then r.modify (·.push text)
+        return .ok (ScipRun.of binary mps m v)
   match cfg.workDir with
   | some dir => do
       IO.FS.createDirAll dir
@@ -331,8 +360,49 @@ def findScip (cfg : ScipConfig) : IO (Except ScipError String) := do
 pipeline's checks against it. Fails with a `ScipError` rather than throwing, so a caller
 in `MetaM` can turn it into a tactic error with no `try`/`catch`. -/
 def runScip (m : Mip) (cfg : ScipConfig := {}) : IO (Except ScipError ScipRun) := do
+  if let some s := cfg.saved? then
+    let k ← s.next.modifyGet fun k => (k, k + 1)
+    let some v := s.certs[k]?
+      | return .error (.savedExhausted s.path s.certs.size)
+    let r := ScipRun.of s.path "" m v
+    unless r.agrees do return .error (.savedStale s.path (k + 1))
+    return .ok r
   match ← findScip cfg with
   | .error e => return .error e
   | .ok binary => runScipWith cfg binary m
+
+/-! ## Saved certificates
+
+A file `mip?` writes is the certificates of one tactic call, concatenated in the order the
+solver wrote them; each begins at its `VER` line, so `viprcheck` reads any one of them once
+split out. -/
+
+/-- Split a saved file into its certificates, each starting at a `VER ` line. -/
+def splitCertificates (text : String) : Array String := Id.run do
+  let mut out : Array String := #[]
+  let mut cur : String := ""
+  for line in text.splitOn "\n" do
+    if line.startsWith "VER " && cur.any (!·.isWhitespace) then
+      out := out.push cur
+      cur := ""
+    cur := cur ++ line ++ "\n"
+  if cur.any (!·.isWhitespace) then out := out.push cur
+  return out
+
+/-- The file's contents: each certificate, ending in a newline. -/
+def joinCertificates (texts : Array String) : String :=
+  String.join (texts.toList.map fun t => if t.endsWith "\n" then t else t ++ "\n")
+
+/-- Read and parse a file `mip?` wrote. -/
+def loadSaved (path : System.FilePath) : IO (Except ScipError SavedCertificates) := do
+  let text ← try IO.FS.readFile path
+    catch e => return .error (.savedUnreadable path.toString (toString e))
+  let mut certs := #[]
+  for (t, i) in (splitCertificates text).zipIdx do
+    match parseVipr t with
+    | .ok v => certs := certs.push v
+    | .error msg =>
+        return .error (.savedUnreadable path.toString s!"certificate {i + 1}: {msg}")
+  return .ok { path := path.toString, certs, next := ← IO.mkRef 0 }
 
 end LeanVIPR.Tactic

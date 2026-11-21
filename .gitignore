@@ -20,6 +20,9 @@ __pycache__/
 *.vrb
 .DS_Store
 
+# Written by the `mip?` test on every run
+/examples/mip_tactic_tests-*.vipr
+
 # Local-only files
 /AGENT_HANDOFF.md
 /examples/audit/

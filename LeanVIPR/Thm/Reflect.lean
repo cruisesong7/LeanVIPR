@@ -104,20 +104,29 @@ theorem absurd_of_infeasible_real {m : Mip} (h : m.Infeasible) (xs : List ℝ)
     (hrows : ∀ c ∈ m.conSLes, satReal c (valuationOfReals xs)) : False :=
   h _ ⟨hint, hrows⟩
 
-/-- **The bridge the tactic uses.** With the integer variables first — `zs` their values,
-`rs` the rest, cast to `ℝ` — integrality holds by construction. What is left to check about
-it is that every declared integer variable is among the first `n`, a decidable fact about
-the problem alone, and that there are `n` integer values. -/
-theorem absurd_of_infeasible_mixed {m : Mip} (h : m.Infeasible) (n : Nat)
+/-- With the integer variables first — `zs` their values, `rs` the rest, cast to `ℝ` —
+integrality holds by construction. What is left to check about it is that every declared
+integer variable is among the first `n`, a decidable fact about the problem alone, and that
+there are `n` integer values. -/
+theorem feasible_mixed {m : Mip} (n : Nat)
     (hint : ∀ j ∈ m.intVars, j < n) (zs : List ℤ) (hlen : zs.length = n) (rs : List ℝ)
     (hrows : ∀ c ∈ m.conSLes,
-      satReal c (valuationOfReals (zs.map (Int.cast : ℤ → ℝ) ++ rs))) : False := by
-  refine absurd_of_infeasible_real h _ (fun j hj => ?_) hrows
+      satReal c (valuationOfReals (zs.map (Int.cast : ℤ → ℝ) ++ rs))) :
+    m.Feasible (valuationOfReals (zs.map (Int.cast : ℤ → ℝ) ++ rs)) := by
+  refine ⟨fun j hj => ?_, hrows⟩
   have hlt : j < zs.length := hlen ▸ hint j hj
   have hlt' : j < (zs.map (Int.cast : ℤ → ℝ)).length := by simpa using hlt
   refine ⟨zs[j], ?_⟩
   simp only [valuationOfReals, List.getD_append _ _ _ _ hlt', List.getD_eq_getElem _ _ hlt',
     List.getElem_map]
+
+/-- **The bridge `mip` uses.** An infeasible `Mip` rules out the user's values, given in
+the order of `feasible_mixed`. -/
+theorem absurd_of_infeasible_mixed {m : Mip} (h : m.Infeasible) (n : Nat)
+    (hint : ∀ j ∈ m.intVars, j < n) (zs : List ℤ) (hlen : zs.length = n) (rs : List ℝ)
+    (hrows : ∀ c ∈ m.conSLes,
+      satReal c (valuationOfReals (zs.map (Int.cast : ℤ → ℝ) ++ rs))) : False :=
+  h _ (feasible_mixed n hint zs hlen rs hrows)
 
 /-! ## Building a problem with its specification attached
 

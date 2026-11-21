@@ -40,7 +40,7 @@ and the staging is what makes that answerable.
 | 3 | `Certify.lean` — `mip_certify` on a goal `m.Infeasible` | the proof term | **done** |
 | 4 | `Reflect.lean` — a `Prop` goal to a `Mip` | the front end | **done**: `ℕ ℤ ℚ ℝ` mixed, rational coefficients, `∨`/`≠` splits |
 | 5 | `Reflect.lean` — `mip` | the one tactic | **done**: `examples/mip_tactic_tests.lean`, 16 cases |
-| 6 | bounds and optima — `mip_bound`, `mip_optimal` | `RTP range` results | next |
+| 6 | `Optimize.lean` — `mip_maximize`, `mip_minimize` | `RTP range` results | **done**: `examples/mip_optimize_tests.lean`, 9 cases |
 
 After stage 6, in order of value:
 

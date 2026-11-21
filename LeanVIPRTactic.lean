@@ -7,6 +7,7 @@ public import LeanVIPRTactic.Eval
 public import LeanVIPRTactic.Command
 public import LeanVIPRTactic.Certify
 public import LeanVIPRTactic.Reflect
+public import LeanVIPRTactic.Optimize
 
 @[expose] public section
 

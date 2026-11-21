@@ -33,6 +33,18 @@ shows its solution and which hypotheses were read. The proof uses the three stan
 axioms. `mip_certify` closes `m.Infeasible` for a `Mip` you wrote; `#mip_scip m` reports
 without proving.
 
+`mip_maximize e` adds `hbound : e ≤ N`, and `mip_minimize e` adds `hbound : N ≤ e`, with `N`
+the optimum SCIP certifies; `mip_maximize h : e` names it `h`. This is the analogue of
+`lp`'s `maximize`, with integer variables allowed:
+
+```lean
+example (x y : ℤ) (h1 : x + y ≤ 4) (h2 : x - y ≤ 1) (h3 : 0 ≤ y) : 2*x + y ≤ 6 := by
+  mip_maximize 2*x + y   -- the LP optimum is 6.5
+  exact hbound
+```
+
+Cases are in [`examples/mip_optimize_tests.lean`](../examples/mip_optimize_tests.lean).
+
 **Is this the right tool for your goal?** Prefer `omega` for small integer goals and
 `linarith` or [`lp`](https://github.com/leanprover/lp) for rational ones: no solver
 needed. `mip` is for what they cannot prove, each case in

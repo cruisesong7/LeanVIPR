@@ -262,11 +262,12 @@ meta def varNames (names : Array Name) : Array String :=
     raw.toList.Nodup
   if ok then raw else raw.mapIdx (fun i _ => s!"v{i}")
 
-/-- The `Mip` a list of read hypotheses stands for, over the atoms they use. Returns the
-used atoms, in order, with the problem. No objective: infeasibility does not use one. -/
-meta def buildMip (atoms : Array Atom) (rows : Array LinRow) : Array Atom × Mip := Id.run do
+/-- The `Mip` a list of read hypotheses stands for, over the atoms they and the objective
+use. Returns the used atoms, in order, with the problem. Infeasibility passes no objective. -/
+meta def buildMip (atoms : Array Atom) (rows : Array LinRow) (obj : Array ℚ := #[])
+    (maximize : Bool := false) : Array Atom × Mip := Id.run do
   let occurs := (List.range atoms.size).filter
-    (fun j => rows.any (fun r => r.coeffs.getD j 0 != 0))
+    (fun j => rows.any (fun r => r.coeffs.getD j 0 != 0) || obj.getD j 0 != 0)
   -- integer variables first: the bridge theorem takes their values as a `List ℤ`
   let isIntAt := fun j => (atoms[j]?.map (·.carrier.isInt)).getD false
   let used := occurs.filter isIntAt ++ occurs.filter (!isIntAt ·)
@@ -285,8 +286,11 @@ meta def buildMip (atoms : Array Atom) (rows : Array LinRow) : Array Atom × Mip
     let b := bounds.getD j {}
     let b := if a.carrier.isNat then b.withLo 0 else b
     ({ name := names[j]!, isInt := a.carrier.isInt, lo := b.lo, hi := b.hi } : Mip.Var)
+  let objForm := (used.zipIdx.filterMap fun (j, k) =>
+    let c := obj.getD j 0
+    if c != 0 then some (⟨k, c⟩ : LeanVIPR.Semantics.Term) else none)
   let mip : Mip :=
-    { vars, objSense := .min, obj := []
+    { vars, objSense := if maximize then .max else .min, obj := objForm
       rows := rest.zipIdx.map (fun (r, i) =>
         { name := s!"r{i}", sense := r.sense, rhs := r.rhs,
           form := (r.coeffs.zipIdx.filter (fun p => p.1 != 0)).toList.map
@@ -423,7 +427,15 @@ meta def mipSyntax (m : Mip) : TacticM Term := do
     let sense := Syntax.mkCharLit r.sense
     let rhs ← ratStx r.rhs
     `(({ name := $nm, sense := $sense, rhs := $rhs, form := [$terms,*] } : LeanVIPR.Mip.Row))
-  `(({ vars := #[$vars,*], objSense := .min, obj := [], rows := #[$rows,*] } : LeanVIPR.Mip))
+  let obj ← m.obj.toArray.mapM fun t => do
+    let i := Syntax.mkNumLit (toString t.idx)
+    let c ← ratStx t.coeff
+    `(({ idx := $i, coeff := $c } : LeanVIPR.Semantics.Term))
+  let sense ← match m.objSense with
+    | .max => `(LeanVIPR.Mip.ObjSense.max)
+    | .min => `(LeanVIPR.Mip.ObjSense.min)
+  `(({ vars := #[$vars,*], objSense := $sense, obj := [$obj,*], rows := #[$rows,*] } :
+      LeanVIPR.Mip))
 
 /-- What `mip` made of the context: the atoms, the rows, and which hypotheses it read and
 which it could not. -/

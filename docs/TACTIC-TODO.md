@@ -37,10 +37,10 @@ and the staging is what makes that answerable.
 |---|---|---|---|
 | 1 | `Scip.lean` — `runScip : Mip → IO (Except ScipError ScipRun)` | a certificate, and the pipeline's `Bool`s | **done, run against real SCIP** |
 | 2 | `Command.lean` — `#mip_scip m` | the same, reported from Lean source; diagnosis | **done** |
-| 3 | `Certify.lean` — `mip_certify` on a goal `m.Infeasible` | the proof term | **done** |
+| 3 | `Certify.lean` — a goal `m.Infeasible`, taken by `mip` | the proof term | **done** |
 | 4 | `Reflect.lean` — a `Prop` goal to a `Mip` | the front end | **done**: `ℕ ℤ ℚ ℝ` mixed, rational coefficients, `∨`/`≠` splits |
-| 5 | `Reflect.lean` — `mip` | the one tactic | **done**: `examples/mip_tactic_tests.lean`, 16 cases |
-| 6 | `Optimize.lean` — `mip_maximize`, `mip_minimize` | `RTP range` results | **done**: `examples/mip_optimize_tests.lean`, 9 cases |
+| 5 | `Reflect.lean` — `mip` | the one tactic | **done**: `examples/mip_tactic_tests.lean`, 24 cases |
+| 6 | `Optimize.lean` — `mip_maximize`, `mip_minimize` | `RTP range` results | **done**: `examples/mip_optimize_tests.lean`, 11 cases |
 
 After stage 6, in order of value:
 
@@ -48,6 +48,10 @@ After stage 6, in order of value:
   (`addEncodings`, `examples/mip_encoding_tests.lean`), checked per instance rather than
   proved once in general. Not yet: encoding a disjunction with a fresh binary instead of
   splitting it into cases, which would save the `2^k` solver calls.
+* **`mip?` and `(cert := "…")`**, as `bv_decide?` and `bv_check` do for LRAT proofs: save
+  the certificates next to the source and suggest the call that reads them back, so the
+  file builds without SCIP. A stale file fails `agreesWith`, so nothing new is trusted. An
+  option rather than a separate `mip_check`, so it serves all three tactics.
 * *Optional:* **re-check with [con-leche](https://github.com/leanprover/con-leche)**, an
   external kernel proven consistent, so a `mip` proof does not rest on Lean's C++ kernel.
   The checker-side items are in `docs/VERIFICATION.md`.
@@ -97,7 +101,7 @@ arrive as the same error.
 
 ## 3. Close a `Mip.Infeasible` goal — next
 
-`mip_certify`, on a goal that is already `m.Infeasible` for a closed `m`. This is the
+`mip`, on a goal that is already `m.Infeasible` for a closed `m`. This is the
 stage where the proof term appears, and the one with the real engineering in it.
 
 [`examples/mip_prop_demo.lean`](../examples/mip_prop_demo.lean) is the proof term written
@@ -152,8 +156,8 @@ binary / solver error or timeout / no certificate / parse error / `agreesWith` r
 `checkVipr` rejected / certificate too large for the kernel / goal shape not recognized.
 Each needs to name the stage it came from, because the remedies are unrelated.
 
-Options worth having: `mip (timeout := 60)`, `mip (dir := "…")` to keep the artifacts,
-and a `mip?` that reports what it would do without touching the goal.
+Options: `mip (timeout := 60)`, and `mip (dir := "…")` to keep the artifacts, in Lean's
+configuration syntax (`Config.lean`). `mip?` is in the list after stage 6.
 
 ## 6. Beyond infeasibility — after 5
 
@@ -175,6 +179,9 @@ and a `mip?` that reports what it would do without touching the goal.
   altogether. Repro: `#mip_scip` on that `Mip`, four lines.
 * **No unboundedness result.** VIPR v1.0's `RTP` is `infeas` or `range`, so unboundedness
   is not expressible in the certificate format.
+* **SCIP writes `RTP range -infinity`**, where the spec and our parser have `-inf`. So
+  `mip_maximize` on an unbounded objective fails with a parse error instead of saying "no
+  finite bound"; case 9 of `examples/mip_optimize_tests.lean` passes, but for that reason.
 * **`mpsRoundTrip` is unproved** (tokenization half only). This costs completeness, not
   soundness — a faulty emitter makes `agreesWith` reject.
 * **No totality.** Exact SCIP can time out or return something that fails agreement, and

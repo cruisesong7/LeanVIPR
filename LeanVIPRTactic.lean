@@ -4,6 +4,7 @@ public import LeanVIPR
 public import LeanVIPRTactic.Roundtrip
 public import LeanVIPRTactic.Scip
 public import LeanVIPRTactic.Eval
+public import LeanVIPRTactic.Config
 public import LeanVIPRTactic.Command
 public import LeanVIPRTactic.Certify
 public import LeanVIPRTactic.Reflect
@@ -20,8 +21,9 @@ metaprogramming, `IO` and any dependency on a solver being installed.
 
 The roadmap is `docs/TACTIC-TODO.md`, and its stages are the files here: `Scip.lean`
 drives the solver from `IO`, `Command.lean` reports what came back without proving
-anything, `Certify.lean` turns a returned certificate into a proof of `m.Infeasible`, and
-`Reflect.lean` turns a `Prop` goal into a `Mip`. `Roundtrip.lean` runs the emitter and
+anything, `Certify.lean` turns a returned certificate into a proof of `m.Infeasible`,
+`Reflect.lean` turns a `Prop` goal into a `Mip`, `Optimize.lean` certifies a bound on an
+objective, and `Config.lean` reads the options all of them take. `Roundtrip.lean` runs the emitter and
 discharges the encoder's preconditions for a concrete problem, which keeps those theorems
 from being vacuous. The shape all of them serve:
 

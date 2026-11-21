@@ -30,7 +30,7 @@ Goals may be a comparison, `False`, `¬ ∃ …` or `a ≠ b`; `∨` and `≠` h
 into cases; coefficients may be rational. Strict comparisons are exact over `ℕ` and `ℤ`
 and relaxed (soundly) over `ℚ` and `ℝ`. When SCIP finds the problem feasible, the error
 shows its solution and which hypotheses were read. The proof uses the three standard
-axioms. `mip_certify` closes `m.Infeasible` for a `Mip` you wrote; `#mip_scip m` reports
+axioms. `mip` also closes `m.Infeasible` for a `Mip` you wrote, and `#mip_scip m` reports
 without proving.
 
 `mip_maximize e` adds `hbound : e ≤ N`, and `mip_minimize e` adds `hbound : N ≤ e`, with `N`
@@ -73,11 +73,14 @@ needed. `mip` is for what they cannot prove, each case in
 
 | tactic | closes, or adds | options |
 |---|---|---|
-| `mip` | a linear goal — a comparison, `False`, `¬ ∃ …`, `a ≠ b` — over `ℕ ℤ ℚ ℝ` | `(dir := "…")` keeps the `.mps` and `.vipr`; `(timeout := n)` seconds |
+| `mip` | a linear goal — a comparison, `False`, `¬ ∃ …`, `a ≠ b` — over `ℕ ℤ ℚ ℝ`; or `m.Infeasible`, for a `Mip` you wrote | `(dir := "…")` keeps the `.mps` and `.vipr`; `(timeout := n)` seconds |
 | `mip_maximize e` | adds `hbound : e ≤ N`, `N` the certified maximum; `mip_maximize h : e` names it `h` | as `mip` |
 | `mip_minimize e` | adds `hbound : N ≤ e`, `N` the certified minimum | as `mip` |
-| `mip_certify` | `m.Infeasible`, for a `Mip` you wrote | as `mip` |
-| `#mip_scip m` | nothing: runs SCIP on `m` and reports the certificate and its checks | `(dir := "…")` |
+| `#mip_scip m` | nothing: runs SCIP on `m` and reports the certificate and its checks | as `mip` |
+
+Options are Lean's configuration syntax, as for `omega` and `decide`, so they combine in
+any order and a misspelled one is an error. Where a term follows them, only the
+`(opt := v)` form is accepted, so `mip_maximize -x` maximizes `-x`.
 
 All of them need a certifying SCIP (below), and every proof uses the three standard
 axioms.
@@ -202,9 +205,10 @@ only), and the five decisions: `agrees`, `relaxedBy`, `accepted`, `objAgrees`,
 `findScip cfg` resolves a binary without solving anything, and `probeBinary` is the
 capability check on its own.
 
-## 4. Turn it into a theorem today
+## 4. Turn it into a theorem
 
-Until stage 3 lands, this part is manual, and it is short.
+`theorem knapsack_infeasible : knapsack.Infeasible := by mip` does all of this. By hand it
+is short, and shows what `mip` builds.
 [`examples/mip_prop_demo.lean`](../examples/mip_prop_demo.lean) is the whole thing,
 compiling in a few seconds with `#print axioms` reporting the standard three.
 

@@ -1,6 +1,7 @@
 module
 
 public meta import LeanVIPRTactic.Certify
+public meta import LeanVIPRTactic.Config
 public meta import Mathlib.Tactic.FinCases
 public meta import Mathlib.Tactic.Linarith
 public meta import Mathlib.Tactic.Rify
@@ -18,7 +19,7 @@ each, in `examples/mip_prop_goals.lean`, and exercised in `examples/mip_tactic_t
   │ negate the goal, split ∨ and ≠           (metacode)
   │ read each hypothesis as a linear row     (metacode, untrusted)
   ▼
-m : Mip  ─ mip_certify ─▶  m.Infeasible      (kernel-checked)
+m : Mip  ─ certify ─▶  m.Infeasible          (kernel-checked; Certify.lean)
   │ Mip.absurd_of_infeasible_mixed
   ▼ False
 ```
@@ -437,8 +438,10 @@ meta def rowScript : TacticM Unit := do
 
 /-! ## The tactic -/
 
-syntax (name := mipTac) "mip"
-  (" (" &"dir" " := " str ")")? (" (" &"timeout" " := " num ")")? : tactic
+/-- Close a linear-arithmetic goal over `ℕ`, `ℤ`, `ℚ` and `ℝ`, or a goal `m.Infeasible`
+for a closed `m : Mip`, with an exact SCIP certificate checked in the kernel. Options:
+`(timeout := n)` seconds, `(dir := "…")` to keep the `.mps` and `.vipr`. -/
+syntax (name := mipTac) "mip" Lean.Parser.Tactic.optConfig : tactic
 
 /-- A rational as a term that parses back unambiguously in any position. `ℚ`'s `Repr`
 ignores precedence (`some (1/4)` prints as `some 1 / 4`), so the problem is printed here
@@ -737,16 +740,20 @@ meta partial def solveGoal (cfg : ScipConfig) (leaves : IO.Ref Nat) : TacticM Un
       solveLeaf cfg
 
 /-- **The tactic.** Close a linear-arithmetic goal over `ℕ`, `ℤ`, `ℚ` and `ℝ` by asking
-exact SCIP for an infeasibility certificate and checking it in the kernel. -/
+exact SCIP for an infeasibility certificate and checking it in the kernel. A goal that is
+already `m.Infeasible` goes to the certify step directly. -/
 @[tactic mipTac]
 meta def evalMipTac : Tactic := fun stx => do
-  let cfg := scipConfigOf stx[1] stx[2]
+  let cfg := (← elabMipConfig stx[1]).toScipConfig
   let leaves ← IO.mkRef 1
   match ← getGoals with
   | [] => throwError "no goals"
   | g :: rest =>
       setGoals [g]
-      solveGoal cfg leaves
+      if (infeasibleGoal? (← instantiateMVars (← g.getType))).isSome then
+        certifyMainGoal cfg
+      else
+        solveGoal cfg leaves
       let left ← getUnsolvedGoals
       unless left.isEmpty do
         throwError "internal: `mip` left {left.length} goals open"

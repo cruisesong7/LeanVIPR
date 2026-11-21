@@ -1,6 +1,7 @@
 module
 
 public meta import LeanVIPRTactic.Eval
+public meta import LeanVIPRTactic.Config
 
 @[expose] public section
 
@@ -32,20 +33,21 @@ open LeanVIPR LeanVIPR.Parser
 
 /-! ## The command -/
 
-/-- Run exact SCIP on a `Mip` and report what came back, without proving anything.
+/-- Run exact SCIP on a `Mip` and report what came back, without proving anything. Options
+as for `mip`, in the `(opt := v)` form only.
 
 ```
 #mip_scip knapsack
 #mip_scip (dir := "/tmp/run") knapsack   -- keep the .mps and .vipr there
 ```
 -/
-syntax (name := mipScipCmd) "#mip_scip " ("(" "dir" " := " str ")")? term : command
+syntax (name := mipScipCmd) "#mip_scip" mipTermConfig ppSpace term : command
 
 @[command_elab mipScipCmd]
 meta def elabMipScip : CommandElab := fun stx => do
   match stx with
-  | `(#mip_scip $[(dir := $dir?)]? $t:term) => do
-    let cfg : ScipConfig := { workDir := dir?.map (fun d => ⟨d.getString⟩) }
+  | `(#mip_scip $_cfg:mipTermConfig $t:term) => do
+    let cfg := (← elabMipCommandConfig stx[1]).toScipConfig
     let m ← liftTermElabM (elabMip t)
     match ← liftM (m := IO) (runScip m cfg) with
     | .error e => logError e.message

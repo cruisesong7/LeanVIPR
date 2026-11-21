@@ -37,13 +37,17 @@ namespace LeanVIPR.Tactic
 open Lean Elab Tactic Meta
 open LeanVIPR LeanVIPR.Parser
 
-syntax (name := mipMaximizeTac) "mip_maximize"
-  (atomic(" (" &"dir" " := " str ")"))? (atomic(" (" &"timeout" " := " num ")"))?
-  (atomic(ppSpace ident " : "))? term : tactic
+/-- `mip_maximize e` adds `hbound : e ≤ N`, `N` the maximum exact SCIP certifies subject to
+the hypotheses; `mip_maximize h : e` names it `h`. Options as for `mip`, in the
+`(opt := v)` form only. -/
+syntax (name := mipMaximizeTac) "mip_maximize" mipTermConfig
+  (atomic(ppSpace ident " : "))? ppSpace term : tactic
 
-syntax (name := mipMinimizeTac) "mip_minimize"
-  (atomic(" (" &"dir" " := " str ")"))? (atomic(" (" &"timeout" " := " num ")"))?
-  (atomic(ppSpace ident " : "))? term : tactic
+/-- `mip_minimize e` adds `hbound : N ≤ e`, `N` the minimum exact SCIP certifies subject to
+the hypotheses; `mip_minimize h : e` names it `h`. Options as for `mip`, in the
+`(opt := v)` form only. -/
+syntax (name := mipMinimizeTac) "mip_minimize" mipTermConfig
+  (atomic(ppSpace ident " : "))? ppSpace term : tactic
 
 /-- Turn the certificate's bound into one on `e`, in `e`'s own type. Rounded inward for an
 integer-valued objective, where that is still a valid bound. -/
@@ -69,9 +73,9 @@ meta def closeBound : TacticM Unit := do
 
 meta def evalOptimize (maximize : Bool) : Tactic := fun stx => do
   let name := if maximize then "mip_maximize" else "mip_minimize"
-  let cfg := scipConfigOf stx[1] stx[2]
-  let hName : Name := if stx[3].isNone then `hbound else stx[3][0].getId
-  let eStx : Term := ⟨stx[4]⟩
+  let cfg := (← elabMipConfig stx[1]).toScipConfig
+  let hName : Name := if stx[2].isNone then `hbound else stx[2][0].getId
+  let eStx : Term := ⟨stx[3]⟩
   let (e, T, carrier) ← withMainContext do
     let e ← instantiateMVars (← Term.elabTermAndSynthesize eStx none)
     let T ← instantiateMVars (← inferType e)

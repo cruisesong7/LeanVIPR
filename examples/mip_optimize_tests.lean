@@ -45,3 +45,14 @@ example (x : ℤ) (h1 : 1 ≤ x) (h2 : x ≤ 0) : (1 : ℕ) = 2 := by
 example (x : ℤ) (h1 : 0 ≤ x) : True := by
   fail_if_success mip_maximize x
   trivial
+-- 10. options, and a name for the hypothesis
+example (x y : ℤ) (h1 : x + y ≤ 4) (h2 : x - y ≤ 1) (h3 : 0 ≤ y) : 2*x + y ≤ 6 := by
+  mip_maximize (timeout := 60) h : 2*x + y
+  exact h
+-- 11. a leading minus belongs to the objective, not to the options
+example (x : ℤ) (h1 : 2 ≤ x) : -x ≤ -2 := by
+  mip_maximize -x
+  exact hbound
+example (x y : ℤ) (h1 : x ≤ 5) (h2 : y ≤ 2) : -7 ≤ -x - y := by
+  mip_minimize -x - y
+  exact hbound

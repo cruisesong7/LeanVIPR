@@ -71,3 +71,6 @@ def half : Mip := probeMip
 #mip_scip half
 
 #mip_scip knapsackFeasible
+
+-- options, in Lean's configuration syntax: the `.mps` and `.vipr` are kept in `dir`
+#mip_scip (dir := "/tmp/leanvipr-mip-smoke") (timeout := 60) knapsack

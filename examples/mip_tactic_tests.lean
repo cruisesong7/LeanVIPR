@@ -71,6 +71,23 @@ example (f : ℝ → ℝ) (a : ℝ) (h1 : f a ≤ 1) (h2 : 2 ≤ f a) : False :=
 example (x y : ℤ) (h1 : x*y ≤ 7) (h2 : 0 ≤ x*y) : x*y + 1 ≤ 8 := by
   mip_maximize x*y + 1
   exact hbound
+-- 22. a goal that is already `m.Infeasible`, for a `Mip` written by hand
+def knapsack : LeanVIPR.Mip where
+  vars := #[{ name := "x", isInt := true, lo := some 0, hi := some 3 },
+            { name := "y", isInt := true, lo := some 0, hi := some 2 },
+            { name := "z", isInt := true, lo := some 0, hi := some 1 }]
+  objSense := .min
+  obj := []
+  rows := #[{ name := "c0", sense := 'E', rhs := 23, form := [⟨0, 6⟩, ⟨1, 10⟩, ⟨2, 15⟩] },
+            { name := "c1", sense := 'G', rhs := 1, form := [⟨0, 1⟩, ⟨1, 1⟩, ⟨2, 1⟩] }]
+example : knapsack.Infeasible := by mip
+-- 23. options, in Lean's configuration syntax; the files are kept in `dir`
+example (x : ℤ) (h1 : 2 * x = 1) : False := by
+  mip (timeout := 60) (dir := "/tmp/leanvipr-mip-options")
+-- 24. a misspelled option is an error, not ignored
+example (x : ℤ) (h1 : 2 * x = 1) : False := by
+  fail_if_success mip (timout := 60)
+  omega
 
 -- the axioms of a `mip` proof are the standard three
 theorem pugh (x y : ℤ) (h1 : 27 ≤ 11*x + 13*y) (h2 : 11*x + 13*y ≤ 45)

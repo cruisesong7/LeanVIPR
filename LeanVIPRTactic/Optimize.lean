@@ -84,6 +84,7 @@ meta def evalOptimize (maximize : Bool) : Tactic := fun stx => withMainContext d
   let some carrier := carrierOf? T
     | throwError "`{name}` needs an objective of type ℕ, ℤ, ℚ or ℝ, not{indentExpr T}"
   let reading ← readContext
+  let reading := { reading with atoms := ← collectOpaque reading.atoms e }
   let some (oc, ok) := linearOf reading.atoms e
     | throwError "`{name}`: the objective is not linear in the variables in context:\
         {indentExpr e}"
@@ -137,10 +138,10 @@ meta def evalOptimize (maximize : Bool) : Tactic := fun stx => withMainContext d
   let mStx ← mipSyntax m
   let cert ← certSyntax r.cert
   let zs ← (atoms.filter (·.carrier.isInt)).mapM fun a => do
-    let x ← Term.exprToSyntax (.fvar a.fvar)
+    let x ← Term.exprToSyntax a.expr
     if a.carrier.isNat then `(($x : ℤ)) else pure x
   let rs ← (atoms.filter (!·.carrier.isInt)).mapM fun a => do
-    let x ← Term.exprToSyntax (.fvar a.fvar)
+    let x ← Term.exprToSyntax a.expr
     match a.carrier with
     | .real => pure x
     | _ => `(($x : ℝ))

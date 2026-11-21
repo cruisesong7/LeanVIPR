@@ -57,6 +57,21 @@ example (x : ℤ) (h1 : 0 ≤ x) (h2 : x ≤ 3) : x ≤ 2 := by
   fail_if_success mip
   sorry
 
+-- Opaque terms, atomized as variables of their own
+
+-- 17. a product, as an opaque integer variable
+example (x y : ℤ) (h1 : x*y ≤ 3) (h2 : 5 ≤ x*y) : False := by mip
+-- 18. truncated subtraction over ℕ, as an opaque natural
+example (n m : ℕ) (h1 : 5 ≤ n - m) (h2 : n - m ≤ 2) : False := by mip
+-- 19. an uninterpreted function: 2·f x ≤ 3 forces f x ≤ 1 over ℤ
+example (f : ℤ → ℤ) (x : ℤ) (h1 : 2 * f x + 1 ≤ 4) (h2 : 2 ≤ f x) : False := by mip
+-- 20. a real application
+example (f : ℝ → ℝ) (a : ℝ) (h1 : f a ≤ 1) (h2 : 2 ≤ f a) : False := by mip
+-- 21. an opaque term in an objective
+example (x y : ℤ) (h1 : x*y ≤ 7) (h2 : 0 ≤ x*y) : x*y + 1 ≤ 8 := by
+  mip_maximize x*y + 1
+  exact hbound
+
 -- the axioms of a `mip` proof are the standard three
 theorem pugh (x y : ℤ) (h1 : 27 ≤ 11*x + 13*y) (h2 : 11*x + 13*y ≤ 45)
     (h3 : -10 ≤ 7*x - 9*y) (h4 : 7*x - 9*y ≤ 4) : False := by mip

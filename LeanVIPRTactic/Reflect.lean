@@ -68,8 +68,11 @@ meta def Carrier.isNat : Carrier → Bool
   | .nat => true
   | _ => false
 
+/-- A variable of the problem: one of the user's locals, or an *opaque* term — a product,
+an application, a truncated subtraction — that the problem treats as a variable of its
+own. `expr` is its value, which the bridge theorem is instantiated at. -/
 structure Atom where
-  fvar : FVarId
+  expr : Expr
   name : Name
   carrier : Carrier
 
@@ -116,17 +119,19 @@ meta partial def ratLit? (e : Expr) : Option ℚ :=
   | (``Int.ofNat, #[n]) => ratLit? n
   | _ => e.rawNatLit?.map (fun k => (k : ℚ))
 
+/-- `e` without the casts around it. -/
+meta partial def stripCasts (e : Expr) : Expr :=
+  match e.getAppFnArgs with
+  | (``Nat.cast, #[_, _, a]) | (``NatCast.natCast, #[_, _, a])
+  | (``Int.cast, #[_, _, a]) | (``IntCast.intCast, #[_, _, a])
+  | (``Rat.cast, #[_, _, a]) | (``RatCast.ratCast, #[_, _, a]) => stripCasts a
+  | _ => e
+
 /-- The variable `e` stands for, seeing through casts: `x`, `(x : ℚ)` and `((x : ℤ) : ℝ)`
 are all the variable `x`. -/
-meta partial def atomOf? (atoms : Array Atom) (e : Expr) : Option Nat :=
-  match e with
-  | .fvar fv => atoms.findIdx? (·.fvar == fv)
-  | _ =>
-    match e.getAppFnArgs with
-    | (``Nat.cast, #[_, _, a]) | (``NatCast.natCast, #[_, _, a])
-    | (``Int.cast, #[_, _, a]) | (``IntCast.intCast, #[_, _, a])
-    | (``Rat.cast, #[_, _, a]) | (``RatCast.ratCast, #[_, _, a]) => atomOf? atoms a
-    | _ => none
+meta def atomOf? (atoms : Array Atom) (e : Expr) : Option Nat :=
+  let e := stripCasts e
+  atoms.findIdx? (·.expr == e)
 
 /-- The linear form of `e` over `atoms`, as coefficients and a constant, or `none` if `e`
 is not linear in them. Casts distribute: they are ring homomorphisms, and the one that is
@@ -165,6 +170,44 @@ meta partial def linearOf (atoms : Array Atom) (e : Expr) : Option (Array ℚ ×
   | (``Nat.cast, #[_, _, a]) | (``NatCast.natCast, #[_, _, a])
   | (``Int.cast, #[_, _, a]) | (``IntCast.intCast, #[_, _, a])
   | (``Rat.cast, #[_, _, a]) | (``RatCast.ratCast, #[_, _, a]) => linearOf atoms a
+  | _ => none
+
+/-- Register the non-linear leaves of `e` as opaque atoms, the way `lp` atomizes: a
+product of two terms, an application, a subtraction over `ℕ` and a division over `ℕ` or
+`ℤ` each become a variable of the problem. That is a relaxation — the problem forgets how
+the atom depends on the rest — so it can only make a provable goal unprovable, never the
+reverse. An atom of type `ℕ` or `ℤ` stays integral, and one of type `ℕ` nonnegative. -/
+meta partial def collectOpaque (atoms : Array Atom) (e : Expr) : MetaM (Array Atom) := do
+  if (linearOf atoms e).isSome then return atoms
+  let add : MetaM (Array Atom) := do
+    if atoms.any (·.expr == e) then return atoms
+    let some c := carrierOf? (← instantiateMVars (← inferType e)) | return atoms
+    return atoms.push { expr := e, name := `t, carrier := c }
+  match e.getAppFnArgs with
+  | (``HAdd.hAdd, #[_, _, _, _, a, b]) => collectOpaque (← collectOpaque atoms a) b
+  | (``HSub.hSub, #[α, _, _, _, a, b]) =>
+      if α.isConstOf ``Nat then add else collectOpaque (← collectOpaque atoms a) b
+  | (``Neg.neg, #[_, _, a]) => collectOpaque atoms a
+  | (``HMul.hMul, #[_, _, _, _, a, b]) =>
+      if (ratLit? a).isSome then collectOpaque atoms b
+      else if (ratLit? b).isSome then collectOpaque atoms a
+      else add
+  | (``HDiv.hDiv, #[α, _, _, _, a, b]) =>
+      if !isDiscrete α && (ratLit? b).isSome then collectOpaque atoms a else add
+  | (``Nat.cast, #[_, _, a]) | (``NatCast.natCast, #[_, _, a])
+  | (``Int.cast, #[_, _, a]) | (``IntCast.intCast, #[_, _, a])
+  | (``Rat.cast, #[_, _, a]) | (``RatCast.ratCast, #[_, _, a]) => collectOpaque atoms a
+  | _ => add
+
+/-- The type and two sides of a comparison, or of the negation of one. -/
+meta def cmpSides? (ty : Expr) : Option (Expr × Expr × Expr) :=
+  let body := match ty.getAppFnArgs with
+    | (``Not, #[p]) => p
+    | _ => ty
+  match body.getAppFnArgs with
+  | (``LE.le, #[t, _, a, b]) | (``LT.lt, #[t, _, a, b])
+  | (``GE.ge, #[t, _, a, b]) | (``GT.gt, #[t, _, a, b]) => some (t, a, b)
+  | (``Eq, #[t, a, b]) => some (t, a, b)
   | _ => none
 
 /-! ## Reading a hypothesis -/
@@ -448,8 +491,13 @@ structure Reading where
 /-- Read the hypotheses into rows over the numeric variables in context. -/
 meta def readContext : TacticM Reading := withMainContext do
   let decls := (← getLCtx).decls.toList.filterMap id |>.filter (!·.isImplementationDetail)
-  let atoms := decls.toArray.filterMap fun d =>
-    (carrierOf? d.type).map (fun c => { fvar := d.fvarId, name := d.userName, carrier := c })
+  let mut atoms : Array Atom := decls.toArray.filterMap fun d =>
+    (carrierOf? d.type).map (fun c => { expr := .fvar d.fvarId, name := d.userName, carrier := c })
+  for d in decls do
+    if ← isProp d.type then
+      if let some (t, a, b) := cmpSides? (← instantiateMVars d.type) then
+        if (carrierOf? t).isSome then
+          atoms ← collectOpaque (← collectOpaque atoms a) b
   let mut rows := #[]
   let mut used := #[]
   let mut ignored := #[]
@@ -479,10 +527,10 @@ meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := withMainContext do
   let (atoms, m) := buildMip reading.atoms reading.rows
   let mStx ← mipSyntax m
   let zs ← (atoms.filter (·.carrier.isInt)).mapM fun a => do
-    let x ← Term.exprToSyntax (.fvar a.fvar)
+    let x ← Term.exprToSyntax a.expr
     if a.carrier.isNat then `(($x : ℤ)) else pure x
   let rs ← (atoms.filter (!·.carrier.isInt)).mapM fun a => do
-    let x ← Term.exprToSyntax (.fvar a.fvar)
+    let x ← Term.exprToSyntax a.expr
     match a.carrier with
     | .real => pure x
     | _ => `(($x : ℝ))

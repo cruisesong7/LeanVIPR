@@ -41,9 +41,11 @@ example (x : ℤ) (h1 : x ≤ 3) : x + 10 ≤ 13 := by
 -- 8. inconsistent hypotheses close the goal
 example (x : ℤ) (h1 : 1 ≤ x) (h2 : x ≤ 0) : (1 : ℕ) = 2 := by
   mip_maximize x
--- 9. unbounded: must fail
+-- 9. unbounded: must fail, and say so
+/-- reports the objective unbounded -/
+#guard_msgs (substring := true) in
 example (x : ℤ) (h1 : 0 ≤ x) : True := by
-  fail_if_success mip_maximize x
+  mip_maximize x
   trivial
 -- 10. options, and a name for the hypothesis
 example (x y : ℤ) (h1 : x + y ≤ 4) (h2 : x - y ≤ 1) (h3 : 0 ≤ y) : 2*x + y ≤ 6 := by

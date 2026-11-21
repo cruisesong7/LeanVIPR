@@ -81,6 +81,10 @@ inductive ScipError where
   | noCertificate (binary : String) (path : String) (log : String)
   /-- A certificate file was written that our parser rejects. -/
   | parseFailed (binary : String) (path : String) (msg : String)
+  /-- The solver found the objective unbounded and wrote `RTP range -inf -infinity`, which
+  the parser rightly rejects: VIPR v1.0 can state infeasibility or a range, not
+  unboundedness. -/
+  | unbounded (binary : String) (path : String)
   deriving Inhabited
 
 /-- Trim a log to its last `n` lines, so an error message stays readable. -/
@@ -105,6 +109,18 @@ def ScipError.message : ScipError → String
   | .parseFailed binary path msg =>
       "the certificate SCIP (" ++ binary ++ ") wrote at " ++ path ++
       " does not parse: " ++ msg
+  | .unbounded binary path =>
+      "exact SCIP (" ++ binary ++ ") reports the objective unbounded: the certificate it " ++
+      "wrote at " ++ path ++ " says `RTP range -inf -infinity`, and VIPR cannot certify " ++
+      "unboundedness"
+
+/-- Whether a certificate's text is SCIP's report of an unbounded objective: an `RTP` line
+whose upper bound is `-infinity`. Only chooses an error message. -/
+def reportsUnbounded (text : String) : Bool :=
+  (text.splitOn "\n").any fun line =>
+    match ((line.replace "\r" "").replace "\t" " ").splitOn " " |>.filter (· ≠ "") with
+    | ["RTP", "range", _, "-infinity"] => true
+    | _ => false
 
 instance : ToString ScipError where
   toString e := e.message
@@ -221,8 +237,11 @@ def runScipWith (cfg : ScipConfig) (binary : String) (m : Mip) :
       return .error (.solverFailed binary out.exitCode log)
     if !(← certPath.pathExists) then
       return .error (.noCertificate binary certPath.toString log)
-    match parseVipr (← IO.FS.readFile certPath) with
-    | .error msg => return .error (.parseFailed binary certPath.toString msg)
+    let text ← IO.FS.readFile certPath
+    match parseVipr text with
+    | .error msg =>
+        if reportsUnbounded text then return .error (.unbounded binary certPath.toString)
+        return .error (.parseFailed binary certPath.toString msg)
     | .ok v => return .ok (ScipRun.of binary mps m v)
   match cfg.workDir with
   | some dir => do

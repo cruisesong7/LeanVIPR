@@ -260,6 +260,7 @@ the remedies are unrelated:
 | `SCIP … exited with code N` | solver error, or the time limit | read the log tail in the message; raise `timeLimit` |
 | `reported success but wrote no certificate` | no `.vipr` appeared | almost always a non-certifying build |
 | `does not parse` | the file is not VIPR v1.0 as we read it | keep it with `(dir := …)` and open it; this is a bug report |
+| `reports the objective unbounded` | `mip_maximize`/`mip_minimize` found no finite bound, which VIPR cannot certify | check which hypotheses were read; a bound may be missing |
 | `agreesWith: NO` | the certificate is not about your problem | compare `conSLes` with the certificate's `CON` block; check for an emitter bug |
 | `checkVipr: NO` | the certificate itself does not check out | a certificate this checker cannot verify — see the known shape in [TACTIC-TODO](TACTIC-TODO.md#open-items-this-roadmap-inherits-or-found) |
 

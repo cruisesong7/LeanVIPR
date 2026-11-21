@@ -91,7 +91,8 @@ meta def evalOptimize (maximize : Bool) : Tactic := fun stx => do
     | throwError "`{name}`: the objective is not linear in the variables in context:\
         {indentExpr e}"
   let (atoms, m) := buildMip reading.atoms reading.rows oc maximize
-  let r ← runScipForGoal m cfg
+  let r ← try runScipForGoal m cfg
+    catch e => throwError "`{name}`: {e.toMessageData}\n{reading.describe}"
   -- inconsistent hypotheses: nothing to bound, so close the goal outright
   if let .infeas := r.cert.rtp then
     if r.provesInfeasible then

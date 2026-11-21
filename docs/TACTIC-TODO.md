@@ -181,10 +181,9 @@ configuration syntax (`Config.lean`). `mip?` is in the list after stage 6.
   is not expressible in the certificate format.
 * **SCIP writes `RTP range -inf -infinity` for an unbounded objective**, and a solution
   with a variable at `+infinity`. The spec allows only a number or `inf` as the upper
-  bound, so the parser rejects the file, rightly. But `mip_maximize` on an unbounded
-  objective then reports a parse error instead of "unbounded"; case 9 of
-  `examples/mip_optimize_tests.lean` passes, but for that reason. The fix belongs in the
-  tactic's message, not the parser.
+  bound, so the parser rejects the file, rightly; `runScip` recognizes the shape and
+  reports the objective unbounded (`ScipError.unbounded`, case 9 of
+  `examples/mip_optimize_tests.lean`).
 * **`mpsRoundTrip` is unproved** (tokenization half only). This costs completeness, not
   soundness — a faulty emitter makes `agreesWith` reject.
 * **No totality.** Exact SCIP can time out or return something that fails agreement, and

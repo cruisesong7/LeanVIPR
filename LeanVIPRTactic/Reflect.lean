@@ -449,6 +449,13 @@ meta def ratStx (q : ℚ) : TacticM Term := do
   let base ← if q.den == 1 then `(($n : ℚ)) else `((($n : ℚ) / $d))
   if q.num < 0 then `((-$base)) else pure base
 
+/-- A rational as a literal of type `T`. -/
+meta def typedLit (q : ℚ) (T : Term) : TacticM Term := do
+  let n := Syntax.mkNumLit (toString q.num.natAbs)
+  let d := Syntax.mkNumLit (toString q.den)
+  let base ← if q.den == 1 then `(($n : $T)) else `((($n : $T) / $d))
+  if q.num < 0 then `((-$base)) else pure base
+
 /-- The built `Mip` as a term. -/
 meta def mipSyntax (m : Mip) : TacticM Term := do
   let optStx (o : Option ℚ) : TacticM Term := do
@@ -518,8 +525,147 @@ meta def Reading.describe (r : Reading) : MessageData :=
   (if relaxed then m!". Strict comparisons over ℚ or ℝ were read as non-strict, so a goal \
     that depends on strictness cannot be proved this way" else m!"") ++ m!"."
 
+/-! ## Encodings: indicators and products with a binary
+
+An indicator `δ = 1 → a ≤ b` and a product `δ * x` with `δ ∈ {0, 1}` are not linear, but
+each implies linear facts once bounds are known: the big-M inequality `a - b ≤ M (1 - δ)`,
+and McCormick's four inequalities around `δ * x`. Those facts are added as hypotheses,
+each proved by splitting `δ = 0 ∨ δ = 1`, and then read like any other. So an encoding is
+checked for the values at hand rather than trusted, and a fact whose proof fails is just
+not added. The product itself is already an opaque variable of the problem. -/
+
+/-- Bounds on each atom from the single-variable rows, rounded inward for integers. -/
+meta def atomBounds (atoms : Array Atom) (rows : Array LinRow) : Array VarBounds := Id.run do
+  let mut b : Array VarBounds := .replicate atoms.size {}
+  for r in rows do
+    match (r.coeffs.zipIdx.filter (fun p => p.1 != 0)).toList with
+    | [(c, j)] =>
+      let v := r.rhs / c
+      let upper := (r.sense == 'L' && c > 0) || (r.sense == 'G' && c < 0)
+      let lower := (r.sense == 'G' && c > 0) || (r.sense == 'L' && c < 0)
+      if upper || r.sense == 'E' then b := b.modify j (·.withHi v)
+      if lower || r.sense == 'E' then b := b.modify j (·.withLo v)
+    | _ => pure ()
+  return atoms.zipIdx.map fun (a, j) =>
+    let bj := b.getD j {}
+    let bj := if a.carrier.isNat then bj.withLo 0 else bj
+    if a.carrier.isInt then
+      { lo := bj.lo.map (fun q => (q.ceil : ℚ)), hi := bj.hi.map (fun q => (q.floor : ℚ)) }
+    else bj
+
+meta def isBinary (atoms : Array Atom) (bounds : Array VarBounds) (j : Nat) : Bool :=
+  match atoms[j]?, bounds[j]? with
+  | some a, some { lo := some l, hi := some u } => a.carrier.isInt && 0 ≤ l && u ≤ 1
+  | _, _ => false
+
+/-- The largest value of `coeffs · x + k` over the bounds, if every needed bound is known. -/
+meta def boxMax (bounds : Array VarBounds) (coeffs : Array ℚ) (k : ℚ) : Option ℚ := do
+  let mut total := k
+  for (c, j) in coeffs.zipIdx do
+    if c == 0 then continue
+    let b := bounds.getD j {}
+    let l ← b.lo
+    let u ← b.hi
+    total := total + max (c * l) (c * u)
+  return total
+
+/-- `δ = k` with `δ` a binary atom and `k` zero or one, either way round. -/
+meta def indicatorPremise? (atoms : Array Atom) (bounds : Array VarBounds) (p : Expr) :
+    Option (Nat × Bool) := do
+  let (``Eq, #[_, l, r]) := p.getAppFnArgs | none
+  let (i, k) ← match atomOf? atoms l, ratLit? r with
+    | some i, some k => some (i, k)
+    | _, _ => match atomOf? atoms r, ratLit? l with
+      | some i, some k => some (i, k)
+      | _, _ => none
+  guard (isBinary atoms bounds i && (k == 0 || k == 1))
+  return (i, k == 1)
+
+/-- The `a ≤ b` pairs a comparison asserts. -/
+meta def lePairs? (q : Expr) : Option (List (Expr × Expr)) :=
+  match q.getAppFnArgs with
+  | (``LE.le, #[_, _, a, b]) | (``LT.lt, #[_, _, a, b]) => some [(a, b)]
+  | (``GE.ge, #[_, _, a, b]) | (``GT.gt, #[_, _, a, b]) => some [(b, a)]
+  | (``Eq, #[_, a, b]) => some [(a, b), (b, a)]
+  | _ => none
+
+/-- Add the linear facts the indicators and binary products in context imply. `extra`
+are terms outside the hypotheses — an objective — whose products should count too. -/
+meta def addEncodings (extra : Array Expr := #[]) : TacticM Unit := withMainContext do
+  let reading ← readContext
+  let atoms ← extra.foldlM (init := reading.atoms) fun as e => collectOpaque as e
+  let bounds := atomBounds atoms reading.rows
+  let real ← `(ℝ)
+  let mut facts : Array (Term × TSyntax `tactic) := #[]
+  -- indicators: `h : δ = k → Q`
+  for d in (← getLCtx) do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    unless ty.isArrow && (← isProp ty) do continue
+    let .forallE _ p q _ := ty | continue
+    let some (i, one) := indicatorPremise? atoms bounds p | continue
+    let some pairs := lePairs? q | continue
+    let some δ := atoms[i]? | continue
+    let δStx ← Term.exprToSyntax δ.expr
+    let h ← Term.exprToSyntax (.fvar d.fvarId)
+    for (a, b) in pairs do
+      let some (ca, ka) := linearOf atoms a | continue
+      let some (cb, kb) := linearOf atoms b | continue
+      let some big := boxMax bounds (ca.zipWith (· - ·) cb) (ka - kb) | continue
+      if big ≤ 0 then continue
+      let aStx ← Term.exprToSyntax a
+      let bStx ← Term.exprToSyntax b
+      let m ← typedLit big real
+      let ty ← if one then `((($aStx : ℝ)) - (($bStx : ℝ)) ≤ $m * (1 - (($δStx : ℝ))))
+        else `((($aStx : ℝ)) - (($bStx : ℝ)) ≤ $m * (($δStx : ℝ)))
+      let pf ← `(tactic|
+        rcases (show $δStx = 0 ∨ $δStx = 1 by omega) with hδ | hδ <;>
+          first
+            | (have hq := $h (by omega); rw [hδ]; push_cast; (try rify at *);
+                (try push_cast at *); linarith)
+            | (rw [hδ]; push_cast; (try rify at *); (try push_cast at *); linarith))
+      facts := facts.push (ty, pf)
+  -- products with a binary: McCormick around `δ * x`
+  for w in atoms do
+    let (``HMul.hMul, #[_, _, _, _, f, g]) := w.expr.getAppFnArgs | continue
+    let pick : Option (Nat × Expr) := match atomOf? atoms f, atomOf? atoms g with
+      | some i, _ => if isBinary atoms bounds i then some (i, g) else
+          match atomOf? atoms g with
+          | some j => if isBinary atoms bounds j then some (j, f) else none
+          | none => none
+      | none, some j => if isBinary atoms bounds j then some (j, f) else none
+      | none, none => none
+    let some (i, x) := pick | continue
+    let some xi := atomOf? atoms x | continue
+    let some { lo := some l, hi := some u } := bounds[xi]? | continue
+    let some δ := atoms[i]? | continue
+    let δStx ← Term.exprToSyntax δ.expr
+    let pStx ← Term.exprToSyntax w.expr
+    let xStx ← Term.exprToSyntax x
+    let lS ← typedLit l real
+    let uS ← typedLit u real
+    let tys ← [
+      `((($pStx : ℝ)) ≤ $uS * (($δStx : ℝ))),
+      `($lS * (($δStx : ℝ)) ≤ (($pStx : ℝ))),
+      `((($pStx : ℝ)) ≤ (($xStx : ℝ)) - $lS * (1 - (($δStx : ℝ)))),
+      `((($xStx : ℝ)) - $uS * (1 - (($δStx : ℝ))) ≤ (($pStx : ℝ)))].mapM id
+    for ty in tys do
+      let pf ← `(tactic|
+        rcases (show $δStx = 0 ∨ $δStx = 1 by omega) with hδ | hδ <;>
+          (rw [hδ]; push_cast; (try rify at *); (try push_cast at *);
+            first | linarith | simp | (simp; linarith)))
+      facts := facts.push (ty, pf)
+  -- add each fact whose proof goes through
+  for (ty, pf) in facts do
+    let n := mkIdent (← mkFreshUserName `hmip_enc)
+    let seq ← `(Lean.Parser.Tactic.tacticSeq| $pf:tactic)
+    try evalTactic (← `(tactic| have $n : $ty := by $seq))
+    catch _ => pure ()
+
 /-- Solve one goal that is already `False` and has nothing left to split. -/
-meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := withMainContext do
+meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := do
+  addEncodings
+  withMainContext do
   let reading ← readContext
   if reading.rows.isEmpty then
     throwError "`mip` could not read any hypothesis as a linear comparison. \

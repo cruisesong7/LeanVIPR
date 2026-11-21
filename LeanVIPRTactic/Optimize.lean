@@ -45,13 +45,6 @@ syntax (name := mipMinimizeTac) "mip_minimize"
   (atomic(" (" &"dir" " := " str ")"))? (atomic(" (" &"timeout" " := " num ")"))?
   (atomic(ppSpace ident " : "))? term : tactic
 
-/-- A rational as a literal of type `T`. -/
-meta def boundStx (q : ℚ) (T : Term) : TacticM Term := do
-  let n := Syntax.mkNumLit (toString q.num.natAbs)
-  let d := Syntax.mkNumLit (toString q.den)
-  let base ← if q.den == 1 then `(($n : $T)) else `((($n : $T) / $d))
-  if q.num < 0 then `((-$base)) else pure base
-
 /-- Turn the certificate's bound into one on `e`, in `e`'s own type. Rounded inward for an
 integer-valued objective, where that is still a valid bound. -/
 meta def userBound (maximize : Bool) (carrier : Carrier) (q : ℚ) : ℚ :=
@@ -74,15 +67,20 @@ meta def closeBound : TacticM Unit := do
          rify at hc'; push_cast at hR hc'; linarith)
       | omega))
 
-meta def evalOptimize (maximize : Bool) : Tactic := fun stx => withMainContext do
+meta def evalOptimize (maximize : Bool) : Tactic := fun stx => do
   let name := if maximize then "mip_maximize" else "mip_minimize"
   let cfg := scipConfigOf stx[1] stx[2]
   let hName : Name := if stx[3].isNone then `hbound else stx[3][0].getId
   let eStx : Term := ⟨stx[4]⟩
-  let e ← instantiateMVars (← Term.elabTermAndSynthesize eStx none)
-  let T ← instantiateMVars (← inferType e)
-  let some carrier := carrierOf? T
-    | throwError "`{name}` needs an objective of type ℕ, ℤ, ℚ or ℝ, not{indentExpr T}"
+  let (e, T, carrier) ← withMainContext do
+    let e ← instantiateMVars (← Term.elabTermAndSynthesize eStx none)
+    let T ← instantiateMVars (← inferType e)
+    let some carrier := carrierOf? T
+      | throwError "`{name}` needs an objective of type ℕ, ℤ, ℚ or ℝ, not{indentExpr T}"
+    pure (e, T, carrier)
+  -- the encodings add hypotheses, so everything after runs in the new context
+  addEncodings #[e]
+  withMainContext do
   let reading ← readContext
   let reading := { reading with atoms := ← collectOpaque reading.atoms e }
   let some (oc, ok) := linearOf reading.atoms e
@@ -117,7 +115,7 @@ meta def evalOptimize (maximize : Bool) : Tactic := fun stx => withMainContext d
     -- This is what rescues certificates without an objective-bound row (scipopt/scip#305).
     if let some fb := candidate? then
       if carrier.isInt then
-        let bStx ← boundStx (userBound maximize carrier (fb + ok)) Tstx
+        let bStx ← typedLit (userBound maximize carrier (fb + ok)) Tstx
         let tyStx ← if maximize then `($eStx ≤ $bStx) else `($bStx ≤ $eStx)
         try
           evalTactic (← `(tactic| have $(mkIdent hName) : $tyStx := by mip))
@@ -129,7 +127,7 @@ meta def evalOptimize (maximize : Bool) : Tactic := fun stx => withMainContext d
     else ``LeanVIPR.Mip.pipeline_lower_bound
   let bound := userBound maximize carrier (formBound + ok)
   -- the hypothesis to add, in the objective's own type
-  let bStx ← boundStx bound Tstx
+  let bStx ← typedLit bound Tstx
   let tyStx ← if maximize then `($eStx ≤ $bStx) else `($bStx ≤ $eStx)
   let boundTy ← instantiateMVars (← Term.elabTermAndSynthesize tyStx (some (mkSort .zero)))
   let pf ← mkFreshExprSyntheticOpaqueMVar boundTy

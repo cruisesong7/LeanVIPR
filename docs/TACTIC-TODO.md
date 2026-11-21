@@ -44,10 +44,10 @@ and the staging is what makes that answerable.
 
 After stage 6, in order of value:
 
-* **Verified modeling encodings**, the analogue of Trestle's `VEncCNF`: indicator
-  constraints, products with a binary, and disjunctions compiled to linear rows with
-  auxiliary variables, each with a proof that the rows say the same thing. This is the
-  part of the pipeline where an encoding *is* on the trusted path, unlike the MPS emitter.
+* ~~**Verified modeling encodings**~~ **done** for indicators and products with a binary
+  (`addEncodings`, `examples/mip_encoding_tests.lean`), checked per instance rather than
+  proved once in general. Not yet: encoding a disjunction with a fresh binary instead of
+  splitting it into cases, which would save the `2^k` solver calls.
 * *Optional:* **re-check with [con-leche](https://github.com/leanprover/con-leche)**, an
   external kernel proven consistent, so a `mip` proof does not rest on Lean's C++ kernel.
   The checker-side items are in `docs/VERIFICATION.md`.

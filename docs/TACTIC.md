@@ -45,6 +45,18 @@ example (x y : ℤ) (h1 : x + y ≤ 4) (h2 : x - y ≤ 1) (h3 : 0 ≤ y) : 2*x +
 
 Cases are in [`examples/mip_optimize_tests.lean`](../examples/mip_optimize_tests.lean).
 
+Beyond linear hypotheses, `mip` reads two more shapes, and treats anything non-linear as
+a variable of its own:
+
+* **Opaque terms** — `x * y`, `f x`, `n - m` over `ℕ`, `x / 2` over `ℤ` — become variables
+  of the problem, integral and nonnegative when their type says so. Sound, as a
+  relaxation.
+* **Indicators** `δ = 1 → a ≤ b` (or `δ = 0 → …`) with `0 ≤ δ ≤ 1` an integer, and
+  **products with a binary** `δ * x` with `x` bounded, become big-M and McCormick
+  inequalities. Each is proved for the case at hand by splitting `δ = 0 ∨ δ = 1`, so no
+  encoding is trusted. Cases are in
+  [`examples/mip_encoding_tests.lean`](../examples/mip_encoding_tests.lean).
+
 **Is this the right tool for your goal?** Prefer `omega` for small integer goals and
 `linarith` or [`lp`](https://github.com/leanprover/lp) for rational ones: no solver
 needed. `mip` is for what they cannot prove, each case in

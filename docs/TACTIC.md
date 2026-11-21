@@ -73,17 +73,35 @@ needed. `mip` is for what they cannot prove, each case in
 
 | tactic | closes, or adds | options |
 |---|---|---|
-| `mip` | a linear goal — a comparison, `False`, `¬ ∃ …`, `a ≠ b` — over `ℕ ℤ ℚ ℝ`; or `m.Infeasible`, for a `Mip` you wrote | `(dir := "…")` keeps the `.mps` and `.vipr`; `(timeout := n)` seconds |
+| `mip` | a linear goal — a comparison, `False`, `¬ ∃ …`, `a ≠ b` — over `ℕ ℤ ℚ ℝ`; or `m.Infeasible`, for a `Mip` you wrote | `(dir := "…")` keeps the `.mps` and `.vipr`; `(timeout := n)` seconds; `(cert := "…")` reads saved certificates instead of running SCIP |
 | `mip_maximize e` | adds `hbound : e ≤ N`, `N` the certified maximum; `mip_maximize h : e` names it `h` | as `mip` |
 | `mip_minimize e` | adds `hbound : N ≤ e`, `N` the certified minimum | as `mip` |
+| `mip?`, `mip_maximize?`, `mip_minimize?` | as without `?`, and save the certificates, suggesting the `(cert := "…")` call | as `mip`, less `cert` |
 | `#mip_scip m` | nothing: runs SCIP on `m` and reports the certificate and its checks | as `mip` |
 
 Options are Lean's configuration syntax, as for `omega` and `decide`, so they combine in
 any order and a misspelled one is an error. Where a term follows them, only the
 `(opt := v)` form is accepted, so `mip_maximize -x` maximizes `-x`.
 
-All of them need a certifying SCIP (below), and every proof uses the three standard
-axioms.
+All of them need a certifying SCIP (below), except to replay saved certificates, and every
+proof uses the three standard axioms.
+
+### Building without SCIP
+
+`mip?` runs SCIP once, writes every certificate the call needed to
+`File-decl-line-col.vipr` next to the Lean file, and suggests the call that reads them
+back:
+
+```lean
+theorem pugh … : False := by
+  mip (cert := "Pugh-pugh-5-2.vipr")   -- was `mip?`; now builds with no solver installed
+```
+
+This is what `bv_decide?` and `bv_check` do for LRAT proofs. The saved file is as
+untrusted as SCIP's output: each certificate is still checked in the kernel against the
+problem the call builds, so after an edit that changes the problem the proof fails with
+"not about this problem" and a prompt to rerun `mip?`.
+[`examples/mip_cert_tests.lean`](../examples/mip_cert_tests.lean) checks this way.
 
 ## Setup
 
@@ -275,6 +293,7 @@ unboundedness — `RTP` is `infeas` or `range`, so there is nothing to transfer.
 | [`examples/mip_prop_goals.lean`](../examples/mip_prop_goals.lean) | **the goals `mip` must take** — one problem in five phrasings, a rational-coefficient goal proved end to end, and what `omega` already does |
 | [`examples/mip_prop_demo.lean`](../examples/mip_prop_demo.lean) | the whole path from a certificate to `¬ ∃ x y z : ℤ, …`, by hand |
 | [`examples/mip_scip_smoke.lean`](../examples/mip_scip_smoke.lean) | `runScip` and `#mip_scip` on an infeasible problem, a feasible one, and the probe problem |
+| [`examples/mip_cert_tests.lean`](../examples/mip_cert_tests.lean) | proofs from certificates `mip?` saved, including the indicator example; checks with no solver |
 
 `mip_scip_smoke.lean` needs a solver, so it is not part of `lake build`:
 

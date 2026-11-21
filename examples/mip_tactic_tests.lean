@@ -88,6 +88,12 @@ example (x : ℤ) (h1 : 2 * x = 1) : False := by
 example (x : ℤ) (h1 : 2 * x = 1) : False := by
   fail_if_success mip (timout := 60)
   omega
+-- 25. `mip?` saves the certificate next to this file and suggests the call that reads it
+-- back; `examples/mip_cert_tests.lean` is the replay side
+/-- mip (cert := "mip_tactic_tests-recorded- -/
+#guard_msgs (substring := true) in
+theorem recorded (x : ℤ) (h1 : 2 * x = 1) : False := by
+  mip?
 
 -- the axioms of a `mip` proof are the standard three
 theorem pugh (x y : ℤ) (h1 : 27 ≤ 11*x + 13*y) (h2 : 11*x + 13*y ≤ 45)

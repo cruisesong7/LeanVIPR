@@ -13,9 +13,25 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.35.0"
 
+# The checker. Deliberately free of metaprogramming, `IO` and any external solver: it is
+# the trusted artifact, so its dependency surface stays as small as possible.
 [[lean_lib]]
 name = "LeanVIPR"
+
+# The tactic, and the driver that shells out to exact SCIP. A separate target rather than a
+# separate repository: it depends on a wide and still-moving slice of the checker
+# (`Mip`, `encodeMps`, `agreesWith`, the pipeline theorems, `Build.VRows`), so a repository
+# boundary would turn every upstream tweak into a cross-repo change plus a repin. Keeping
+# it a target means nothing imports it unless asked, and extracting it later is a file move.
+[[lean_lib]]
+name = "LeanVIPRTactic"
 
 [[lean_exe]]
 name = "viprcheck"
 root = "LeanVIPRMain"
+
+# Gives `encodeMps` a caller. Without one the emitter was only ever mentioned by theorems,
+# so nothing exercised it and the "verified encoder" claim rested on scratch files.
+[[lean_exe]]
+name = "encode-mps"
+root = "EncodeMain"

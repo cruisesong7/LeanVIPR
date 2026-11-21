@@ -184,6 +184,7 @@ LeanVIPR/
                                                     LinForm  Row  Claim  Completeness
                   Thm/Checker.lean      Checker/    Sound  Complete  Parallel
 LeanVIPRMain.lean  -- the `viprcheck` command line
+LeanVIPRTactic.lean  LeanVIPRTactic/  Scip  Command   -- stating a problem in Lean
 ```
 
 Three parts, and the division is the point of the development:
@@ -206,6 +207,13 @@ Every directory has a header file beside it saying what is in it and what to rea
 so `Spec.lean`, `Spec/Syntax.lean` and `Spec/Semantics.lean` are each an index to the
 directory of the same name.
 
+`LeanVIPRTactic/` is a separate library target for the other direction: stating a
+mixed-integer program *in Lean*, asking exact SCIP about it, and getting a theorem about
+the problem you wrote. Nothing in `LeanVIPR` imports it, so the checker stays free of
+metaprogramming, `IO` and any dependency on a solver being installed. Usage is
+[`docs/TACTIC.md`](docs/TACTIC.md); the route to a single `mip` tactic is
+[`docs/TACTIC-TODO.md`](docs/TACTIC-TODO.md).
+
 ## Further reading
 
 | Document | Contents |
@@ -213,6 +221,9 @@ directory of the same name.
 | [`docs/VERIFICATION.md`](docs/VERIFICATION.md) | The trust boundary, and the parser's correctness theorems |
 | [`benchmarks/README.md`](benchmarks/README.md) | The certificate corpus, measured results, and the runners |
 | [`docs/SCIP-SETUP.md`](docs/SCIP-SETUP.md) | Building exact SCIP, and regenerating a `.vipr` from an `.mps` |
+| [`docs/TACTIC.md`](docs/TACTIC.md) | Stating your own problem in Lean and proving it from a solver run |
+| [`docs/TACTIC-TODO.md`](docs/TACTIC-TODO.md) | The roadmap from that to a single `mip` tactic |
+| [`docs/SCIP-ENCODER.md`](docs/SCIP-ENCODER.md) | The `Mip` type and the end-to-end theorems: what is and is not proved |
 | [`examples/malformed/README.md`](examples/malformed/README.md) | Minimal fixtures for the well-formedness conditions `IsValid` states |
 
 ## License

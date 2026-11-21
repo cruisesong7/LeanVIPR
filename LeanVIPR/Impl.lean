@@ -2,6 +2,7 @@ module
 
 public import LeanVIPR.Impl.Parser
 public import LeanVIPR.Impl.Checker
+public import LeanVIPR.Impl.Encoder
 
 @[expose] public section
 
@@ -16,6 +17,7 @@ be read to know what LeanVIPR accepts.
 |---|---|
 | `Impl.Parser` | read a file into the AST, and validate its indices |
 | `Impl.Checker` | replay a certificate with an array-backed pool, deciding each rule's side conditions |
+| `Impl.Encoder` | emit a `Mip` as MPS, and decide whether a certificate is about that same problem |
 
 `Impl.Parser` is the tokenizer, the parser and the validator, with
 `Impl.Parser.Utils` holding the character-level helpers it uses: list splitting, and the

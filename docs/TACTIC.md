@@ -33,7 +33,7 @@ or `≠` is split into cases (`mip -encodeDisjunctions` splits them all). Cases 
 [`examples/mip_disjunction_tests.lean`](../examples/mip_disjunction_tests.lean). Strict comparisons are exact over `ℕ` and `ℤ`
 and relaxed (soundly) over `ℚ` and `ℝ`. When SCIP finds the problem feasible, the error
 shows its solution and which hypotheses were read. The proof uses the three standard
-axioms. `mip` also closes `m.Infeasible` for a `Mip` you wrote, and `#mip_scip m` reports
+axioms, unless `+native` (below). `mip` also closes `m.Infeasible` for a `Mip` you wrote, and `#mip_scip m` reports
 without proving.
 
 `mip_maximize e` adds `hbound : e ≤ N`, and `mip_minimize e` adds `hbound : N ≤ e`, with `N`
@@ -77,18 +77,23 @@ needed. `mip` is for what they cannot prove, each case in
 
 | tactic | closes, or adds | options |
 |---|---|---|
-| `mip` | a linear goal — a comparison, `False`, `¬ ∃ …`, `a ≠ b` — over `ℕ ℤ ℚ ℝ`; or `m.Infeasible`, for a `Mip` you wrote | `(dir := "…")` keeps the `.mps` and `.vipr`; `(timeout := n)` seconds; `(cert := "…")` reads saved certificates instead of running SCIP |
+| `mip` | a linear goal — a comparison, `False`, `¬ ∃ …`, `a ≠ b` — over `ℕ ℤ ℚ ℝ`; or `m.Infeasible`, for a `Mip` you wrote | `(dir := "…")` keeps the `.mps` and `.vipr`; `(timeout := n)` seconds; `(cert := "…")` reads saved certificates instead of running SCIP; `+native` checks the certificate with compiled code instead of the kernel |
 | `mip_maximize e` | adds `hbound : e ≤ N`, `N` the certified maximum; `mip_maximize h : e` names it `h` | as `mip` |
 | `mip_minimize e` | adds `hbound : N ≤ e`, `N` the certified minimum | as `mip` |
 | `mip?`, `mip_maximize?`, `mip_minimize?` | as without `?`, and save the certificates, suggesting the `(cert := "…")` call | as `mip`, less `cert` |
 | `#mip_scip m` | nothing: runs SCIP on `m` and reports the certificate and its checks | as `mip` |
 
 Options are Lean's configuration syntax, as for `omega` and `decide`, so they combine in
-any order and a misspelled one is an error. Where a term follows them, only the
-`(opt := v)` form is accepted, so `mip_maximize -x` maximizes `-x`.
+any order and a misspelled one is an error. Where a term follows them, `-opt` is not
+accepted, so `mip_maximize -x` maximizes `-x`; write `(opt := false)` there.
 
 All of them need a certifying SCIP (below), except to replay saved certificates, and every
-proof uses the three standard axioms.
+proof uses the three standard axioms, except under `+native`: that checks the certificate
+with compiled code (`decide +native`), trusting the compiler, and each check adds an axiom
+of its own to the proof, as `native_decide` does. It is for certificates too large for the
+kernel: the pigeonhole problem of five integers in four values comes back with 1,482
+derivations, which the kernel takes over five minutes on and `+native` checks in seconds.
+Past 1,000 derivations `mip` suggests it before the kernel starts.
 
 ### Building without SCIP
 
@@ -247,8 +252,8 @@ theorem knapsack_infeasible : knapsack.Infeasible :=
 ```
 
 `decide +kernel`, not `decide`: Lean's kernel performs the check, so the compiler is not
-trusted for it. `native_decide` would add a per-theorem axiom and is used nowhere in this
-development.
+trusted for it. `native_decide` adds a per-theorem axiom, and is used only under
+`mip +native`.
 
 From there to the statement you wanted, `Mip.absurd_of_infeasible` is the bridge — and
 integrality is free, because a valuation built by casting integers is integral at every
@@ -286,9 +291,11 @@ the remedies are unrelated:
 | `agreesWith: NO` | the certificate is not about your problem | compare `conSLes` with the certificate's `CON` block; check for an emitter bug |
 | `checkVipr: NO` | the certificate itself does not check out | a certificate this checker cannot verify — see the known shape in [TACTIC-TODO](TACTIC-TODO.md#open-items-this-roadmap-inherits-or-found) |
 
-Two limits that are not errors: the kernel route caps out around 6–7k certificate lines
-(measured in [`docs/SCIP-ENCODER.md`](SCIP-ENCODER.md)), and VIPR v1.0 cannot express
-unboundedness — `RTP` is `infeas` or `range`, so there is nothing to transfer.
+Three limits that are not errors. The kernel check slows down on large certificates —
+over five minutes at 1,482 derivations — which is what `+native` is for. Proving many rows
+back from the hypotheses can pass the default heartbeats, which `set_option
+maxHeartbeats` raises. And VIPR v1.0 cannot express unboundedness — `RTP` is `infeas` or
+`range`, so there is nothing to transfer.
 
 ## Examples
 

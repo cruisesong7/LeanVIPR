@@ -57,8 +57,14 @@ After stage 6, in order of value:
 * *Optional:* **re-check with [con-leche](https://github.com/leanprover/con-leche)**, an
   external kernel proven consistent, so a `mip` proof does not rest on Lean's C++ kernel.
   The checker-side items are in `docs/VERIFICATION.md`.
-* **A native option** (`decide +native`) for certificates too large to reduce in the
-  kernel, at the cost of trusting the compiler, as `bv_decide` does.
+* ~~**A native option**~~ **done**: `mip +native` checks the certificate with `decide
+  +native`, trusting the compiler, as `bv_decide` does. The pigeonhole problem of
+  `examples/mip_cert_tests.lean` (1,482 derivations) takes the kernel over five minutes and
+  `+native` seconds; past 1,000 derivations `mip` suggests it.
+* **Row obligations at scale.** Each row of the problem is proved back from the hypotheses
+  by `simp` and then `omega` or `linarith` over the whole context, which for the 50 rows of
+  the pigeonhole problem passes the default heartbeats. Proving each row from the
+  hypothesis it was read from, `linarith only [h]`, would scale with the problem instead.
 
 ## 1. Drive SCIP from `IO` — done
 

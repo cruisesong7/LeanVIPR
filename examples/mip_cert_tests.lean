@@ -73,8 +73,21 @@ example (x : ℤ) (h : 2 * x = 1) : False := by
 #guard_msgs (substring := true) in
 #mip_scip (cert := "mip_cert_tests-knap-39-2.vipr") knapsack
 
+-- 10. a certificate too large for the kernel (1482 derivations, over five minutes) is
+-- checked by compiled code under `+native`, in seconds. Proving its 50 rows back from the
+-- hypotheses takes past the default heartbeats.
+set_option maxHeartbeats 1000000 in
+theorem pigeon (a b c d e : ℤ) (ha : 1 ≤ a) (ha' : a ≤ 4) (hb : 1 ≤ b) (hb' : b ≤ 4)
+    (hc : 1 ≤ c) (hc' : c ≤ 4) (hd : 1 ≤ d) (hd' : d ≤ 4) (he : 1 ≤ e) (he' : e ≤ 4)
+    (h1 : a ≠ b) (h2 : a ≠ c) (h3 : a ≠ d) (h4 : a ≠ e) (h5 : b ≠ c) (h6 : b ≠ d)
+    (h7 : b ≠ e) (h8 : c ≠ d) (h9 : c ≠ e) (h10 : d ≠ e) : False := by
+  mip +native (cert := "mip_cert_tests-pigeon-84-2.vipr")
+
 -- the proofs use the standard three axioms
 /-- info: 'pugh' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms pugh
 /-- info: 'production' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms production
+-- except under `+native`, which adds one per check
+/-- pigeon._native.decide.ax -/
+#guard_msgs (substring := true) in #print axioms pigeon

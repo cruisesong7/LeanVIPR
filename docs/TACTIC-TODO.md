@@ -61,10 +61,12 @@ After stage 6, in order of value:
   +native`, trusting the compiler, as `bv_decide` does. The pigeonhole problem of
   `examples/mip_cert_tests.lean` (1,482 derivations) takes the kernel over five minutes and
   `+native` seconds; past 1,000 derivations `mip` suggests it.
-* **Row obligations at scale.** Each row of the problem is proved back from the hypotheses
-  by `simp` and then `omega` or `linarith` over the whole context, which for the 50 rows of
-  the pigeonhole problem passes the default heartbeats. Proving each row from the
-  hypothesis it was read from, `linarith only [h]`, would scale with the problem instead.
+* ~~**Row obligations at scale**~~ **done**: each row of the problem is proved from the
+  hypothesis it was read from, with the rest of the context cleared, and each encoding fact
+  from its indicator and the bounds alone; `omega` runs without case splits, which on the
+  indicators an encoding adds would explore `2^k` cases. The pigeonhole proof elaborates
+  in 9 s rather than 34 s. The whole proof, a 64 KB certificate term included, still
+  passes the default heartbeats.
 
 ## 1. Drive SCIP from `IO` — done
 

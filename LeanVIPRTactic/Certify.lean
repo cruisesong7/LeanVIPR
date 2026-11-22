@@ -27,6 +27,11 @@ make this step fail; none can make it close a goal that is false.
 
 The untrusted compiled check runs first, inside `runScip`, so a certificate that will not
 check out is reported in a readable message rather than as minutes of kernel reduction.
+
+Under `+native` the two `Bool`s are decided by `decide +native` instead: compiled code,
+much faster on a large certificate, at the cost of trusting the compiler. Each such check
+adds an axiom of its own to the proof (`thm._native.decide.ax_…`), asserting what the
+compiled code computed, as `native_decide` does.
 -/
 
 namespace LeanVIPR.Tactic
@@ -70,6 +75,23 @@ meta def throwUnusableRun {α : Type} (r : ScipRun) : MetaM α := do
     throwError "the certificate exact SCIP returned does not check out: `checkVipr` \
       rejected it.\n{r.summary}"
 
+/-- How a certificate's checks are decided: by the kernel, or under `+native` by compiled
+code. -/
+meta def checkTactic (cfg : ScipConfig) : TacticM (TSyntax `tactic) :=
+  -- the certificate is a deeply nested literal, past the default recursion depth
+  if cfg.native then `(tactic| set_option maxRecDepth 100000 in decide +native)
+  else `(tactic| set_option maxRecDepth 100000 in decide +kernel)
+
+/-- Past this many derivations, the kernel check can take minutes. -/
+meta def largeCertificate : Nat := 1000
+
+/-- Say how to avoid a long kernel check, before it starts: the kernel gives no progress
+report, so otherwise the editor just waits. -/
+meta def adviseNative (cfg : ScipConfig) (v : Vipr) : MetaM Unit := do
+  if !cfg.native && v.ders.size > largeCertificate then
+    logInfo m!"the certificate has {v.ders.size} derivations, which the kernel may take \
+      minutes to check; `+native` checks them with compiled code instead"
+
 /-- The certify step. Closes the main goal, which must be `m.Infeasible`. -/
 meta def certifyMainGoal (cfg : ScipConfig := {}) : TacticM Unit := withMainContext do
   let goal ← getMainGoal
@@ -81,9 +103,11 @@ meta def certifyMainGoal (cfg : ScipConfig := {}) : TacticM Unit := withMainCont
   unless r.provesInfeasible do throwUnusableRun r
   let cert ← certSyntax r.cert
   -- `decide +kernel`: the two `Bool`s and the claim are reduced by the kernel, not by the
-  -- compiler, so nothing in this file is trusted and no axiom is added.
+  -- compiler, so nothing in this file is trusted and no axiom is added
+  adviseNative cfg r.cert
+  let dec ← checkTactic cfg
   evalTactic (← `(tactic|
     exact LeanVIPR.Mip.pipeline_infeasible (v := $cert)
-      (by decide +kernel) (by decide +kernel) (by decide +kernel)))
+      (by $dec:tactic) (by $dec:tactic) (by $dec:tactic)))
 
 end LeanVIPR.Tactic

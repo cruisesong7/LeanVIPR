@@ -78,6 +78,9 @@ structure ScipConfig where
   /-- For the tactics, not the solver: encode a disjunction with a binary where possible,
   rather than splitting it into cases. -/
   encodeDisjunctions : Bool := true
+  /-- For the tactics: decide a certificate's checks by compiled code (`decide +native`)
+  rather than by the kernel. -/
+  native : Bool := false
   deriving Inhabited
 
 /-! ## Failure, as something a user can act on -/

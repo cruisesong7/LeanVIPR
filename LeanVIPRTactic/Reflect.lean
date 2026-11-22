@@ -877,11 +877,16 @@ meta def evalMipTac : Tactic := fun stx => do
 @[tactic mipTrace]
 meta def evalMipTrace : Tactic := fun stx => do
   let file ← savedFileName
-  let (cfg, r) ← (← elabMipConfig stx[1]).recording
+  let mcfg ← elabMipConfig stx[1]
+  let (cfg, r) ← mcfg.recording
   runMipOn cfg
   saveRecorded r file
-  -- `cert` as a plain identifier: quoted, hygiene would print it `cert✝`
-  let sugg ← `(tactic| mip ($(mkIdent `cert):ident := $(quote file)))
+  -- plain identifiers: quoted, hygiene would print them `cert✝`; and `+native` carries
+  -- over, or the replay would fall back to the kernel
+  let c := mkIdent `cert
+  let f := quote file
+  let sugg ← if mcfg.native then `(tactic| mip +$(mkIdent `native):ident ($c:ident := $f))
+    else `(tactic| mip ($c:ident := $f))
   Meta.Tactic.TryThis.addSuggestion stx[0] sugg (origSpan? := stx)
 
 end LeanVIPR.Tactic

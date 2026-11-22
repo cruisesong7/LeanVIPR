@@ -94,6 +94,12 @@ example (x : ℤ) (h1 : 2 * x = 1) : False := by
 #guard_msgs (substring := true) in
 theorem recorded (x : ℤ) (h1 : 2 * x = 1) : False := by
   mip?
+-- 26. `+native` decides the certificate's checks by compiled code; each check adds an
+-- axiom of its own to the proof
+theorem pughNative (x y : ℤ) (h1 : 27 ≤ 11*x + 13*y) (h2 : 11*x + 13*y ≤ 45)
+    (h3 : -10 ≤ 7*x - 9*y) (h4 : 7*x - 9*y ≤ 4) : False := by mip +native
+/-- pughNative._native.decide.ax -/
+#guard_msgs (substring := true) in #print axioms pughNative
 
 -- the axioms of a `mip` proof are the standard three
 theorem pugh (x y : ℤ) (h1 : 27 ≤ 11*x + 13*y) (h2 : 11*x + 13*y ≤ 45)

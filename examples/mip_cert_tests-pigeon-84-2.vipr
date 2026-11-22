@@ -1,0 +1,1571 @@
+VER 1.0 
+VAR 15 
+t_v13
+t_v12
+t_v11
+t_v10
+t_v9
+t_v8
+t_v7
+t_v6
+t_v5
+t_v4
+t_v3
+t_v2
+t_v1
+t_v0
+t_v14
+INT 15
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+11 
+12 
+13 
+14 
+OBJ min
+ 0  
+CON 50 30
+C0 L -1 3 8 -4 12 -1 13 1
+C1 L 3 3 8 4 12 1 13 -1
+C2 L -1 3 7 -4 11 -1 13 1
+C3 L 3 3 7 4 11 1 13 -1
+C4 L -1 3 6 -4 10 -1 13 1
+C5 L 3 3 6 4 10 1 13 -1
+C6 L -1 3 5 -4 9 -1 13 1
+C7 L 3 3 5 4 9 1 13 -1
+C8 L -1 3 4 -4 11 -1 12 1
+C9 L 3 3 4 4 11 1 12 -1
+C10 L -1 3 3 -4 10 -1 12 1
+C11 L 3 3 3 4 10 1 12 -1
+C12 L -1 3 2 -4 9 -1 12 1
+C13 L 3 3 2 4 9 1 12 -1
+C14 L -1 3 1 -4 10 -1 11 1
+C15 L 3 3 1 4 10 1 11 -1
+C16 L -1 3 0 -4 9 -1 11 1
+C17 L 3 3 0 4 9 1 11 -1
+C18 L -1 3 9 -1 10 1 14 -4
+C19 L 3 3 9 1 10 -1 14 4
+B20 G 0 1 0 1
+B21 L 1 1 0 1
+B22 G 0 1 1 1
+B23 L 1 1 1 1
+B24 G 0 1 2 1
+B25 L 1 1 2 1
+B26 G 0 1 3 1
+B27 L 1 1 3 1
+B28 G 0 1 4 1
+B29 L 1 1 4 1
+B30 G 0 1 5 1
+B31 L 1 1 5 1
+B32 G 0 1 6 1
+B33 L 1 1 6 1
+B34 G 0 1 7 1
+B35 L 1 1 7 1
+B36 G 0 1 8 1
+B37 L 1 1 8 1
+B38 G 1 1 9 1
+B39 L 4 1 9 1
+B40 G 1 1 10 1
+B41 L 4 1 10 1
+B42 G 1 1 11 1
+B43 L 4 1 11 1
+B44 G 1 1 12 1
+B45 L 4 1 12 1
+B46 G 1 1 13 1
+B47 L 4 1 13 1
+B48 G 0 1 14 1
+B49 L 1 1 14 1
+RTP infeas
+SOL 0
+DER 1482
+DualBound_50 G 0 OBJ { lin 0 } -1
+A51 L 0 1 14 1 { asm } -1
+A52 G 1 1 14 1 { asm } -1
+DualBound_53 G 0 OBJ { lin 0 } -1
+ACT_L54 G -3 1 9 -1 { lin 3 19 -1 52 4 41 -1 } -1
+ACT_L55 L 3 1 9 1 { lin 1 54 -1 } -1
+ACT_L56 G 2 1 10 1 { lin 3 19 -1 52 4 38 1 } -1
+ACT_L57 G 2 1 10 1 { lin 1 56 1 } -1
+DualBound_58 G 0 OBJ { lin 0 } -1
+DualBound_59 G 0 OBJ { lin 0 } -1
+DualBound_60 G 0 OBJ { lin 0 } -1
+DualBound_61 G 0 OBJ { lin 0 } -1
+DualBound_62 G 0 OBJ { lin 0 } -1
+DualBound_63 G 0 OBJ { lin 0 } -1
+DualBound_64 G 0 OBJ { lin 0 } -1
+DualBound_65 G 0 OBJ { lin 0 } -1
+A66 L 0 1 8 1 { asm } -1
+A67 G 1 1 8 1 { asm } -1
+DualBound_68 G 0 OBJ { lin 0 } -1
+DualBound_69 G 0 OBJ { lin 0 } -1
+ACT_L70 G -3 1 12 -1 { lin 3 1 -1 67 4 47 -1 } -1
+ACT_L71 L 3 1 12 1 { lin 1 70 -1 } -1
+ACT_L72 G 2 1 13 1 { lin 3 1 -1 67 4 44 1 } -1
+ACT_L73 G 2 1 13 1 { lin 1 72 1 } -1
+DualBound_74 G 0 OBJ { lin 0 } -1
+DualBound_75 G 0 OBJ { lin 0 } -1
+DualBound_76 G 0 OBJ { lin 0 } -1
+DualBound_77 G 0 OBJ { lin 0 } -1
+DualBound_78 G 0 OBJ { lin 0 } -1
+DualBound_79 G 0 OBJ { lin 0 } -1
+DualBound_80 G 0 OBJ { lin 0 } -1
+DualBound_81 G 0 OBJ { lin 0 } -1
+A82 L 0 1 7 1 { asm } -1
+A83 G 1 1 7 1 { asm } -1
+DualBound_84 G 0 OBJ { lin 0 } -1
+DualBound_85 G 0 OBJ { lin 0 } -1
+ACT_L86 G -3 1 11 -1 { lin 3 3 -1 83 4 47 -1 } -1
+ACT_L87 L 3 1 11 1 { lin 1 86 -1 } -1
+DualBound_88 G 0 OBJ { lin 0 } -1
+DualBound_89 G 0 OBJ { lin 0 } -1
+DualBound_90 G 0 OBJ { lin 0 } -1
+DualBound_91 G 0 OBJ { lin 0 } -1
+DualBound_92 G 0 OBJ { lin 0 } -1
+DualBound_93 G 0 OBJ { lin 0 } -1
+DualBound_94 G 0 OBJ { lin 0 } -1
+DualBound_95 G 0 OBJ { lin 0 } -1
+A96 L 0 1 5 1 { asm } -1
+A97 G 1 1 5 1 { asm } -1
+DualBound_98 G 0 OBJ { lin 0 } -1
+DualBound_99 G 0 OBJ { lin 0 } -1
+DualBound_100 G 0 OBJ { lin 0 } -1
+DualBound_101 G 0 OBJ { lin 0 } -1
+DualBound_102 G 0 OBJ { lin 0 } -1
+DualBound_103 G 0 OBJ { lin 0 } -1
+DualBound_104 G 0 OBJ { lin 0 } -1
+DualBound_105 G 0 OBJ { lin 0 } -1
+DualBound_106 G 0 OBJ { lin 0 } -1
+DualBound_107 G 0 OBJ { lin 0 } -1
+A108 L 0 1 6 1 { asm } -1
+A109 G 1 1 6 1 { asm } -1
+DualBound_110 G 0 OBJ { lin 0 } -1
+DualBound_111 G 0 OBJ { lin 0 } -1
+ACT_L112 G -3 1 10 -1 { lin 3 5 -1 109 4 47 -1 } -1
+ACT_L113 L 3 1 10 1 { lin 1 112 -1 } -1
+ACT_L114 G 3 1 13 1 { lin 3 5 -1 109 4 57 1 } -1
+ACT_L115 G 3 1 13 1 { lin 1 114 1 } -1
+ACT_L116 G -2 1 9 -1 { lin 3 19 -1 52 4 113 -1 } -1
+ACT_L117 L 2 1 9 1 { lin 1 116 -1 } -1
+DualBound_118 G 0 OBJ { lin 0 } -1
+DualBound_119 G 0 OBJ { lin 0 } -1
+DualBound_120 G 0 OBJ { lin 0 } -1
+DualBound_121 G 0 OBJ { lin 0 } -1
+DualBound_122 G 0 OBJ { lin 0 } -1
+DualBound_123 G 0 OBJ { lin 0 } -1
+DualBound_124 G 0 OBJ { lin 0 } -1
+DualBound_125 G 0 OBJ { lin 0 } -1
+A126 L 0 1 4 1 { asm } -1
+A127 G 1 1 4 1 { asm } -1
+DualBound_128 G 0 OBJ { lin 0 } -1
+DualBound_129 G 0 OBJ { lin 0 } -1
+ACT_L130 G -2 1 11 -1 { lin 3 9 -1 127 4 71 -1 } -1
+ACT_L131 L 2 1 11 1 { lin 1 130 -1 } -1
+ACT_L132 G 2 1 12 1 { lin 3 9 -1 127 4 42 1 } -1
+ACT_L133 G 2 1 12 1 { lin 1 132 1 } -1
+ACT_L134 G 1 1 2 4 { lin 3 12 -1 117 -1 133 1 } -1
+ACT_L135 G 1/4 1 2 1 { lin 1 134 1/4 } -1
+ACT_R136 G 1 1 2 1 { rnd 1 135 1 } -1
+ACT_L137 G -3 1 1 -4 { lin 3 15 -1 57 1 131 -1 } -1
+ACT_L138 L 3/4 1 1 1 { lin 1 137 -1/4 } -1
+ACT_R139 L 0 1 1 1 { rnd 1 138 1 } -1
+DualBound_140 G 0 OBJ { lin 0 } -1
+DualBound_141 G 0 OBJ { lin 0 } -1
+DualBound_142 G 0 OBJ { lin 0 } -1
+DualBound_143 G 0 OBJ { lin 0 } -1
+DualBound_144 G 0 OBJ { lin 0 } -1
+DualBound_145 G 0 OBJ { lin 0 } -1
+DualBound_146 G 0 OBJ { lin 0 } -1
+DualBound_147 G 0 OBJ { lin 0 } -1
+A148 L 0 1 3 1 { asm } -1
+A149 G 1 1 3 1 { asm } -1
+DualBound_150 G 0 OBJ { lin 0 } -1
+DualBound_151 G 0 OBJ { lin 0 } -1
+ACT_L152 G -2 1 10 -1 { lin 3 11 -1 149 4 71 -1 } -1
+ACT_L153 L 2 1 10 1 { lin 1 152 -1 } -1
+ACT_L154 G 3 1 12 1 { lin 3 11 -1 149 4 57 1 } -1
+ACT_L155 G 3 1 12 1 { lin 1 154 1 } -1
+ACT_L156 G -1 1 11 -1 { lin 3 14 -1 139 -4 153 -1 } -1
+ACT_L157 L 1 1 11 1 { lin 1 156 -1 } -1
+ACT_L158 G 4 1 13 1 { lin 3 1 -1 67 4 155 1 } -1
+ACT_L159 G 4 1 13 1 { lin 1 158 1 } -1
+ACT_L160 G -1 1 9 -1 { lin 3 19 -1 52 4 153 -1 } -1
+ACT_L161 L 1 1 9 1 { lin 1 160 -1 } -1
+ACT_L162 G 1 1 0 4 { lin 3 16 -1 161 -1 42 1 } -1
+ACT_L163 G 1/4 1 0 1 { lin 1 162 1/4 } -1
+ACT_R164 G 1 1 0 1 { rnd 1 163 1 } -1
+ActivityConflict165 G 1 0 { lin 4 17 -1 164 4 38 1 157 -1 } -1
+DualBound_166 G 0 OBJ { lin 0 } -1
+ACT_L167 G 3 1 10 1 { lin 3 10 -1 148 -4 133 1 } -1
+ACT_L168 G 3 1 10 1 { lin 1 167 1 } -1
+ACT_L169 G -2 1 12 -1 { lin 3 10 -1 148 -4 113 -1 } -1
+ACT_L170 L 2 1 12 1 { lin 1 169 -1 } -1
+ACT_L171 G 4 1 13 1 { lin 3 5 -1 109 4 168 1 } -1
+ACT_L172 G 4 1 13 1 { lin 1 171 1 } -1
+ACT_L173 G -1 1 9 -1 { lin 3 13 -1 136 4 170 -1 } -1
+ACT_L174 L 1 1 9 1 { lin 1 173 -1 } -1
+ACT_L175 G -1 1 11 -1 { lin 3 9 -1 127 4 170 -1 } -1
+ACT_L176 L 1 1 11 1 { lin 1 175 -1 } -1
+ACT_L177 G -3 1 0 -4 { lin 3 17 -1 38 1 176 -1 } -1
+ACT_L178 L 3/4 1 0 1 { lin 1 177 -1/4 } -1
+ACT_R179 L 0 1 0 1 { rnd 1 178 1 } -1
+ActivityConflict180 G 1 0 { lin 4 16 -1 179 -4 174 -1 42 1 } -1
+UnsplitNode13_181 G 1 0 { uns 165 149  180 148  } -1
+DualBound_182 G 0 OBJ { lin 0 } -1
+ACT_L183 G 2 1 9 1 { lin 3 18 -1 51 -4 40 1 } -1
+ACT_L184 G 2 1 9 1 { lin 1 183 1 } -1
+ACT_L185 G -3 1 10 -1 { lin 3 18 -1 51 -4 39 -1 } -1
+ACT_L186 L 3 1 10 1 { lin 1 185 -1 } -1
+DualBound_187 G 0 OBJ { lin 0 } -1
+DualBound_188 G 0 OBJ { lin 0 } -1
+DualBound_189 G 0 OBJ { lin 0 } -1
+DualBound_190 G 0 OBJ { lin 0 } -1
+DualBound_191 G 0 OBJ { lin 0 } -1
+DualBound_192 G 0 OBJ { lin 0 } -1
+DualBound_193 G 0 OBJ { lin 0 } -1
+DualBound_194 G 0 OBJ { lin 0 } -1
+A195 L 0 1 8 1 { asm } -1
+A196 G 1 1 8 1 { asm } -1
+DualBound_197 G 0 OBJ { lin 0 } -1
+DualBound_198 G 0 OBJ { lin 0 } -1
+ACT_L199 G 2 1 12 1 { lin 3 0 -1 195 -4 46 1 } -1
+ACT_L200 G 2 1 12 1 { lin 1 199 1 } -1
+ACT_L201 G -3 1 13 -1 { lin 3 0 -1 195 -4 45 -1 } -1
+ACT_L202 L 3 1 13 1 { lin 1 201 -1 } -1
+DualBound_203 G 0 OBJ { lin 0 } -1
+DualBound_204 G 0 OBJ { lin 0 } -1
+DualBound_205 G 0 OBJ { lin 0 } -1
+DualBound_206 G 0 OBJ { lin 0 } -1
+DualBound_207 G 0 OBJ { lin 0 } -1
+DualBound_208 G 0 OBJ { lin 0 } -1
+DualBound_209 G 0 OBJ { lin 0 } -1
+DualBound_210 G 0 OBJ { lin 0 } -1
+A211 L 0 1 4 1 { asm } -1
+A212 G 1 1 4 1 { asm } -1
+DualBound_213 G 0 OBJ { lin 0 } -1
+DualBound_214 G 0 OBJ { lin 0 } -1
+ACT_L215 G -3 1 11 -1 { lin 3 9 -1 212 4 45 -1 } -1
+ACT_L216 L 3 1 11 1 { lin 1 215 -1 } -1
+DualBound_217 G 0 OBJ { lin 0 } -1
+DualBound_218 G 0 OBJ { lin 0 } -1
+DualBound_219 G 0 OBJ { lin 0 } -1
+DualBound_220 G 0 OBJ { lin 0 } -1
+DualBound_221 G 0 OBJ { lin 0 } -1
+DualBound_222 G 0 OBJ { lin 0 } -1
+DualBound_223 G 0 OBJ { lin 0 } -1
+DualBound_224 G 0 OBJ { lin 0 } -1
+A225 L 0 1 7 1 { asm } -1
+A226 G 1 1 7 1 { asm } -1
+DualBound_227 G 0 OBJ { lin 0 } -1
+DualBound_228 G 0 OBJ { lin 0 } -1
+ACT_L229 G 2 1 11 1 { lin 3 2 -1 225 -4 46 1 } -1
+ACT_L230 G 2 1 11 1 { lin 1 229 1 } -1
+ACT_L231 G -2 1 13 -1 { lin 3 2 -1 225 -4 216 -1 } -1
+ACT_L232 L 2 1 13 1 { lin 1 231 -1 } -1
+ACT_L233 G -3 1 5 -4 { lin 3 7 -1 184 1 232 -1 } -1
+ACT_L234 L 3/4 1 5 1 { lin 1 233 -1/4 } -1
+ACT_R235 L 0 1 5 1 { rnd 1 234 1 } -1
+ACT_L236 G 3 1 12 1 { lin 3 9 -1 212 4 230 1 } -1
+ACT_L237 G 3 1 12 1 { lin 1 236 1 } -1
+ACT_L238 G 1 1 3 4 { lin 3 10 -1 186 -1 237 1 } -1
+ACT_L239 G 1/4 1 3 1 { lin 1 238 1/4 } -1
+ACT_R240 G 1 1 3 1 { rnd 1 239 1 } -1
+DualBound_241 G 0 OBJ { lin 0 } -1
+DualBound_242 G 0 OBJ { lin 0 } -1
+DualBound_243 G 0 OBJ { lin 0 } -1
+DualBound_244 G 0 OBJ { lin 0 } -1
+DualBound_245 G 0 OBJ { lin 0 } -1
+DualBound_246 G 0 OBJ { lin 0 } -1
+DualBound_247 G 0 OBJ { lin 0 } -1
+DualBound_248 G 0 OBJ { lin 0 } -1
+A249 L 0 1 2 1 { asm } -1
+A250 G 1 1 2 1 { asm } -1
+DualBound_251 G 0 OBJ { lin 0 } -1
+DualBound_252 G 0 OBJ { lin 0 } -1
+ACT_L253 G 4 1 9 1 { lin 3 12 -1 249 -4 237 1 } -1
+ACT_L254 G 4 1 9 1 { lin 1 253 1 } -1
+ACT_L255 G -3 1 12 -1 { lin 3 12 -1 249 -4 39 -1 } -1
+ACT_L256 L 3 1 12 1 { lin 1 255 -1 } -1
+ACT_L257 G -2 1 10 -1 { lin 3 11 -1 240 4 256 -1 } -1
+ACT_L258 L 2 1 10 1 { lin 1 257 -1 } -1
+ACT_L259 G -2 1 11 -1 { lin 3 9 -1 212 4 256 -1 } -1
+ACT_L260 L 2 1 11 1 { lin 1 259 -1 } -1
+ACT_L261 G -1 1 0 -4 { lin 3 17 -1 254 1 260 -1 } -1
+ACT_L262 L 1/4 1 0 1 { lin 1 261 -1/4 } -1
+ACT_R263 L 0 1 0 1 { rnd 1 262 1 } -1
+ACT_L264 G -1 1 13 -1 { lin 3 2 -1 225 -4 260 -1 } -1
+ACT_L265 L 1 1 13 1 { lin 1 264 -1 } -1
+ACT_L266 G 1 1 1 4 { lin 3 14 -1 258 -1 230 1 } -1
+ACT_L267 G 1/4 1 1 1 { lin 1 266 1/4 } -1
+ACT_R268 G 1 1 1 1 { rnd 1 267 1 } -1
+ACT_L269 G -3 1 6 -4 { lin 3 5 -1 40 1 265 -1 } -1
+ACT_L270 L 3/4 1 6 1 { lin 1 269 -1/4 } -1
+ACT_R271 L 0 1 6 1 { rnd 1 270 1 } -1
+ACT_L272 G 2 1 10 1 { lin 3 4 -1 271 -4 46 1 } -1
+ACT_L273 G 2 1 10 1 { lin 1 272 1 } -1
+ActivityConflict274 G 1 0 { lin 4 15 -1 268 4 273 1 260 -1 } -1
+DualBound_275 G 0 OBJ { lin 0 } -1
+ACT_L276 G -3 1 9 -1 { lin 3 13 -1 250 4 45 -1 } -1
+ACT_L277 L 3 1 9 1 { lin 1 276 -1 } -1
+ACT_L278 G -2 1 10 -1 { lin 3 18 -1 51 -4 277 -1 } -1
+ACT_L279 L 2 1 10 1 { lin 1 278 -1 } -1
+ACT_L280 G 1 1 1 4 { lin 3 14 -1 279 -1 230 1 } -1
+ACT_L281 G 1/4 1 1 1 { lin 1 280 1/4 } -1
+ACT_R282 G 1 1 1 1 { rnd 1 281 1 } -1
+DualBound_283 G 0 OBJ { lin 0 } -1
+DualBound_284 G 0 OBJ { lin 0 } -1
+DualBound_285 G 0 OBJ { lin 0 } -1
+DualBound_286 G 0 OBJ { lin 0 } -1
+DualBound_287 G 0 OBJ { lin 0 } -1
+DualBound_288 G 0 OBJ { lin 0 } -1
+DualBound_289 G 0 OBJ { lin 0 } -1
+DualBound_290 G 0 OBJ { lin 0 } -1
+A291 L 0 1 6 1 { asm } -1
+A292 G 1 1 6 1 { asm } -1
+DualBound_293 G 0 OBJ { lin 0 } -1
+DualBound_294 G 0 OBJ { lin 0 } -1
+ACT_L295 G -1 1 10 -1 { lin 3 5 -1 292 4 232 -1 } -1
+ACT_L296 L 1 1 10 1 { lin 1 295 -1 } -1
+ACT_L297 G 2 1 13 1 { lin 3 5 -1 292 4 40 1 } -1
+ACT_L298 G 2 1 13 1 { lin 1 297 1 } -1
+ACT_L299 G 3 1 9 1 { lin 3 6 -1 235 -4 298 1 } -1
+ACT_L300 G 3 1 9 1 { lin 1 299 1 } -1
+ACT_L301 G 3 1 11 1 { lin 3 2 -1 225 -4 298 1 } -1
+ACT_L302 G 3 1 11 1 { lin 1 301 1 } -1
+ACT_L303 G -3 1 0 -4 { lin 3 17 -1 300 1 216 -1 } -1
+ACT_L304 L 3/4 1 0 1 { lin 1 303 -1/4 } -1
+ACT_R305 L 0 1 0 1 { rnd 1 304 1 } -1
+ActivityConflict306 G 1 0 { lin 4 16 -1 305 -4 277 -1 302 1 } -1
+DualBound_307 G 0 OBJ { lin 0 } -1
+ACT_L308 G 2 1 10 1 { lin 3 4 -1 291 -4 46 1 } -1
+ACT_L309 G 2 1 10 1 { lin 1 308 1 } -1
+ACT_L310 G -1 1 13 -1 { lin 3 4 -1 291 -4 279 -1 } -1
+ACT_L311 L 1 1 13 1 { lin 1 310 -1 } -1
+ACT_L312 G 3 1 9 1 { lin 3 18 -1 51 -4 309 1 } -1
+ACT_L313 G 3 1 9 1 { lin 1 312 1 } -1
+ACT_L314 G 3 1 11 1 { lin 3 15 -1 282 4 309 1 } -1
+ACT_L315 G 3 1 11 1 { lin 1 314 1 } -1
+ACT_L316 G 1 1 0 4 { lin 3 16 -1 277 -1 315 1 } -1
+ACT_L317 G 1/4 1 0 1 { lin 1 316 1/4 } -1
+ACT_R318 G 1 1 0 1 { rnd 1 317 1 } -1
+ACT_L319 G 4 1 12 1 { lin 3 13 -1 250 4 313 1 } -1
+ACT_L320 G 4 1 12 1 { lin 1 319 1 } -1
+ActivityConflict321 G 1 0 { lin 4 17 -1 318 4 313 1 216 -1 } -1
+UnsplitNode23_322 G 1 0 { uns 306 292  321 291  } -1
+UnsplitNode20_323 G 1 0 { uns 322 250  274 249  } -1
+DualBound_324 G 0 OBJ { lin 0 } -1
+ACT_L325 G -3 1 12 -1 { lin 3 1 -1 196 4 47 -1 } -1
+ACT_L326 L 3 1 12 1 { lin 1 325 -1 } -1
+ACT_L327 G 2 1 13 1 { lin 3 1 -1 196 4 44 1 } -1
+ACT_L328 G 2 1 13 1 { lin 1 327 1 } -1
+DualBound_329 G 0 OBJ { lin 0 } -1
+DualBound_330 G 0 OBJ { lin 0 } -1
+DualBound_331 G 0 OBJ { lin 0 } -1
+DualBound_332 G 0 OBJ { lin 0 } -1
+DualBound_333 G 0 OBJ { lin 0 } -1
+DualBound_334 G 0 OBJ { lin 0 } -1
+DualBound_335 G 0 OBJ { lin 0 } -1
+DualBound_336 G 0 OBJ { lin 0 } -1
+A337 L 0 1 7 1 { asm } -1
+A338 G 1 1 7 1 { asm } -1
+DualBound_339 G 0 OBJ { lin 0 } -1
+DualBound_340 G 0 OBJ { lin 0 } -1
+ACT_L341 G 3 1 11 1 { lin 3 2 -1 337 -4 328 1 } -1
+ACT_L342 G 3 1 11 1 { lin 1 341 1 } -1
+ACT_L343 G -3 1 13 -1 { lin 3 2 -1 337 -4 43 -1 } -1
+ACT_L344 L 3 1 13 1 { lin 1 343 -1 } -1
+ACT_L345 G -2 1 12 -1 { lin 3 1 -1 196 4 344 -1 } -1
+ACT_L346 L 2 1 12 1 { lin 1 345 -1 } -1
+ACT_L347 G 1 1 1 4 { lin 3 14 -1 186 -1 342 1 } -1
+ACT_L348 G 1/4 1 1 1 { lin 1 347 1/4 } -1
+ACT_R349 G 1 1 1 1 { rnd 1 348 1 } -1
+ACT_L350 G -2 1 4 -4 { lin 3 9 -1 342 1 346 -1 } -1
+ACT_L351 L 1/2 1 4 1 { lin 1 350 -1/4 } -1
+ACT_R352 L 0 1 4 1 { rnd 1 351 1 } -1
+ACT_L353 G -3 1 2 -4 { lin 3 13 -1 184 1 346 -1 } -1
+ACT_L354 L 3/4 1 2 1 { lin 1 353 -1/4 } -1
+ACT_R355 L 0 1 2 1 { rnd 1 354 1 } -1
+DualBound_356 G 0 OBJ { lin 0 } -1
+DualBound_357 G 0 OBJ { lin 0 } -1
+DualBound_358 G 0 OBJ { lin 0 } -1
+DualBound_359 G 0 OBJ { lin 0 } -1
+DualBound_360 G 0 OBJ { lin 0 } -1
+DualBound_361 G 0 OBJ { lin 0 } -1
+DualBound_362 G 0 OBJ { lin 0 } -1
+DualBound_363 G 0 OBJ { lin 0 } -1
+A364 L 0 1 6 1 { asm } -1
+A365 G 1 1 6 1 { asm } -1
+DualBound_366 G 0 OBJ { lin 0 } -1
+DualBound_367 G 0 OBJ { lin 0 } -1
+ACT_L368 G -2 1 10 -1 { lin 3 5 -1 365 4 344 -1 } -1
+ACT_L369 L 2 1 10 1 { lin 1 368 -1 } -1
+DualBound_370 G 0 OBJ { lin 0 } -1
+DualBound_371 G 0 OBJ { lin 0 } -1
+DualBound_372 G 0 OBJ { lin 0 } -1
+DualBound_373 G 0 OBJ { lin 0 } -1
+DualBound_374 G 0 OBJ { lin 0 } -1
+DualBound_375 G 0 OBJ { lin 0 } -1
+DualBound_376 G 0 OBJ { lin 0 } -1
+DualBound_377 G 0 OBJ { lin 0 } -1
+A378 L 0 1 3 1 { asm } -1
+A379 G 1 1 3 1 { asm } -1
+DualBound_380 G 0 OBJ { lin 0 } -1
+DualBound_381 G 0 OBJ { lin 0 } -1
+ACT_L382 G -1 1 10 -1 { lin 3 11 -1 379 4 346 -1 } -1
+ACT_L383 L 1 1 10 1 { lin 1 382 -1 } -1
+ACT_L384 G 2 1 12 1 { lin 3 11 -1 379 4 40 1 } -1
+ACT_L385 G 2 1 12 1 { lin 1 384 1 } -1
+ACT_L386 G 3 1 9 1 { lin 3 12 -1 355 -4 385 1 } -1
+ACT_L387 G 3 1 9 1 { lin 1 386 1 } -1
+ACT_L388 G 3 1 13 1 { lin 3 1 -1 196 4 385 1 } -1
+ACT_L389 G 3 1 13 1 { lin 1 388 1 } -1
+ACT_L390 G -3 1 5 -4 { lin 3 7 -1 387 1 344 -1 } -1
+ACT_L391 L 3/4 1 5 1 { lin 1 390 -1/4 } -1
+ACT_R392 L 0 1 5 1 { rnd 1 391 1 } -1
+ACT_L393 G 4 1 9 1 { lin 3 6 -1 392 -4 389 1 } -1
+ACT_L394 G 4 1 9 1 { lin 1 393 1 } -1
+ACT_L395 G 4 1 11 1 { lin 3 2 -1 337 -4 389 1 } -1
+ACT_L396 G 4 1 11 1 { lin 1 395 1 } -1
+ACT_L397 G -3 1 0 -4 { lin 3 17 -1 394 1 43 -1 } -1
+ACT_L398 L 3/4 1 0 1 { lin 1 397 -1/4 } -1
+ACT_R399 L 0 1 0 1 { rnd 1 398 1 } -1
+ActivityConflict400 G 1 0 { lin 4 16 -1 399 -4 39 -1 396 1 } -1
+DualBound_401 G 0 OBJ { lin 0 } -1
+ACT_L402 G 2 1 10 1 { lin 3 10 -1 378 -4 44 1 } -1
+ACT_L403 G 2 1 10 1 { lin 1 402 1 } -1
+ACT_L404 G -1 1 12 -1 { lin 3 10 -1 378 -4 369 -1 } -1
+ACT_L405 L 1 1 12 1 { lin 1 404 -1 } -1
+ACT_L406 G 3 1 13 1 { lin 3 5 -1 365 4 403 1 } -1
+ACT_L407 G 3 1 13 1 { lin 1 406 1 } -1
+ACT_L408 G 3 1 9 1 { lin 3 18 -1 51 -4 403 1 } -1
+ACT_L409 G 3 1 9 1 { lin 1 408 1 } -1
+ACT_L410 G 4 1 11 1 { lin 3 2 -1 337 -4 407 1 } -1
+ACT_L411 G 4 1 11 1 { lin 1 410 1 } -1
+ACT_L412 G 1 1 0 4 { lin 3 16 -1 39 -1 411 1 } -1
+ACT_L413 G 1/4 1 0 1 { lin 1 412 1/4 } -1
+ACT_R414 G 1 1 0 1 { rnd 1 413 1 } -1
+ACT_L415 G -3 1 9 -1 { lin 3 17 -1 414 4 43 -1 } -1
+ACT_L416 L 3 1 9 1 { lin 1 415 -1 } -1
+ACT_L417 G -3 1 5 -4 { lin 3 7 -1 409 1 344 -1 } -1
+ACT_L418 L 3/4 1 5 1 { lin 1 417 -1/4 } -1
+ACT_R419 L 0 1 5 1 { rnd 1 418 1 } -1
+ActivityConflict420 G 1 0 { lin 4 6 -1 419 -4 416 -1 407 1 } -1
+UnsplitNode29_421 G 1 0 { uns 400 379  420 378  } -1
+DualBound_422 G 0 OBJ { lin 0 } -1
+ACT_L423 G 3 1 11 1 { lin 3 8 -1 211 -4 200 1 } -1
+ACT_L424 G 3 1 11 1 { lin 1 423 1 } -1
+ACT_L425 G -3 1 12 -1 { lin 3 8 -1 211 -4 43 -1 } -1
+ACT_L426 L 3 1 12 1 { lin 1 425 -1 } -1
+ACT_L427 G -2 1 13 -1 { lin 3 0 -1 195 -4 426 -1 } -1
+ACT_L428 L 2 1 13 1 { lin 1 427 -1 } -1
+ACT_L429 G 1 1 1 4 { lin 3 14 -1 186 -1 424 1 } -1
+ACT_L430 G 1/4 1 1 1 { lin 1 429 1/4 } -1
+ACT_R431 G 1 1 1 1 { rnd 1 430 1 } -1
+ACT_L432 G -2 1 7 -4 { lin 3 3 -1 424 1 428 -1 } -1
+ACT_L433 L 1/2 1 7 1 { lin 1 432 -1/4 } -1
+ACT_R434 L 0 1 7 1 { rnd 1 433 1 } -1
+ACT_L435 G -3 1 5 -4 { lin 3 7 -1 184 1 428 -1 } -1
+ACT_L436 L 3/4 1 5 1 { lin 1 435 -1/4 } -1
+ACT_R437 L 0 1 5 1 { rnd 1 436 1 } -1
+DualBound_438 G 0 OBJ { lin 0 } -1
+DualBound_439 G 0 OBJ { lin 0 } -1
+DualBound_440 G 0 OBJ { lin 0 } -1
+DualBound_441 G 0 OBJ { lin 0 } -1
+DualBound_442 G 0 OBJ { lin 0 } -1
+DualBound_443 G 0 OBJ { lin 0 } -1
+DualBound_444 G 0 OBJ { lin 0 } -1
+DualBound_445 G 0 OBJ { lin 0 } -1
+A446 L 0 1 3 1 { asm } -1
+A447 G 1 1 3 1 { asm } -1
+DualBound_448 G 0 OBJ { lin 0 } -1
+DualBound_449 G 0 OBJ { lin 0 } -1
+ACT_L450 G -2 1 10 -1 { lin 3 11 -1 447 4 426 -1 } -1
+ACT_L451 L 2 1 10 1 { lin 1 450 -1 } -1
+DualBound_452 G 0 OBJ { lin 0 } -1
+DualBound_453 G 0 OBJ { lin 0 } -1
+DualBound_454 G 0 OBJ { lin 0 } -1
+DualBound_455 G 0 OBJ { lin 0 } -1
+DualBound_456 G 0 OBJ { lin 0 } -1
+DualBound_457 G 0 OBJ { lin 0 } -1
+DualBound_458 G 0 OBJ { lin 0 } -1
+DualBound_459 G 0 OBJ { lin 0 } -1
+A460 L 0 1 6 1 { asm } -1
+A461 G 1 1 6 1 { asm } -1
+DualBound_462 G 0 OBJ { lin 0 } -1
+DualBound_463 G 0 OBJ { lin 0 } -1
+ACT_L464 G 2 1 10 1 { lin 3 4 -1 460 -4 46 1 } -1
+ACT_L465 G 2 1 10 1 { lin 1 464 1 } -1
+ACT_L466 G -1 1 13 -1 { lin 3 4 -1 460 -4 451 -1 } -1
+ACT_L467 L 1 1 13 1 { lin 1 466 -1 } -1
+ACT_L468 G 3 1 12 1 { lin 3 11 -1 447 4 465 1 } -1
+ACT_L469 G 3 1 12 1 { lin 1 468 1 } -1
+ACT_L470 G 3 1 9 1 { lin 3 18 -1 51 -4 465 1 } -1
+ACT_L471 G 3 1 9 1 { lin 1 470 1 } -1
+ACT_L472 G 4 1 11 1 { lin 3 8 -1 211 -4 469 1 } -1
+ACT_L473 G 4 1 11 1 { lin 1 472 1 } -1
+ACT_L474 G 1 1 0 4 { lin 3 16 -1 39 -1 473 1 } -1
+ACT_L475 G 1/4 1 0 1 { lin 1 474 1/4 } -1
+ACT_R476 G 1 1 0 1 { rnd 1 475 1 } -1
+ACT_L477 G -3 1 9 -1 { lin 3 17 -1 476 4 43 -1 } -1
+ACT_L478 L 3 1 9 1 { lin 1 477 -1 } -1
+ACT_L479 G -3 1 2 -4 { lin 3 13 -1 471 1 426 -1 } -1
+ACT_L480 L 3/4 1 2 1 { lin 1 479 -1/4 } -1
+ACT_R481 L 0 1 2 1 { rnd 1 480 1 } -1
+ActivityConflict482 G 1 0 { lin 4 12 -1 481 -4 478 -1 469 1 } -1
+DualBound_483 G 0 OBJ { lin 0 } -1
+ACT_L484 G -1 1 10 -1 { lin 3 5 -1 461 4 428 -1 } -1
+ACT_L485 L 1 1 10 1 { lin 1 484 -1 } -1
+ACT_L486 G 2 1 13 1 { lin 3 5 -1 461 4 40 1 } -1
+ACT_L487 G 2 1 13 1 { lin 1 486 1 } -1
+ACT_L488 G 3 1 9 1 { lin 3 6 -1 437 -4 487 1 } -1
+ACT_L489 G 3 1 9 1 { lin 1 488 1 } -1
+ACT_L490 G 3 1 12 1 { lin 3 0 -1 195 -4 487 1 } -1
+ACT_L491 G 3 1 12 1 { lin 1 490 1 } -1
+ACT_L492 G -3 1 2 -4 { lin 3 13 -1 489 1 426 -1 } -1
+ACT_L493 L 3/4 1 2 1 { lin 1 492 -1/4 } -1
+ACT_R494 L 0 1 2 1 { rnd 1 493 1 } -1
+ACT_L495 G 4 1 9 1 { lin 3 12 -1 494 -4 491 1 } -1
+ACT_L496 G 4 1 9 1 { lin 1 495 1 } -1
+ACT_L497 G 4 1 11 1 { lin 3 8 -1 211 -4 491 1 } -1
+ACT_L498 G 4 1 11 1 { lin 1 497 1 } -1
+ACT_L499 G -3 1 0 -4 { lin 3 17 -1 496 1 43 -1 } -1
+ACT_L500 L 3/4 1 0 1 { lin 1 499 -1/4 } -1
+ACT_R501 L 0 1 0 1 { rnd 1 500 1 } -1
+ActivityConflict502 G 1 0 { lin 4 16 -1 501 -4 39 -1 498 1 } -1
+UnsplitNode33_503 G 1 0 { uns 502 461  482 460  } -1
+DualBound_504 G 0 OBJ { lin 0 } -1
+ACT_L505 G -3 1 11 -1 { lin 3 3 -1 338 4 47 -1 } -1
+ACT_L506 L 3 1 11 1 { lin 1 505 -1 } -1
+DualBound_507 G 0 OBJ { lin 0 } -1
+DualBound_508 G 0 OBJ { lin 0 } -1
+DualBound_509 G 0 OBJ { lin 0 } -1
+DualBound_510 G 0 OBJ { lin 0 } -1
+DualBound_511 G 0 OBJ { lin 0 } -1
+DualBound_512 G 0 OBJ { lin 0 } -1
+DualBound_513 G 0 OBJ { lin 0 } -1
+DualBound_514 G 0 OBJ { lin 0 } -1
+A515 L 0 1 6 1 { asm } -1
+A516 G 1 1 6 1 { asm } -1
+DualBound_517 G 0 OBJ { lin 0 } -1
+DualBound_518 G 0 OBJ { lin 0 } -1
+DualBound_519 G 0 OBJ { lin 0 } -1
+DualBound_520 G 0 OBJ { lin 0 } -1
+DualBound_521 G 0 OBJ { lin 0 } -1
+DualBound_522 G 0 OBJ { lin 0 } -1
+DualBound_523 G 0 OBJ { lin 0 } -1
+DualBound_524 G 0 OBJ { lin 0 } -1
+DualBound_525 G 0 OBJ { lin 0 } -1
+DualBound_526 G 0 OBJ { lin 0 } -1
+A527 L 0 1 5 1 { asm } -1
+A528 G 1 1 5 1 { asm } -1
+DualBound_529 G 0 OBJ { lin 0 } -1
+DualBound_530 G 0 OBJ { lin 0 } -1
+ACT_L531 G 3 1 9 1 { lin 3 6 -1 527 -4 328 1 } -1
+ACT_L532 G 3 1 9 1 { lin 1 531 1 } -1
+ACT_L533 G -3 1 13 -1 { lin 3 6 -1 527 -4 39 -1 } -1
+ACT_L534 L 3 1 13 1 { lin 1 533 -1 } -1
+ACT_L535 G -2 1 10 -1 { lin 3 5 -1 516 4 534 -1 } -1
+ACT_L536 L 2 1 10 1 { lin 1 535 -1 } -1
+ACT_L537 G -2 1 11 -1 { lin 3 3 -1 338 4 534 -1 } -1
+ACT_L538 L 2 1 11 1 { lin 1 537 -1 } -1
+ACT_L539 G -2 1 12 -1 { lin 3 1 -1 196 4 534 -1 } -1
+ACT_L540 L 2 1 12 1 { lin 1 539 -1 } -1
+ACT_L541 G -2 1 0 -4 { lin 3 17 -1 532 1 538 -1 } -1
+ACT_L542 L 1/2 1 0 1 { lin 1 541 -1/4 } -1
+ACT_R543 L 0 1 0 1 { rnd 1 542 1 } -1
+ACT_L544 G -2 1 2 -4 { lin 3 13 -1 532 1 540 -1 } -1
+ACT_L545 L 1/2 1 2 1 { lin 1 544 -1/4 } -1
+ACT_R546 L 0 1 2 1 { rnd 1 545 1 } -1
+DualBound_547 G 0 OBJ { lin 0 } -1
+DualBound_548 G 0 OBJ { lin 0 } -1
+DualBound_549 G 0 OBJ { lin 0 } -1
+DualBound_550 G 0 OBJ { lin 0 } -1
+DualBound_551 G 0 OBJ { lin 0 } -1
+DualBound_552 G 0 OBJ { lin 0 } -1
+DualBound_553 G 0 OBJ { lin 0 } -1
+DualBound_554 G 0 OBJ { lin 0 } -1
+A555 L 0 1 4 1 { asm } -1
+A556 G 1 1 4 1 { asm } -1
+DualBound_557 G 0 OBJ { lin 0 } -1
+DualBound_558 G 0 OBJ { lin 0 } -1
+ACT_L559 G 2 1 11 1 { lin 3 8 -1 555 -4 44 1 } -1
+ACT_L560 G 2 1 11 1 { lin 1 559 1 } -1
+ACT_L561 G -1 1 12 -1 { lin 3 8 -1 555 -4 538 -1 } -1
+ACT_L562 L 1 1 12 1 { lin 1 561 -1 } -1
+ACT_L563 G 3 1 13 1 { lin 3 3 -1 338 4 560 1 } -1
+ACT_L564 G 3 1 13 1 { lin 1 563 1 } -1
+ACT_L565 G -3 1 3 -4 { lin 3 11 -1 40 1 562 -1 } -1
+ACT_L566 L 3/4 1 3 1 { lin 1 565 -1/4 } -1
+ACT_R567 L 0 1 3 1 { rnd 1 566 1 } -1
+ACT_L568 G 2 1 10 1 { lin 3 10 -1 567 -4 44 1 } -1
+ACT_L569 G 2 1 10 1 { lin 1 568 1 } -1
+ACT_L570 G -3 1 1 -4 { lin 3 15 -1 569 1 538 -1 } -1
+ACT_L571 L 3/4 1 1 1 { lin 1 570 -1/4 } -1
+ACT_R572 L 0 1 1 1 { rnd 1 571 1 } -1
+ActivityConflict573 G 1 0 { lin 4 14 -1 572 -4 536 -1 560 1 } -1
+DualBound_574 G 0 OBJ { lin 0 } -1
+ACT_L575 G -1 1 11 -1 { lin 3 9 -1 556 4 540 -1 } -1
+ACT_L576 L 1 1 11 1 { lin 1 575 -1 } -1
+ACT_L577 G 2 1 12 1 { lin 3 9 -1 556 4 42 1 } -1
+ACT_L578 G 2 1 12 1 { lin 1 577 1 } -1
+ACT_L579 G 3 1 13 1 { lin 3 1 -1 196 4 578 1 } -1
+ACT_L580 G 3 1 13 1 { lin 1 579 1 } -1
+ACT_L581 G -3 1 1 -4 { lin 3 15 -1 40 1 576 -1 } -1
+ACT_L582 L 3/4 1 1 1 { lin 1 581 -1/4 } -1
+ACT_R583 L 0 1 1 1 { rnd 1 582 1 } -1
+ACT_L584 G 2 1 10 1 { lin 3 14 -1 583 -4 42 1 } -1
+ACT_L585 G 2 1 10 1 { lin 1 584 1 } -1
+ACT_L586 G -3 1 3 -4 { lin 3 11 -1 585 1 540 -1 } -1
+ACT_L587 L 3/4 1 3 1 { lin 1 586 -1/4 } -1
+ACT_R588 L 0 1 3 1 { rnd 1 587 1 } -1
+ActivityConflict589 G 1 0 { lin 4 10 -1 588 -4 536 -1 578 1 } -1
+UnsplitNode38_590 G 1 0 { uns 589 556  573 555  } -1
+DualBound_591 G 0 OBJ { lin 0 } -1
+ACT_L592 G 3 1 10 1 { lin 3 10 -1 446 -4 200 1 } -1
+ACT_L593 G 3 1 10 1 { lin 1 592 1 } -1
+ACT_L594 G -2 1 12 -1 { lin 3 10 -1 446 -4 186 -1 } -1
+ACT_L595 L 2 1 12 1 { lin 1 594 -1 } -1
+ACT_L596 G -2 1 6 -4 { lin 3 5 -1 593 1 428 -1 } -1
+ACT_L597 L 1/2 1 6 1 { lin 1 596 -1/4 } -1
+ACT_R598 L 0 1 6 1 { rnd 1 597 1 } -1
+ACT_L599 G 4 1 9 1 { lin 3 18 -1 51 -4 593 1 } -1
+ACT_L600 G 4 1 9 1 { lin 1 599 1 } -1
+ACT_L601 G -1 1 13 -1 { lin 3 0 -1 195 -4 595 -1 } -1
+ACT_L602 L 1 1 13 1 { lin 1 601 -1 } -1
+ACT_L603 G 4 1 11 1 { lin 3 15 -1 431 4 593 1 } -1
+ACT_L604 G 4 1 11 1 { lin 1 603 1 } -1
+ACT_L605 G -1 1 2 -4 { lin 3 13 -1 600 1 595 -1 } -1
+ACT_L606 L 1/4 1 2 1 { lin 1 605 -1/4 } -1
+ACT_R607 L 0 1 2 1 { rnd 1 606 1 } -1
+ACT_L608 G 1 1 0 4 { lin 3 16 -1 39 -1 604 1 } -1
+ACT_L609 G 1/4 1 0 1 { lin 1 608 1/4 } -1
+ACT_R610 G 1 1 0 1 { rnd 1 609 1 } -1
+ActivityConflict611 G 1 0 { lin 4 17 -1 610 4 600 1 43 -1 } -1
+UnsplitNode18_612 G 1 0 { uns 503 447  611 446  } -1
+DualBound_613 G 0 OBJ { lin 0 } -1
+ACT_L614 G 3 1 10 1 { lin 3 4 -1 364 -4 328 1 } -1
+ACT_L615 G 3 1 10 1 { lin 1 614 1 } -1
+ACT_L616 G -2 1 13 -1 { lin 3 4 -1 364 -4 186 -1 } -1
+ACT_L617 L 2 1 13 1 { lin 1 616 -1 } -1
+ACT_L618 G -3 1 5 -4 { lin 3 7 -1 184 1 617 -1 } -1
+ACT_L619 L 3/4 1 5 1 { lin 1 618 -1/4 } -1
+ACT_R620 L 0 1 5 1 { rnd 1 619 1 } -1
+ACT_L621 G -1 1 12 -1 { lin 3 1 -1 196 4 617 -1 } -1
+ACT_L622 L 1 1 12 1 { lin 1 621 -1 } -1
+ACT_L623 G 3 1 9 1 { lin 3 6 -1 620 -4 328 1 } -1
+ACT_L624 G 3 1 9 1 { lin 1 623 1 } -1
+ACT_L625 G 4 1 9 1 { lin 3 18 -1 51 -4 615 1 } -1
+ACT_L626 G 4 1 9 1 { lin 1 625 1 } -1
+ACT_L627 G 4 1 11 1 { lin 3 15 -1 349 4 615 1 } -1
+ACT_L628 G 4 1 11 1 { lin 1 627 1 } -1
+ACT_L629 G -1 1 3 -4 { lin 3 11 -1 615 1 622 -1 } -1
+ACT_L630 L 1/4 1 3 1 { lin 1 629 -1/4 } -1
+ACT_R631 L 0 1 3 1 { rnd 1 630 1 } -1
+ACT_L632 G 1 1 0 4 { lin 3 16 -1 39 -1 628 1 } -1
+ACT_L633 G 1/4 1 0 1 { lin 1 632 1/4 } -1
+ACT_R634 G 1 1 0 1 { rnd 1 633 1 } -1
+ActivityConflict635 G 1 0 { lin 4 17 -1 634 4 626 1 43 -1 } -1
+UnsplitNode26_636 G 1 0 { uns 421 365  635 364  } -1
+DualBound_637 G 0 OBJ { lin 0 } -1
+ACT_L638 G -2 1 11 -1 { lin 3 3 -1 226 4 202 -1 } -1
+ACT_L639 L 2 1 11 1 { lin 1 638 -1 } -1
+ACT_L640 G 2 1 13 1 { lin 3 3 -1 226 4 42 1 } -1
+ACT_L641 G 2 1 13 1 { lin 1 640 1 } -1
+ACT_L642 G -3 1 0 -4 { lin 3 17 -1 184 1 639 -1 } -1
+ACT_L643 L 3/4 1 0 1 { lin 1 642 -1/4 } -1
+ACT_R644 L 0 1 0 1 { rnd 1 643 1 } -1
+ACT_L645 G 3 1 12 1 { lin 3 0 -1 195 -4 641 1 } -1
+ACT_L646 G 3 1 12 1 { lin 1 645 1 } -1
+ACT_L647 G 1 1 3 4 { lin 3 10 -1 186 -1 646 1 } -1
+ACT_L648 G 1/4 1 3 1 { lin 1 647 1/4 } -1
+ACT_R649 G 1 1 3 1 { rnd 1 648 1 } -1
+DualBound_650 G 0 OBJ { lin 0 } -1
+DualBound_651 G 0 OBJ { lin 0 } -1
+DualBound_652 G 0 OBJ { lin 0 } -1
+DualBound_653 G 0 OBJ { lin 0 } -1
+DualBound_654 G 0 OBJ { lin 0 } -1
+DualBound_655 G 0 OBJ { lin 0 } -1
+DualBound_656 G 0 OBJ { lin 0 } -1
+DualBound_657 G 0 OBJ { lin 0 } -1
+A658 L 0 1 6 1 { asm } -1
+A659 G 1 1 6 1 { asm } -1
+DualBound_660 G 0 OBJ { lin 0 } -1
+DualBound_661 G 0 OBJ { lin 0 } -1
+ACT_L662 G 3 1 10 1 { lin 3 4 -1 658 -4 641 1 } -1
+ACT_L663 G 3 1 10 1 { lin 1 662 1 } -1
+ACT_L664 G -2 1 13 -1 { lin 3 4 -1 658 -4 186 -1 } -1
+ACT_L665 L 2 1 13 1 { lin 1 664 -1 } -1
+ACT_L666 G 4 1 12 1 { lin 3 11 -1 649 4 663 1 } -1
+ACT_L667 G 4 1 12 1 { lin 1 666 1 } -1
+ACT_L668 G -3 1 5 -4 { lin 3 7 -1 184 1 665 -1 } -1
+ACT_L669 L 3/4 1 5 1 { lin 1 668 -1/4 } -1
+ACT_R670 L 0 1 5 1 { rnd 1 669 1 } -1
+ACT_L671 G 3 1 9 1 { lin 3 6 -1 670 -4 641 1 } -1
+ACT_L672 G 3 1 9 1 { lin 1 671 1 } -1
+ACT_L673 G -1 1 11 -1 { lin 3 3 -1 226 4 665 -1 } -1
+ACT_L674 L 1 1 11 1 { lin 1 673 -1 } -1
+ACT_L675 G 4 1 9 1 { lin 3 18 -1 51 -4 663 1 } -1
+ACT_L676 G 4 1 9 1 { lin 1 675 1 } -1
+ACT_L677 G -1 1 1 -4 { lin 3 15 -1 663 1 674 -1 } -1
+ACT_L678 L 1/4 1 1 1 { lin 1 677 -1/4 } -1
+ACT_R679 L 0 1 1 1 { rnd 1 678 1 } -1
+ACT_L680 G 1 1 2 4 { lin 3 12 -1 39 -1 667 1 } -1
+ACT_L681 G 1/4 1 2 1 { lin 1 680 1/4 } -1
+ACT_R682 G 1 1 2 1 { rnd 1 681 1 } -1
+ActivityConflict683 G 1 0 { lin 4 13 -1 682 4 676 1 45 -1 } -1
+DualBound_684 G 0 OBJ { lin 0 } -1
+ACT_L685 G -2 1 10 -1 { lin 3 5 -1 659 4 202 -1 } -1
+ACT_L686 L 2 1 10 1 { lin 1 685 -1 } -1
+DualBound_687 G 0 OBJ { lin 0 } -1
+DualBound_688 G 0 OBJ { lin 0 } -1
+DualBound_689 G 0 OBJ { lin 0 } -1
+DualBound_690 G 0 OBJ { lin 0 } -1
+DualBound_691 G 0 OBJ { lin 0 } -1
+DualBound_692 G 0 OBJ { lin 0 } -1
+DualBound_693 G 0 OBJ { lin 0 } -1
+DualBound_694 G 0 OBJ { lin 0 } -1
+A695 L 0 1 2 1 { asm } -1
+A696 G 1 1 2 1 { asm } -1
+DualBound_697 G 0 OBJ { lin 0 } -1
+DualBound_698 G 0 OBJ { lin 0 } -1
+ACT_L699 G 4 1 9 1 { lin 3 12 -1 695 -4 646 1 } -1
+ACT_L700 G 4 1 9 1 { lin 1 699 1 } -1
+ACT_L701 G -3 1 12 -1 { lin 3 12 -1 695 -4 39 -1 } -1
+ACT_L702 L 3 1 12 1 { lin 1 701 -1 } -1
+ACT_L703 G -2 1 13 -1 { lin 3 0 -1 195 -4 702 -1 } -1
+ACT_L704 L 2 1 13 1 { lin 1 703 -1 } -1
+ACT_L705 G -1 1 5 -4 { lin 3 7 -1 700 1 704 -1 } -1
+ACT_L706 L 1/4 1 5 1 { lin 1 705 -1/4 } -1
+ACT_R707 L 0 1 5 1 { rnd 1 706 1 } -1
+ACT_L708 G -1 1 10 -1 { lin 3 5 -1 659 4 704 -1 } -1
+ACT_L709 L 1 1 10 1 { lin 1 708 -1 } -1
+ACT_L710 G -1 1 11 -1 { lin 3 3 -1 226 4 704 -1 } -1
+ACT_L711 L 1 1 11 1 { lin 1 710 -1 } -1
+ACT_L712 G 1 1 1 4 { lin 3 14 -1 709 -1 42 1 } -1
+ACT_L713 G 1/4 1 1 1 { lin 1 712 1/4 } -1
+ACT_R714 G 1 1 1 1 { rnd 1 713 1 } -1
+ActivityConflict715 G 1 0 { lin 4 15 -1 714 4 40 1 711 -1 } -1
+DualBound_716 G 0 OBJ { lin 0 } -1
+ACT_L717 G -3 1 9 -1 { lin 3 13 -1 696 4 45 -1 } -1
+ACT_L718 L 3 1 9 1 { lin 1 717 -1 } -1
+DualBound_719 G 0 OBJ { lin 0 } -1
+DualBound_720 G 0 OBJ { lin 0 } -1
+DualBound_721 G 0 OBJ { lin 0 } -1
+DualBound_722 G 0 OBJ { lin 0 } -1
+DualBound_723 G 0 OBJ { lin 0 } -1
+DualBound_724 G 0 OBJ { lin 0 } -1
+DualBound_725 G 0 OBJ { lin 0 } -1
+DualBound_726 G 0 OBJ { lin 0 } -1
+A727 L 0 1 5 1 { asm } -1
+A728 G 1 1 5 1 { asm } -1
+DualBound_729 G 0 OBJ { lin 0 } -1
+DualBound_730 G 0 OBJ { lin 0 } -1
+ACT_L731 G 3 1 9 1 { lin 3 6 -1 727 -4 641 1 } -1
+ACT_L732 G 3 1 9 1 { lin 1 731 1 } -1
+ACT_L733 G -2 1 13 -1 { lin 3 6 -1 727 -4 718 -1 } -1
+ACT_L734 L 2 1 13 1 { lin 1 733 -1 } -1
+ACT_L735 G 4 1 12 1 { lin 3 13 -1 696 4 732 1 } -1
+ACT_L736 G 4 1 12 1 { lin 1 735 1 } -1
+ACT_L737 G -1 1 10 -1 { lin 3 5 -1 659 4 734 -1 } -1
+ACT_L738 L 1 1 10 1 { lin 1 737 -1 } -1
+ACT_L739 G -1 1 11 -1 { lin 3 3 -1 226 4 734 -1 } -1
+ACT_L740 L 1 1 11 1 { lin 1 739 -1 } -1
+ACT_L741 G -3 1 1 -4 { lin 3 15 -1 40 1 740 -1 } -1
+ACT_L742 L 3/4 1 1 1 { lin 1 741 -1/4 } -1
+ACT_R743 L 0 1 1 1 { rnd 1 742 1 } -1
+ActivityConflict744 G 1 0 { lin 4 14 -1 743 -4 738 -1 42 1 } -1
+DualBound_745 G 0 OBJ { lin 0 } -1
+ACT_L746 G -2 1 9 -1 { lin 3 7 -1 728 4 202 -1 } -1
+ACT_L747 L 2 1 9 1 { lin 1 746 -1 } -1
+ACT_L748 G 3 1 13 1 { lin 3 7 -1 728 4 184 1 } -1
+ACT_L749 G 3 1 13 1 { lin 1 748 1 } -1
+ACT_L750 G -1 1 11 -1 { lin 3 16 -1 644 -4 747 -1 } -1
+ACT_L751 L 1 1 11 1 { lin 1 750 -1 } -1
+ACT_L752 G 4 1 12 1 { lin 3 0 -1 195 -4 749 1 } -1
+ACT_L753 G 4 1 12 1 { lin 1 752 1 } -1
+ACT_L754 G -1 1 10 -1 { lin 3 18 -1 51 -4 747 -1 } -1
+ACT_L755 L 1 1 10 1 { lin 1 754 -1 } -1
+ACT_L756 G 1 1 1 4 { lin 3 14 -1 755 -1 42 1 } -1
+ACT_L757 G 1/4 1 1 1 { lin 1 756 1/4 } -1
+ACT_R758 G 1 1 1 1 { rnd 1 757 1 } -1
+ActivityConflict759 G 1 0 { lin 4 15 -1 758 4 40 1 751 -1 } -1
+UnsplitNode45_760 G 1 0 { uns 759 728  744 727  } -1
+UnsplitNode43_761 G 1 0 { uns 760 696  715 695  } -1
+UnsplitNode21_762 G 1 0 { uns 761 659  683 658  } -1
+UnsplitNode19_763 G 1 0 { uns 762 226  323 225  } -1
+UnsplitNode16_764 G 1 0 { uns 763 212  612 211  } -1
+DualBound_765 G 0 OBJ { lin 0 } -1
+ACT_L766 G 2 1 11 1 { lin 3 8 -1 126 -4 44 1 } -1
+ACT_L767 G 2 1 11 1 { lin 1 766 1 } -1
+ACT_L768 G -2 1 12 -1 { lin 3 8 -1 126 -4 87 -1 } -1
+ACT_L769 L 2 1 12 1 { lin 1 768 -1 } -1
+ACT_L770 G 1 1 0 4 { lin 3 16 -1 117 -1 767 1 } -1
+ACT_L771 G 1/4 1 0 1 { lin 1 770 1/4 } -1
+ACT_R772 G 1 1 0 1 { rnd 1 771 1 } -1
+ACT_L773 G -3 1 3 -4 { lin 3 11 -1 57 1 769 -1 } -1
+ACT_L774 L 3/4 1 3 1 { lin 1 773 -1/4 } -1
+ACT_R775 L 0 1 3 1 { rnd 1 774 1 } -1
+DualBound_776 G 0 OBJ { lin 0 } -1
+DualBound_777 G 0 OBJ { lin 0 } -1
+DualBound_778 G 0 OBJ { lin 0 } -1
+DualBound_779 G 0 OBJ { lin 0 } -1
+DualBound_780 G 0 OBJ { lin 0 } -1
+DualBound_781 G 0 OBJ { lin 0 } -1
+DualBound_782 G 0 OBJ { lin 0 } -1
+DualBound_783 G 0 OBJ { lin 0 } -1
+A784 L 0 1 2 1 { asm } -1
+A785 G 1 1 2 1 { asm } -1
+DualBound_786 G 0 OBJ { lin 0 } -1
+DualBound_787 G 0 OBJ { lin 0 } -1
+ACT_L788 G 2 1 9 1 { lin 3 12 -1 784 -4 44 1 } -1
+ACT_L789 G 2 1 9 1 { lin 1 788 1 } -1
+ACT_L790 G -1 1 12 -1 { lin 3 12 -1 784 -4 117 -1 } -1
+ACT_L791 L 1 1 12 1 { lin 1 790 -1 } -1
+ACT_L792 G 3 1 11 1 { lin 3 17 -1 772 4 789 1 } -1
+ACT_L793 G 3 1 11 1 { lin 1 792 1 } -1
+ACT_L794 G 3 1 10 1 { lin 3 19 -1 52 4 789 1 } -1
+ACT_L795 G 3 1 10 1 { lin 1 794 1 } -1
+ACT_L796 G 4 1 13 1 { lin 3 3 -1 83 4 793 1 } -1
+ACT_L797 G 4 1 13 1 { lin 1 796 1 } -1
+ACT_L798 G -3 1 1 -4 { lin 3 15 -1 795 1 87 -1 } -1
+ACT_L799 L 3/4 1 1 1 { lin 1 798 -1/4 } -1
+ACT_R800 L 0 1 1 1 { rnd 1 799 1 } -1
+ActivityConflict801 G 1 0 { lin 4 14 -1 800 -4 113 -1 793 1 } -1
+DualBound_802 G 0 OBJ { lin 0 } -1
+ACT_L803 G -1 1 9 -1 { lin 3 13 -1 785 4 769 -1 } -1
+ACT_L804 L 1 1 9 1 { lin 1 803 -1 } -1
+ACT_L805 G 2 1 12 1 { lin 3 13 -1 785 4 38 1 } -1
+ACT_L806 G 2 1 12 1 { lin 1 805 1 } -1
+ACT_L807 G 3 1 10 1 { lin 3 10 -1 775 -4 806 1 } -1
+ACT_L808 G 3 1 10 1 { lin 1 807 1 } -1
+ACT_L809 G 3 1 11 1 { lin 3 8 -1 126 -4 806 1 } -1
+ACT_L810 G 3 1 11 1 { lin 1 809 1 } -1
+ACT_L811 G -3 1 1 -4 { lin 3 15 -1 808 1 87 -1 } -1
+ACT_L812 L 3/4 1 1 1 { lin 1 811 -1/4 } -1
+ACT_R813 L 0 1 1 1 { rnd 1 812 1 } -1
+ActivityConflict814 G 1 0 { lin 4 14 -1 813 -4 113 -1 810 1 } -1
+UnsplitNode12_815 G 1 0 { uns 814 785  801 784  } -1
+UnsplitNode11_816 G 1 0 { uns 181 127  815 126  } -1
+DualBound_817 G 0 OBJ { lin 0 } -1
+ACT_L818 G 3 1 10 1 { lin 3 4 -1 515 -4 328 1 } -1
+ACT_L819 G 3 1 10 1 { lin 1 818 1 } -1
+ACT_L820 G -2 1 13 -1 { lin 3 4 -1 515 -4 186 -1 } -1
+ACT_L821 L 2 1 13 1 { lin 1 820 -1 } -1
+ACT_L822 G -1 1 11 -1 { lin 3 3 -1 338 4 821 -1 } -1
+ACT_L823 L 1 1 11 1 { lin 1 822 -1 } -1
+ACT_L824 G 4 1 9 1 { lin 3 18 -1 51 -4 819 1 } -1
+ACT_L825 G 4 1 9 1 { lin 1 824 1 } -1
+ACT_L826 G -1 1 5 -4 { lin 3 7 -1 825 1 821 -1 } -1
+ACT_L827 L 1/4 1 5 1 { lin 1 826 -1/4 } -1
+ACT_R828 L 0 1 5 1 { rnd 1 827 1 } -1
+ACT_L829 G -1 1 12 -1 { lin 3 1 -1 196 4 821 -1 } -1
+ACT_L830 L 1 1 12 1 { lin 1 829 -1 } -1
+ACT_L831 G -1 1 1 -4 { lin 3 15 -1 819 1 823 -1 } -1
+ACT_L832 L 1/4 1 1 1 { lin 1 831 -1/4 } -1
+ACT_R833 L 0 1 1 1 { rnd 1 832 1 } -1
+ACT_L834 G -1 1 3 -4 { lin 3 11 -1 819 1 830 -1 } -1
+ACT_L835 L 1/4 1 3 1 { lin 1 834 -1/4 } -1
+ACT_R836 L 0 1 3 1 { rnd 1 835 1 } -1
+ACT_L837 G 1 1 4 4 { lin 3 8 -1 823 -1 44 1 } -1
+ACT_L838 G 1/4 1 4 1 { lin 1 837 1/4 } -1
+ACT_R839 G 1 1 4 1 { rnd 1 838 1 } -1
+ACT_L840 G 0 1 2 -4 { lin 3 13 -1 825 1 830 -1 } -1
+ACT_L841 L 0 1 2 1 { lin 1 840 -1/4 } -1
+ACT_L842 G 0 1 0 -4 { lin 3 17 -1 825 1 823 -1 } -1
+ACT_L843 L 0 1 0 1 { lin 1 842 -1/4 } -1
+ActivityConflict844 G 1 0 { lin 4 9 -1 839 4 42 1 830 -1 } -1
+DualBound_845 G 0 OBJ { lin 0 } -1
+ACT_L846 G -3 1 9 -1 { lin 3 7 -1 528 4 47 -1 } -1
+ACT_L847 L 3 1 9 1 { lin 1 846 -1 } -1
+ACT_L848 G 3 1 13 1 { lin 3 7 -1 528 4 184 1 } -1
+ACT_L849 G 3 1 13 1 { lin 1 848 1 } -1
+ACT_L850 G -2 1 10 -1 { lin 3 18 -1 51 -4 847 -1 } -1
+ACT_L851 L 2 1 10 1 { lin 1 850 -1 } -1
+DualBound_852 G 0 OBJ { lin 0 } -1
+DualBound_853 G 0 OBJ { lin 0 } -1
+DualBound_854 G 0 OBJ { lin 0 } -1
+DualBound_855 G 0 OBJ { lin 0 } -1
+DualBound_856 G 0 OBJ { lin 0 } -1
+DualBound_857 G 0 OBJ { lin 0 } -1
+DualBound_858 G 0 OBJ { lin 0 } -1
+DualBound_859 G 0 OBJ { lin 0 } -1
+A860 L 0 1 4 1 { asm } -1
+A861 G 1 1 4 1 { asm } -1
+DualBound_862 G 0 OBJ { lin 0 } -1
+DualBound_863 G 0 OBJ { lin 0 } -1
+ACT_L864 G -2 1 11 -1 { lin 3 9 -1 861 4 326 -1 } -1
+ACT_L865 L 2 1 11 1 { lin 1 864 -1 } -1
+ACT_L866 G 2 1 12 1 { lin 3 9 -1 861 4 42 1 } -1
+ACT_L867 G 2 1 12 1 { lin 1 866 1 } -1
+ACT_L868 G 1 1 3 4 { lin 3 10 -1 851 -1 867 1 } -1
+ACT_L869 G 1/4 1 3 1 { lin 1 868 1/4 } -1
+ACT_R870 G 1 1 3 1 { rnd 1 869 1 } -1
+ACT_L871 G -3 1 0 -4 { lin 3 17 -1 184 1 865 -1 } -1
+ACT_L872 L 3/4 1 0 1 { lin 1 871 -1/4 } -1
+ACT_R873 L 0 1 0 1 { rnd 1 872 1 } -1
+DualBound_874 G 0 OBJ { lin 0 } -1
+DualBound_875 G 0 OBJ { lin 0 } -1
+DualBound_876 G 0 OBJ { lin 0 } -1
+DualBound_877 G 0 OBJ { lin 0 } -1
+DualBound_878 G 0 OBJ { lin 0 } -1
+DualBound_879 G 0 OBJ { lin 0 } -1
+DualBound_880 G 0 OBJ { lin 0 } -1
+DualBound_881 G 0 OBJ { lin 0 } -1
+A882 L 0 1 2 1 { asm } -1
+A883 G 1 1 2 1 { asm } -1
+DualBound_884 G 0 OBJ { lin 0 } -1
+DualBound_885 G 0 OBJ { lin 0 } -1
+ACT_L886 G 3 1 9 1 { lin 3 12 -1 882 -4 867 1 } -1
+ACT_L887 G 3 1 9 1 { lin 1 886 1 } -1
+ACT_L888 G -2 1 12 -1 { lin 3 12 -1 882 -4 847 -1 } -1
+ACT_L889 L 2 1 12 1 { lin 1 888 -1 } -1
+ACT_L890 G 4 1 13 1 { lin 3 7 -1 528 4 887 1 } -1
+ACT_L891 G 4 1 13 1 { lin 1 890 1 } -1
+ACT_L892 G -1 1 10 -1 { lin 3 11 -1 870 4 889 -1 } -1
+ACT_L893 L 1 1 10 1 { lin 1 892 -1 } -1
+ACT_L894 G -1 1 11 -1 { lin 3 9 -1 861 4 889 -1 } -1
+ACT_L895 L 1 1 11 1 { lin 1 894 -1 } -1
+ACT_L896 G -3 1 1 -4 { lin 3 15 -1 40 1 895 -1 } -1
+ACT_L897 L 3/4 1 1 1 { lin 1 896 -1/4 } -1
+ACT_R898 L 0 1 1 1 { rnd 1 897 1 } -1
+ActivityConflict899 G 1 0 { lin 4 14 -1 898 -4 893 -1 42 1 } -1
+DualBound_900 G 0 OBJ { lin 0 } -1
+ACT_L901 G -2 1 9 -1 { lin 3 13 -1 883 4 326 -1 } -1
+ACT_L902 L 2 1 9 1 { lin 1 901 -1 } -1
+ACT_L903 G 3 1 12 1 { lin 3 13 -1 883 4 184 1 } -1
+ACT_L904 G 3 1 12 1 { lin 1 903 1 } -1
+ACT_L905 G -1 1 11 -1 { lin 3 16 -1 873 -4 902 -1 } -1
+ACT_L906 L 1 1 11 1 { lin 1 905 -1 } -1
+ACT_L907 G 4 1 13 1 { lin 3 1 -1 196 4 904 1 } -1
+ACT_L908 G 4 1 13 1 { lin 1 907 1 } -1
+ACT_L909 G -1 1 10 -1 { lin 3 18 -1 51 -4 902 -1 } -1
+ACT_L910 L 1 1 10 1 { lin 1 909 -1 } -1
+ACT_L911 G 1 1 1 4 { lin 3 14 -1 910 -1 42 1 } -1
+ACT_L912 G 1/4 1 1 1 { lin 1 911 1/4 } -1
+ACT_R913 G 1 1 1 1 { rnd 1 912 1 } -1
+ActivityConflict914 G 1 0 { lin 4 15 -1 913 4 40 1 906 -1 } -1
+UnsplitNode51_915 G 1 0 { uns 914 883  899 882  } -1
+DualBound_916 G 0 OBJ { lin 0 } -1
+ACT_L917 G 2 1 11 1 { lin 3 8 -1 860 -4 44 1 } -1
+ACT_L918 G 2 1 11 1 { lin 1 917 1 } -1
+ACT_L919 G -2 1 12 -1 { lin 3 8 -1 860 -4 506 -1 } -1
+ACT_L920 L 2 1 12 1 { lin 1 919 -1 } -1
+ACT_L921 G -3 1 2 -4 { lin 3 13 -1 184 1 920 -1 } -1
+ACT_L922 L 3/4 1 2 1 { lin 1 921 -1/4 } -1
+ACT_R923 L 0 1 2 1 { rnd 1 922 1 } -1
+ACT_L924 G 1 1 1 4 { lin 3 14 -1 851 -1 918 1 } -1
+ACT_L925 G 1/4 1 1 1 { lin 1 924 1/4 } -1
+ACT_R926 G 1 1 1 1 { rnd 1 925 1 } -1
+DualBound_927 G 0 OBJ { lin 0 } -1
+DualBound_928 G 0 OBJ { lin 0 } -1
+DualBound_929 G 0 OBJ { lin 0 } -1
+DualBound_930 G 0 OBJ { lin 0 } -1
+DualBound_931 G 0 OBJ { lin 0 } -1
+DualBound_932 G 0 OBJ { lin 0 } -1
+DualBound_933 G 0 OBJ { lin 0 } -1
+DualBound_934 G 0 OBJ { lin 0 } -1
+A935 L 0 1 3 1 { asm } -1
+A936 G 1 1 3 1 { asm } -1
+DualBound_937 G 0 OBJ { lin 0 } -1
+DualBound_938 G 0 OBJ { lin 0 } -1
+ACT_L939 G -1 1 10 -1 { lin 3 11 -1 936 4 920 -1 } -1
+ACT_L940 L 1 1 10 1 { lin 1 939 -1 } -1
+ACT_L941 G 2 1 12 1 { lin 3 11 -1 936 4 40 1 } -1
+ACT_L942 G 2 1 12 1 { lin 1 941 1 } -1
+ACT_L943 G 3 1 9 1 { lin 3 12 -1 923 -4 942 1 } -1
+ACT_L944 G 3 1 9 1 { lin 1 943 1 } -1
+ACT_L945 G 3 1 11 1 { lin 3 8 -1 860 -4 942 1 } -1
+ACT_L946 G 3 1 11 1 { lin 1 945 1 } -1
+ACT_L947 G -3 1 0 -4 { lin 3 17 -1 944 1 506 -1 } -1
+ACT_L948 L 3/4 1 0 1 { lin 1 947 -1/4 } -1
+ACT_R949 L 0 1 0 1 { rnd 1 948 1 } -1
+ActivityConflict950 G 1 0 { lin 4 16 -1 949 -4 847 -1 946 1 } -1
+DualBound_951 G 0 OBJ { lin 0 } -1
+ACT_L952 G 2 1 10 1 { lin 3 10 -1 935 -4 44 1 } -1
+ACT_L953 G 2 1 10 1 { lin 1 952 1 } -1
+ACT_L954 G -1 1 12 -1 { lin 3 10 -1 935 -4 851 -1 } -1
+ACT_L955 L 1 1 12 1 { lin 1 954 -1 } -1
+ACT_L956 G 3 1 9 1 { lin 3 18 -1 51 -4 953 1 } -1
+ACT_L957 G 3 1 9 1 { lin 1 956 1 } -1
+ACT_L958 G 3 1 11 1 { lin 3 15 -1 926 4 953 1 } -1
+ACT_L959 G 3 1 11 1 { lin 1 958 1 } -1
+ACT_L960 G 1 1 0 4 { lin 3 16 -1 847 -1 959 1 } -1
+ACT_L961 G 1/4 1 0 1 { lin 1 960 1/4 } -1
+ACT_R962 G 1 1 0 1 { rnd 1 961 1 } -1
+ACT_L963 G 4 1 13 1 { lin 3 7 -1 528 4 957 1 } -1
+ACT_L964 G 4 1 13 1 { lin 1 963 1 } -1
+ActivityConflict965 G 1 0 { lin 4 17 -1 962 4 957 1 506 -1 } -1
+UnsplitNode50_966 G 1 0 { uns 950 936  965 935  } -1
+UnsplitNode39_967 G 1 0 { uns 915 861  966 860  } -1
+UnsplitNode37_968 G 1 0 { uns 967 528  590 527  } -1
+UnsplitNode27_969 G 1 0 { uns 968 516  844 515  } -1
+UnsplitNode17_970 G 1 0 { uns 969 338  636 337  } -1
+UnsplitNode2_971 G 1 0 { uns 970 196  764 195  } -1
+DualBound_972 G 0 OBJ { lin 0 } -1
+ACT_L973 G 2 1 12 1 { lin 3 0 -1 66 -4 46 1 } -1
+ACT_L974 G 2 1 12 1 { lin 1 973 1 } -1
+ACT_L975 G -3 1 13 -1 { lin 3 0 -1 66 -4 45 -1 } -1
+ACT_L976 L 3 1 13 1 { lin 1 975 -1 } -1
+DualBound_977 G 0 OBJ { lin 0 } -1
+DualBound_978 G 0 OBJ { lin 0 } -1
+DualBound_979 G 0 OBJ { lin 0 } -1
+DualBound_980 G 0 OBJ { lin 0 } -1
+DualBound_981 G 0 OBJ { lin 0 } -1
+DualBound_982 G 0 OBJ { lin 0 } -1
+DualBound_983 G 0 OBJ { lin 0 } -1
+DualBound_984 G 0 OBJ { lin 0 } -1
+A985 L 0 1 4 1 { asm } -1
+A986 G 1 1 4 1 { asm } -1
+DualBound_987 G 0 OBJ { lin 0 } -1
+DualBound_988 G 0 OBJ { lin 0 } -1
+ACT_L989 G -3 1 11 -1 { lin 3 9 -1 986 4 45 -1 } -1
+ACT_L990 L 3 1 11 1 { lin 1 989 -1 } -1
+DualBound_991 G 0 OBJ { lin 0 } -1
+DualBound_992 G 0 OBJ { lin 0 } -1
+DualBound_993 G 0 OBJ { lin 0 } -1
+DualBound_994 G 0 OBJ { lin 0 } -1
+DualBound_995 G 0 OBJ { lin 0 } -1
+DualBound_996 G 0 OBJ { lin 0 } -1
+DualBound_997 G 0 OBJ { lin 0 } -1
+DualBound_998 G 0 OBJ { lin 0 } -1
+A999 L 0 1 7 1 { asm } -1
+A1000 G 1 1 7 1 { asm } -1
+DualBound_1001 G 0 OBJ { lin 0 } -1
+DualBound_1002 G 0 OBJ { lin 0 } -1
+ACT_L1003 G 2 1 11 1 { lin 3 2 -1 999 -4 46 1 } -1
+ACT_L1004 G 2 1 11 1 { lin 1 1003 1 } -1
+ACT_L1005 G -2 1 13 -1 { lin 3 2 -1 999 -4 990 -1 } -1
+ACT_L1006 L 2 1 13 1 { lin 1 1005 -1 } -1
+ACT_L1007 G -3 1 6 -4 { lin 3 5 -1 57 1 1006 -1 } -1
+ACT_L1008 L 3/4 1 6 1 { lin 1 1007 -1/4 } -1
+ACT_R1009 L 0 1 6 1 { rnd 1 1008 1 } -1
+ACT_L1010 G 3 1 12 1 { lin 3 9 -1 986 4 1004 1 } -1
+ACT_L1011 G 3 1 12 1 { lin 1 1010 1 } -1
+ACT_L1012 G 1 1 2 4 { lin 3 12 -1 55 -1 1011 1 } -1
+ACT_L1013 G 1/4 1 2 1 { lin 1 1012 1/4 } -1
+ACT_R1014 G 1 1 2 1 { rnd 1 1013 1 } -1
+DualBound_1015 G 0 OBJ { lin 0 } -1
+DualBound_1016 G 0 OBJ { lin 0 } -1
+DualBound_1017 G 0 OBJ { lin 0 } -1
+DualBound_1018 G 0 OBJ { lin 0 } -1
+DualBound_1019 G 0 OBJ { lin 0 } -1
+DualBound_1020 G 0 OBJ { lin 0 } -1
+DualBound_1021 G 0 OBJ { lin 0 } -1
+DualBound_1022 G 0 OBJ { lin 0 } -1
+A1023 L 0 1 3 1 { asm } -1
+A1024 G 1 1 3 1 { asm } -1
+DualBound_1025 G 0 OBJ { lin 0 } -1
+DualBound_1026 G 0 OBJ { lin 0 } -1
+ACT_L1027 G -3 1 10 -1 { lin 3 11 -1 1024 4 45 -1 } -1
+ACT_L1028 L 3 1 10 1 { lin 1 1027 -1 } -1
+ACT_L1029 G -2 1 9 -1 { lin 3 19 -1 52 4 1028 -1 } -1
+ACT_L1030 L 2 1 9 1 { lin 1 1029 -1 } -1
+ACT_L1031 G 1 1 0 4 { lin 3 16 -1 1030 -1 1004 1 } -1
+ACT_L1032 G 1/4 1 0 1 { lin 1 1031 1/4 } -1
+ACT_R1033 G 1 1 0 1 { rnd 1 1032 1 } -1
+DualBound_1034 G 0 OBJ { lin 0 } -1
+DualBound_1035 G 0 OBJ { lin 0 } -1
+DualBound_1036 G 0 OBJ { lin 0 } -1
+DualBound_1037 G 0 OBJ { lin 0 } -1
+DualBound_1038 G 0 OBJ { lin 0 } -1
+DualBound_1039 G 0 OBJ { lin 0 } -1
+DualBound_1040 G 0 OBJ { lin 0 } -1
+DualBound_1041 G 0 OBJ { lin 0 } -1
+A1042 L 0 1 5 1 { asm } -1
+A1043 G 1 1 5 1 { asm } -1
+DualBound_1044 G 0 OBJ { lin 0 } -1
+DualBound_1045 G 0 OBJ { lin 0 } -1
+ACT_L1046 G 2 1 9 1 { lin 3 6 -1 1042 -4 46 1 } -1
+ACT_L1047 G 2 1 9 1 { lin 1 1046 1 } -1
+ACT_L1048 G -1 1 13 -1 { lin 3 6 -1 1042 -4 1030 -1 } -1
+ACT_L1049 L 1 1 13 1 { lin 1 1048 -1 } -1
+ACT_L1050 G 3 1 11 1 { lin 3 17 -1 1033 4 1047 1 } -1
+ACT_L1051 G 3 1 11 1 { lin 1 1050 1 } -1
+ACT_L1052 G 3 1 10 1 { lin 3 19 -1 52 4 1047 1 } -1
+ACT_L1053 G 3 1 10 1 { lin 1 1052 1 } -1
+ACT_L1054 G 4 1 12 1 { lin 3 9 -1 986 4 1051 1 } -1
+ACT_L1055 G 4 1 12 1 { lin 1 1054 1 } -1
+ACT_L1056 G -3 1 1 -4 { lin 3 15 -1 1053 1 990 -1 } -1
+ACT_L1057 L 3/4 1 1 1 { lin 1 1056 -1/4 } -1
+ACT_R1058 L 0 1 1 1 { rnd 1 1057 1 } -1
+ActivityConflict1059 G 1 0 { lin 4 14 -1 1058 -4 1028 -1 1051 1 } -1
+DualBound_1060 G 0 OBJ { lin 0 } -1
+ACT_L1061 G -1 1 9 -1 { lin 3 7 -1 1043 4 1006 -1 } -1
+ACT_L1062 L 1 1 9 1 { lin 1 1061 -1 } -1
+ACT_L1063 G 2 1 13 1 { lin 3 7 -1 1043 4 38 1 } -1
+ACT_L1064 G 2 1 13 1 { lin 1 1063 1 } -1
+ACT_L1065 G 3 1 10 1 { lin 3 4 -1 1009 -4 1064 1 } -1
+ACT_L1066 G 3 1 10 1 { lin 1 1065 1 } -1
+ACT_L1067 G 3 1 11 1 { lin 3 2 -1 999 -4 1064 1 } -1
+ACT_L1068 G 3 1 11 1 { lin 1 1067 1 } -1
+ACT_L1069 G -3 1 1 -4 { lin 3 15 -1 1066 1 990 -1 } -1
+ACT_L1070 L 3/4 1 1 1 { lin 1 1069 -1/4 } -1
+ACT_R1071 L 0 1 1 1 { rnd 1 1070 1 } -1
+ActivityConflict1072 G 1 0 { lin 4 14 -1 1071 -4 1028 -1 1068 1 } -1
+UnsplitNode61_1073 G 1 0 { uns 1072 1043  1059 1042  } -1
+DualBound_1074 G 0 OBJ { lin 0 } -1
+ACT_L1075 G 3 1 11 1 { lin 3 8 -1 985 -4 974 1 } -1
+ACT_L1076 G 3 1 11 1 { lin 1 1075 1 } -1
+ACT_L1077 G -3 1 12 -1 { lin 3 8 -1 985 -4 43 -1 } -1
+ACT_L1078 L 3 1 12 1 { lin 1 1077 -1 } -1
+ACT_L1079 G -2 1 13 -1 { lin 3 0 -1 66 -4 1078 -1 } -1
+ACT_L1080 L 2 1 13 1 { lin 1 1079 -1 } -1
+ACT_L1081 G 1 1 0 4 { lin 3 16 -1 55 -1 1076 1 } -1
+ACT_L1082 G 1/4 1 0 1 { lin 1 1081 1/4 } -1
+ACT_R1083 G 1 1 0 1 { rnd 1 1082 1 } -1
+ACT_L1084 G -2 1 7 -4 { lin 3 3 -1 1076 1 1080 -1 } -1
+ACT_L1085 L 1/2 1 7 1 { lin 1 1084 -1/4 } -1
+ACT_R1086 L 0 1 7 1 { rnd 1 1085 1 } -1
+ACT_L1087 G -3 1 6 -4 { lin 3 5 -1 57 1 1080 -1 } -1
+ACT_L1088 L 3/4 1 6 1 { lin 1 1087 -1/4 } -1
+ACT_R1089 L 0 1 6 1 { rnd 1 1088 1 } -1
+DualBound_1090 G 0 OBJ { lin 0 } -1
+DualBound_1091 G 0 OBJ { lin 0 } -1
+DualBound_1092 G 0 OBJ { lin 0 } -1
+DualBound_1093 G 0 OBJ { lin 0 } -1
+DualBound_1094 G 0 OBJ { lin 0 } -1
+DualBound_1095 G 0 OBJ { lin 0 } -1
+DualBound_1096 G 0 OBJ { lin 0 } -1
+DualBound_1097 G 0 OBJ { lin 0 } -1
+A1098 L 0 1 2 1 { asm } -1
+A1099 G 1 1 2 1 { asm } -1
+DualBound_1100 G 0 OBJ { lin 0 } -1
+DualBound_1101 G 0 OBJ { lin 0 } -1
+ACT_L1102 G 3 1 9 1 { lin 3 12 -1 1098 -4 974 1 } -1
+ACT_L1103 G 3 1 9 1 { lin 1 1102 1 } -1
+ACT_L1104 G -2 1 12 -1 { lin 3 12 -1 1098 -4 55 -1 } -1
+ACT_L1105 L 2 1 12 1 { lin 1 1104 -1 } -1
+ACT_L1106 G -3 1 3 -4 { lin 3 11 -1 57 1 1105 -1 } -1
+ACT_L1107 L 3/4 1 3 1 { lin 1 1106 -1/4 } -1
+ACT_R1108 L 0 1 3 1 { rnd 1 1107 1 } -1
+ACT_L1109 G 3 1 10 1 { lin 3 10 -1 1108 -4 974 1 } -1
+ACT_L1110 G 3 1 10 1 { lin 1 1109 1 } -1
+ACT_L1111 G -1 1 13 -1 { lin 3 0 -1 66 -4 1105 -1 } -1
+ACT_L1112 L 1 1 13 1 { lin 1 1111 -1 } -1
+ACT_L1113 G 4 1 10 1 { lin 3 19 -1 52 4 1103 1 } -1
+ACT_L1114 G 4 1 10 1 { lin 1 1113 1 } -1
+ACT_L1115 G 4 1 11 1 { lin 3 17 -1 1083 4 1103 1 } -1
+ACT_L1116 G 4 1 11 1 { lin 1 1115 1 } -1
+ACT_L1117 G -1 1 5 -4 { lin 3 7 -1 1103 1 1112 -1 } -1
+ACT_L1118 L 1/4 1 5 1 { lin 1 1117 -1/4 } -1
+ACT_R1119 L 0 1 5 1 { rnd 1 1118 1 } -1
+ACT_L1120 G -3 1 1 -4 { lin 3 15 -1 1114 1 43 -1 } -1
+ACT_L1121 L 3/4 1 1 1 { lin 1 1120 -1/4 } -1
+ACT_R1122 L 0 1 1 1 { rnd 1 1121 1 } -1
+ActivityConflict1123 G 1 0 { lin 4 14 -1 1122 -4 41 -1 1116 1 } -1
+DualBound_1124 G 0 OBJ { lin 0 } -1
+ACT_L1125 G -2 1 9 -1 { lin 3 13 -1 1099 4 1078 -1 } -1
+ACT_L1126 L 2 1 9 1 { lin 1 1125 -1 } -1
+DualBound_1127 G 0 OBJ { lin 0 } -1
+DualBound_1128 G 0 OBJ { lin 0 } -1
+DualBound_1129 G 0 OBJ { lin 0 } -1
+DualBound_1130 G 0 OBJ { lin 0 } -1
+DualBound_1131 G 0 OBJ { lin 0 } -1
+DualBound_1132 G 0 OBJ { lin 0 } -1
+DualBound_1133 G 0 OBJ { lin 0 } -1
+DualBound_1134 G 0 OBJ { lin 0 } -1
+A1135 L 0 1 5 1 { asm } -1
+A1136 G 1 1 5 1 { asm } -1
+DualBound_1137 G 0 OBJ { lin 0 } -1
+DualBound_1138 G 0 OBJ { lin 0 } -1
+ACT_L1139 G 2 1 9 1 { lin 3 6 -1 1135 -4 46 1 } -1
+ACT_L1140 G 2 1 9 1 { lin 1 1139 1 } -1
+ACT_L1141 G -1 1 13 -1 { lin 3 6 -1 1135 -4 1126 -1 } -1
+ACT_L1142 L 1 1 13 1 { lin 1 1141 -1 } -1
+ACT_L1143 G 3 1 12 1 { lin 3 13 -1 1099 4 1140 1 } -1
+ACT_L1144 G 3 1 12 1 { lin 1 1143 1 } -1
+ACT_L1145 G 3 1 10 1 { lin 3 19 -1 52 4 1140 1 } -1
+ACT_L1146 G 3 1 10 1 { lin 1 1145 1 } -1
+ACT_L1147 G 4 1 11 1 { lin 3 8 -1 985 -4 1144 1 } -1
+ACT_L1148 G 4 1 11 1 { lin 1 1147 1 } -1
+ACT_L1149 G 1 1 1 4 { lin 3 14 -1 41 -1 1148 1 } -1
+ACT_L1150 G 1/4 1 1 1 { lin 1 1149 1/4 } -1
+ACT_R1151 G 1 1 1 1 { rnd 1 1150 1 } -1
+ACT_L1152 G -3 1 10 -1 { lin 3 15 -1 1151 4 43 -1 } -1
+ACT_L1153 L 3 1 10 1 { lin 1 1152 -1 } -1
+ACT_L1154 G -3 1 3 -4 { lin 3 11 -1 1146 1 1078 -1 } -1
+ACT_L1155 L 3/4 1 3 1 { lin 1 1154 -1/4 } -1
+ACT_R1156 L 0 1 3 1 { rnd 1 1155 1 } -1
+ActivityConflict1157 G 1 0 { lin 4 10 -1 1156 -4 1153 -1 1144 1 } -1
+DualBound_1158 G 0 OBJ { lin 0 } -1
+ACT_L1159 G -1 1 9 -1 { lin 3 7 -1 1136 4 1080 -1 } -1
+ACT_L1160 L 1 1 9 1 { lin 1 1159 -1 } -1
+ACT_L1161 G 2 1 13 1 { lin 3 7 -1 1136 4 38 1 } -1
+ACT_L1162 G 2 1 13 1 { lin 1 1161 1 } -1
+ACT_L1163 G 3 1 10 1 { lin 3 4 -1 1089 -4 1162 1 } -1
+ACT_L1164 G 3 1 10 1 { lin 1 1163 1 } -1
+ACT_L1165 G 3 1 12 1 { lin 3 0 -1 66 -4 1162 1 } -1
+ACT_L1166 G 3 1 12 1 { lin 1 1165 1 } -1
+ACT_L1167 G -3 1 3 -4 { lin 3 11 -1 1164 1 1078 -1 } -1
+ACT_L1168 L 3/4 1 3 1 { lin 1 1167 -1/4 } -1
+ACT_R1169 L 0 1 3 1 { rnd 1 1168 1 } -1
+ACT_L1170 G 4 1 10 1 { lin 3 10 -1 1169 -4 1166 1 } -1
+ACT_L1171 G 4 1 10 1 { lin 1 1170 1 } -1
+ACT_L1172 G 4 1 11 1 { lin 3 8 -1 985 -4 1166 1 } -1
+ACT_L1173 G 4 1 11 1 { lin 1 1172 1 } -1
+ACT_L1174 G -3 1 1 -4 { lin 3 15 -1 1171 1 43 -1 } -1
+ACT_L1175 L 3/4 1 1 1 { lin 1 1174 -1/4 } -1
+ACT_R1176 L 0 1 1 1 { rnd 1 1175 1 } -1
+ActivityConflict1177 G 1 0 { lin 4 14 -1 1176 -4 41 -1 1173 1 } -1
+UnsplitNode65_1178 G 1 0 { uns 1177 1136  1157 1135  } -1
+UnsplitNode56_1179 G 1 0 { uns 1178 1099  1123 1098  } -1
+DualBound_1180 G 0 OBJ { lin 0 } -1
+ACT_L1181 G -2 1 11 -1 { lin 3 3 -1 1000 4 976 -1 } -1
+ACT_L1182 L 2 1 11 1 { lin 1 1181 -1 } -1
+ACT_L1183 G 2 1 13 1 { lin 3 3 -1 1000 4 42 1 } -1
+ACT_L1184 G 2 1 13 1 { lin 1 1183 1 } -1
+ACT_L1185 G -3 1 1 -4 { lin 3 15 -1 57 1 1182 -1 } -1
+ACT_L1186 L 3/4 1 1 1 { lin 1 1185 -1/4 } -1
+ACT_R1187 L 0 1 1 1 { rnd 1 1186 1 } -1
+ACT_L1188 G 3 1 12 1 { lin 3 0 -1 66 -4 1184 1 } -1
+ACT_L1189 G 3 1 12 1 { lin 1 1188 1 } -1
+ACT_L1190 G 1 1 2 4 { lin 3 12 -1 55 -1 1189 1 } -1
+ACT_L1191 G 1/4 1 2 1 { lin 1 1190 1/4 } -1
+ACT_R1192 G 1 1 2 1 { rnd 1 1191 1 } -1
+DualBound_1193 G 0 OBJ { lin 0 } -1
+DualBound_1194 G 0 OBJ { lin 0 } -1
+DualBound_1195 G 0 OBJ { lin 0 } -1
+DualBound_1196 G 0 OBJ { lin 0 } -1
+DualBound_1197 G 0 OBJ { lin 0 } -1
+DualBound_1198 G 0 OBJ { lin 0 } -1
+DualBound_1199 G 0 OBJ { lin 0 } -1
+DualBound_1200 G 0 OBJ { lin 0 } -1
+A1201 L 0 1 5 1 { asm } -1
+A1202 G 1 1 5 1 { asm } -1
+DualBound_1203 G 0 OBJ { lin 0 } -1
+DualBound_1204 G 0 OBJ { lin 0 } -1
+ACT_L1205 G -2 1 9 -1 { lin 3 7 -1 1202 4 976 -1 } -1
+ACT_L1206 L 2 1 9 1 { lin 1 1205 -1 } -1
+DualBound_1207 G 0 OBJ { lin 0 } -1
+DualBound_1208 G 0 OBJ { lin 0 } -1
+DualBound_1209 G 0 OBJ { lin 0 } -1
+DualBound_1210 G 0 OBJ { lin 0 } -1
+DualBound_1211 G 0 OBJ { lin 0 } -1
+DualBound_1212 G 0 OBJ { lin 0 } -1
+DualBound_1213 G 0 OBJ { lin 0 } -1
+DualBound_1214 G 0 OBJ { lin 0 } -1
+A1215 L 0 1 3 1 { asm } -1
+A1216 G 1 1 3 1 { asm } -1
+DualBound_1217 G 0 OBJ { lin 0 } -1
+DualBound_1218 G 0 OBJ { lin 0 } -1
+ACT_L1219 G -3 1 10 -1 { lin 3 11 -1 1216 4 45 -1 } -1
+ACT_L1220 L 3 1 10 1 { lin 1 1219 -1 } -1
+DualBound_1221 G 0 OBJ { lin 0 } -1
+DualBound_1222 G 0 OBJ { lin 0 } -1
+DualBound_1223 G 0 OBJ { lin 0 } -1
+DualBound_1224 G 0 OBJ { lin 0 } -1
+DualBound_1225 G 0 OBJ { lin 0 } -1
+DualBound_1226 G 0 OBJ { lin 0 } -1
+DualBound_1227 G 0 OBJ { lin 0 } -1
+DualBound_1228 G 0 OBJ { lin 0 } -1
+A1229 L 0 1 6 1 { asm } -1
+A1230 G 1 1 6 1 { asm } -1
+DualBound_1231 G 0 OBJ { lin 0 } -1
+DualBound_1232 G 0 OBJ { lin 0 } -1
+ACT_L1233 G 3 1 10 1 { lin 3 4 -1 1229 -4 1184 1 } -1
+ACT_L1234 G 3 1 10 1 { lin 1 1233 1 } -1
+ACT_L1235 G -2 1 13 -1 { lin 3 4 -1 1229 -4 1220 -1 } -1
+ACT_L1236 L 2 1 13 1 { lin 1 1235 -1 } -1
+ACT_L1237 G 4 1 12 1 { lin 3 11 -1 1216 4 1234 1 } -1
+ACT_L1238 G 4 1 12 1 { lin 1 1237 1 } -1
+ACT_L1239 G -1 1 9 -1 { lin 3 7 -1 1202 4 1236 -1 } -1
+ACT_L1240 L 1 1 9 1 { lin 1 1239 -1 } -1
+ACT_L1241 G -1 1 11 -1 { lin 3 3 -1 1000 4 1236 -1 } -1
+ACT_L1242 L 1 1 11 1 { lin 1 1241 -1 } -1
+ACT_L1243 G -3 1 0 -4 { lin 3 17 -1 38 1 1242 -1 } -1
+ACT_L1244 L 3/4 1 0 1 { lin 1 1243 -1/4 } -1
+ACT_R1245 L 0 1 0 1 { rnd 1 1244 1 } -1
+ActivityConflict1246 G 1 0 { lin 4 16 -1 1245 -4 1240 -1 42 1 } -1
+DualBound_1247 G 0 OBJ { lin 0 } -1
+ACT_L1248 G -2 1 10 -1 { lin 3 5 -1 1230 4 976 -1 } -1
+ACT_L1249 L 2 1 10 1 { lin 1 1248 -1 } -1
+ACT_L1250 G 3 1 13 1 { lin 3 5 -1 1230 4 57 1 } -1
+ACT_L1251 G 3 1 13 1 { lin 1 1250 1 } -1
+ACT_L1252 G -1 1 11 -1 { lin 3 14 -1 1187 -4 1249 -1 } -1
+ACT_L1253 L 1 1 11 1 { lin 1 1252 -1 } -1
+ACT_L1254 G 4 1 12 1 { lin 3 0 -1 66 -4 1251 1 } -1
+ACT_L1255 G 4 1 12 1 { lin 1 1254 1 } -1
+ACT_L1256 G -1 1 9 -1 { lin 3 19 -1 52 4 1249 -1 } -1
+ACT_L1257 L 1 1 9 1 { lin 1 1256 -1 } -1
+ACT_L1258 G 1 1 0 4 { lin 3 16 -1 1257 -1 42 1 } -1
+ACT_L1259 G 1/4 1 0 1 { lin 1 1258 1/4 } -1
+ACT_R1260 G 1 1 0 1 { rnd 1 1259 1 } -1
+ActivityConflict1261 G 1 0 { lin 4 17 -1 1260 4 38 1 1253 -1 } -1
+UnsplitNode71_1262 G 1 0 { uns 1261 1230  1246 1229  } -1
+DualBound_1263 G 0 OBJ { lin 0 } -1
+ACT_L1264 G 4 1 10 1 { lin 3 10 -1 1023 -4 1011 1 } -1
+ACT_L1265 G 4 1 10 1 { lin 1 1264 1 } -1
+ACT_L1266 G -3 1 12 -1 { lin 3 10 -1 1023 -4 41 -1 } -1
+ACT_L1267 L 3 1 12 1 { lin 1 1266 -1 } -1
+ACT_L1268 G -2 1 11 -1 { lin 3 9 -1 986 4 1267 -1 } -1
+ACT_L1269 L 2 1 11 1 { lin 1 1268 -1 } -1
+ACT_L1270 G -1 1 1 -4 { lin 3 15 -1 1265 1 1269 -1 } -1
+ACT_L1271 L 1/4 1 1 1 { lin 1 1270 -1/4 } -1
+ACT_R1272 L 0 1 1 1 { rnd 1 1271 1 } -1
+ACT_L1273 G -2 1 9 -1 { lin 3 13 -1 1014 4 1267 -1 } -1
+ACT_L1274 L 2 1 9 1 { lin 1 1273 -1 } -1
+ACT_L1275 G 1 1 0 4 { lin 3 16 -1 1274 -1 1004 1 } -1
+ACT_L1276 G 1/4 1 0 1 { lin 1 1275 1/4 } -1
+ACT_R1277 G 1 1 0 1 { rnd 1 1276 1 } -1
+ACT_L1278 G -1 1 13 -1 { lin 3 2 -1 999 -4 1269 -1 } -1
+ACT_L1279 L 1 1 13 1 { lin 1 1278 -1 } -1
+ACT_L1280 G -3 1 5 -4 { lin 3 7 -1 38 1 1279 -1 } -1
+ACT_L1281 L 3/4 1 5 1 { lin 1 1280 -1/4 } -1
+ACT_R1282 L 0 1 5 1 { rnd 1 1281 1 } -1
+ACT_L1283 G 2 1 9 1 { lin 3 6 -1 1282 -4 46 1 } -1
+ACT_L1284 G 2 1 9 1 { lin 1 1283 1 } -1
+ActivityConflict1285 G 1 0 { lin 4 17 -1 1277 4 1284 1 1269 -1 } -1
+UnsplitNode58_1286 G 1 0 { uns 1073 1024  1285 1023  } -1
+DualBound_1287 G 0 OBJ { lin 0 } -1
+ACT_L1288 G 3 1 9 1 { lin 3 6 -1 1201 -4 1184 1 } -1
+ACT_L1289 G 3 1 9 1 { lin 1 1288 1 } -1
+ACT_L1290 G -2 1 13 -1 { lin 3 6 -1 1201 -4 55 -1 } -1
+ACT_L1291 L 2 1 13 1 { lin 1 1290 -1 } -1
+ACT_L1292 G -1 1 11 -1 { lin 3 3 -1 1000 4 1291 -1 } -1
+ACT_L1293 L 1 1 11 1 { lin 1 1292 -1 } -1
+ACT_L1294 G -3 1 6 -4 { lin 3 5 -1 57 1 1291 -1 } -1
+ACT_L1295 L 3/4 1 6 1 { lin 1 1294 -1/4 } -1
+ACT_R1296 L 0 1 6 1 { rnd 1 1295 1 } -1
+ACT_L1297 G 4 1 12 1 { lin 3 13 -1 1192 4 1289 1 } -1
+ACT_L1298 G 4 1 12 1 { lin 1 1297 1 } -1
+ACT_L1299 G 4 1 10 1 { lin 3 19 -1 52 4 1289 1 } -1
+ACT_L1300 G 4 1 10 1 { lin 1 1299 1 } -1
+ACT_L1301 G -1 1 0 -4 { lin 3 17 -1 1289 1 1293 -1 } -1
+ACT_L1302 L 1/4 1 0 1 { lin 1 1301 -1/4 } -1
+ACT_R1303 L 0 1 0 1 { rnd 1 1302 1 } -1
+ACT_L1304 G 1 1 3 4 { lin 3 10 -1 41 -1 1298 1 } -1
+ACT_L1305 G 1/4 1 3 1 { lin 1 1304 1/4 } -1
+ACT_R1306 G 1 1 3 1 { rnd 1 1305 1 } -1
+ActivityConflict1307 G 1 0 { lin 4 11 -1 1306 4 1300 1 45 -1 } -1
+DualBound_1308 G 0 OBJ { lin 0 } -1
+ACT_L1309 G 4 1 10 1 { lin 3 10 -1 1215 -4 1189 1 } -1
+ACT_L1310 G 4 1 10 1 { lin 1 1309 1 } -1
+ACT_L1311 G -3 1 12 -1 { lin 3 10 -1 1215 -4 41 -1 } -1
+ACT_L1312 L 3 1 12 1 { lin 1 1311 -1 } -1
+ACT_L1313 G -2 1 13 -1 { lin 3 0 -1 66 -4 1312 -1 } -1
+ACT_L1314 L 2 1 13 1 { lin 1 1313 -1 } -1
+ACT_L1315 G -1 1 6 -4 { lin 3 5 -1 1310 1 1314 -1 } -1
+ACT_L1316 L 1/4 1 6 1 { lin 1 1315 -1/4 } -1
+ACT_R1317 L 0 1 6 1 { rnd 1 1316 1 } -1
+ACT_L1318 G -1 1 11 -1 { lin 3 3 -1 1000 4 1314 -1 } -1
+ACT_L1319 L 1 1 11 1 { lin 1 1318 -1 } -1
+ACT_L1320 G -1 1 9 -1 { lin 3 7 -1 1202 4 1314 -1 } -1
+ACT_L1321 L 1 1 9 1 { lin 1 1320 -1 } -1
+ACT_L1322 G 1 1 0 4 { lin 3 16 -1 1321 -1 42 1 } -1
+ACT_L1323 G 1/4 1 0 1 { lin 1 1322 1/4 } -1
+ACT_R1324 G 1 1 0 1 { rnd 1 1323 1 } -1
+ActivityConflict1325 G 1 0 { lin 4 17 -1 1324 4 38 1 1319 -1 } -1
+UnsplitNode69_1326 G 1 0 { uns 1262 1216  1325 1215  } -1
+UnsplitNode59_1327 G 1 0 { uns 1326 1202  1307 1201  } -1
+UnsplitNode57_1328 G 1 0 { uns 1327 1000  1286 999  } -1
+UnsplitNode4_1329 G 1 0 { uns 1328 986  1179 985  } -1
+DualBound_1330 G 0 OBJ { lin 0 } -1
+ACT_L1331 G 3 1 10 1 { lin 3 4 -1 108 -4 73 1 } -1
+ACT_L1332 G 3 1 10 1 { lin 1 1331 1 } -1
+ACT_L1333 G -3 1 13 -1 { lin 3 4 -1 108 -4 41 -1 } -1
+ACT_L1334 L 3 1 13 1 { lin 1 1333 -1 } -1
+ACT_L1335 G -2 1 12 -1 { lin 3 1 -1 67 4 1334 -1 } -1
+ACT_L1336 L 2 1 12 1 { lin 1 1335 -1 } -1
+ACT_L1337 G -2 1 9 -1 { lin 3 7 -1 97 4 1334 -1 } -1
+ACT_L1338 L 2 1 9 1 { lin 1 1337 -1 } -1
+ACT_L1339 G -2 1 11 -1 { lin 3 3 -1 83 4 1334 -1 } -1
+ACT_L1340 L 2 1 11 1 { lin 1 1339 -1 } -1
+ACT_L1341 G -2 1 1 -4 { lin 3 15 -1 1332 1 1340 -1 } -1
+ACT_L1342 L 1/2 1 1 1 { lin 1 1341 -1/4 } -1
+ACT_R1343 L 0 1 1 1 { rnd 1 1342 1 } -1
+ACT_L1344 G -2 1 3 -4 { lin 3 11 -1 1332 1 1336 -1 } -1
+ACT_L1345 L 1/2 1 3 1 { lin 1 1344 -1/4 } -1
+ACT_R1346 L 0 1 3 1 { rnd 1 1345 1 } -1
+DualBound_1347 G 0 OBJ { lin 0 } -1
+DualBound_1348 G 0 OBJ { lin 0 } -1
+DualBound_1349 G 0 OBJ { lin 0 } -1
+DualBound_1350 G 0 OBJ { lin 0 } -1
+DualBound_1351 G 0 OBJ { lin 0 } -1
+DualBound_1352 G 0 OBJ { lin 0 } -1
+DualBound_1353 G 0 OBJ { lin 0 } -1
+DualBound_1354 G 0 OBJ { lin 0 } -1
+A1355 L 0 1 4 1 { asm } -1
+A1356 G 1 1 4 1 { asm } -1
+DualBound_1357 G 0 OBJ { lin 0 } -1
+DualBound_1358 G 0 OBJ { lin 0 } -1
+ACT_L1359 G -1 1 11 -1 { lin 3 9 -1 1356 4 1336 -1 } -1
+ACT_L1360 L 1 1 11 1 { lin 1 1359 -1 } -1
+ACT_L1361 G 2 1 12 1 { lin 3 9 -1 1356 4 42 1 } -1
+ACT_L1362 G 2 1 12 1 { lin 1 1361 1 } -1
+ACT_L1363 G 1 1 2 4 { lin 3 12 -1 1338 -1 1362 1 } -1
+ACT_L1364 G 1/4 1 2 1 { lin 1 1363 1/4 } -1
+ACT_R1365 G 1 1 2 1 { rnd 1 1364 1 } -1
+ACT_L1366 G 3 1 13 1 { lin 3 1 -1 67 4 1362 1 } -1
+ACT_L1367 G 3 1 13 1 { lin 1 1366 1 } -1
+ACT_L1368 G -3 1 0 -4 { lin 3 17 -1 38 1 1360 -1 } -1
+ACT_L1369 L 3/4 1 0 1 { lin 1 1368 -1/4 } -1
+ACT_R1370 L 0 1 0 1 { rnd 1 1369 1 } -1
+ACT_L1371 G 2 1 9 1 { lin 3 16 -1 1370 -4 42 1 } -1
+ACT_L1372 G 2 1 9 1 { lin 1 1371 1 } -1
+ACT_L1373 G 4 1 10 1 { lin 3 4 -1 108 -4 1367 1 } -1
+ACT_L1374 G 4 1 10 1 { lin 1 1373 1 } -1
+ActivityConflict1375 G 1 0 { lin 4 13 -1 1365 4 1372 1 1336 -1 } -1
+DualBound_1376 G 0 OBJ { lin 0 } -1
+ACT_L1377 G 2 1 11 1 { lin 3 8 -1 1355 -4 44 1 } -1
+ACT_L1378 G 2 1 11 1 { lin 1 1377 1 } -1
+ACT_L1379 G -1 1 12 -1 { lin 3 8 -1 1355 -4 1340 -1 } -1
+ACT_L1380 L 1 1 12 1 { lin 1 1379 -1 } -1
+ACT_L1381 G 1 1 0 4 { lin 3 16 -1 1338 -1 1378 1 } -1
+ACT_L1382 G 1/4 1 0 1 { lin 1 1381 1/4 } -1
+ACT_R1383 G 1 1 0 1 { rnd 1 1382 1 } -1
+ACT_L1384 G 3 1 13 1 { lin 3 3 -1 83 4 1378 1 } -1
+ACT_L1385 G 3 1 13 1 { lin 1 1384 1 } -1
+ACT_L1386 G -3 1 2 -4 { lin 3 13 -1 38 1 1380 -1 } -1
+ACT_L1387 L 3/4 1 2 1 { lin 1 1386 -1/4 } -1
+ACT_R1388 L 0 1 2 1 { rnd 1 1387 1 } -1
+ACT_L1389 G 2 1 9 1 { lin 3 12 -1 1388 -4 44 1 } -1
+ACT_L1390 G 2 1 9 1 { lin 1 1389 1 } -1
+ActivityConflict1391 G 1 0 { lin 4 17 -1 1383 4 1390 1 1340 -1 } -1
+UnsplitNode10_1392 G 1 0 { uns 1375 1356  1391 1355  } -1
+UnsplitNode9_1393 G 1 0 { uns 816 109  1392 108  } -1
+DualBound_1394 G 0 OBJ { lin 0 } -1
+ACT_L1395 G 3 1 11 1 { lin 3 2 -1 82 -4 73 1 } -1
+ACT_L1396 G 3 1 11 1 { lin 1 1395 1 } -1
+ACT_L1397 G -3 1 13 -1 { lin 3 2 -1 82 -4 43 -1 } -1
+ACT_L1398 L 3 1 13 1 { lin 1 1397 -1 } -1
+ACT_L1399 G -2 1 12 -1 { lin 3 1 -1 67 4 1398 -1 } -1
+ACT_L1400 L 2 1 12 1 { lin 1 1399 -1 } -1
+ACT_L1401 G 1 1 0 4 { lin 3 16 -1 55 -1 1396 1 } -1
+ACT_L1402 G 1/4 1 0 1 { lin 1 1401 1/4 } -1
+ACT_R1403 G 1 1 0 1 { rnd 1 1402 1 } -1
+ACT_L1404 G -2 1 4 -4 { lin 3 9 -1 1396 1 1400 -1 } -1
+ACT_L1405 L 1/2 1 4 1 { lin 1 1404 -1/4 } -1
+ACT_R1406 L 0 1 4 1 { rnd 1 1405 1 } -1
+ACT_L1407 G -3 1 3 -4 { lin 3 11 -1 57 1 1400 -1 } -1
+ACT_L1408 L 3/4 1 3 1 { lin 1 1407 -1/4 } -1
+ACT_R1409 L 0 1 3 1 { rnd 1 1408 1 } -1
+DualBound_1410 G 0 OBJ { lin 0 } -1
+DualBound_1411 G 0 OBJ { lin 0 } -1
+DualBound_1412 G 0 OBJ { lin 0 } -1
+DualBound_1413 G 0 OBJ { lin 0 } -1
+DualBound_1414 G 0 OBJ { lin 0 } -1
+DualBound_1415 G 0 OBJ { lin 0 } -1
+DualBound_1416 G 0 OBJ { lin 0 } -1
+DualBound_1417 G 0 OBJ { lin 0 } -1
+A1418 L 0 1 5 1 { asm } -1
+A1419 G 1 1 5 1 { asm } -1
+DualBound_1420 G 0 OBJ { lin 0 } -1
+DualBound_1421 G 0 OBJ { lin 0 } -1
+ACT_L1422 G 3 1 9 1 { lin 3 6 -1 1418 -4 73 1 } -1
+ACT_L1423 G 3 1 9 1 { lin 1 1422 1 } -1
+ACT_L1424 G -2 1 13 -1 { lin 3 6 -1 1418 -4 55 -1 } -1
+ACT_L1425 L 2 1 13 1 { lin 1 1424 -1 } -1
+ACT_L1426 G -3 1 6 -4 { lin 3 5 -1 57 1 1425 -1 } -1
+ACT_L1427 L 3/4 1 6 1 { lin 1 1426 -1/4 } -1
+ACT_R1428 L 0 1 6 1 { rnd 1 1427 1 } -1
+ACT_L1429 G 3 1 10 1 { lin 3 4 -1 1428 -4 73 1 } -1
+ACT_L1430 G 3 1 10 1 { lin 1 1429 1 } -1
+ACT_L1431 G -1 1 12 -1 { lin 3 1 -1 67 4 1425 -1 } -1
+ACT_L1432 L 1 1 12 1 { lin 1 1431 -1 } -1
+ACT_L1433 G 4 1 10 1 { lin 3 19 -1 52 4 1423 1 } -1
+ACT_L1434 G 4 1 10 1 { lin 1 1433 1 } -1
+ACT_L1435 G 4 1 11 1 { lin 3 17 -1 1403 4 1423 1 } -1
+ACT_L1436 G 4 1 11 1 { lin 1 1435 1 } -1
+ACT_L1437 G -1 1 2 -4 { lin 3 13 -1 1423 1 1432 -1 } -1
+ACT_L1438 L 1/4 1 2 1 { lin 1 1437 -1/4 } -1
+ACT_R1439 L 0 1 2 1 { rnd 1 1438 1 } -1
+ACT_L1440 G -3 1 1 -4 { lin 3 15 -1 1434 1 43 -1 } -1
+ACT_L1441 L 3/4 1 1 1 { lin 1 1440 -1/4 } -1
+ACT_R1442 L 0 1 1 1 { rnd 1 1441 1 } -1
+ActivityConflict1443 G 1 0 { lin 4 14 -1 1442 -4 41 -1 1436 1 } -1
+DualBound_1444 G 0 OBJ { lin 0 } -1
+ACT_L1445 G -2 1 9 -1 { lin 3 7 -1 1419 4 1398 -1 } -1
+ACT_L1446 L 2 1 9 1 { lin 1 1445 -1 } -1
+DualBound_1447 G 0 OBJ { lin 0 } -1
+DualBound_1448 G 0 OBJ { lin 0 } -1
+DualBound_1449 G 0 OBJ { lin 0 } -1
+DualBound_1450 G 0 OBJ { lin 0 } -1
+DualBound_1451 G 0 OBJ { lin 0 } -1
+DualBound_1452 G 0 OBJ { lin 0 } -1
+DualBound_1453 G 0 OBJ { lin 0 } -1
+DualBound_1454 G 0 OBJ { lin 0 } -1
+A1455 L 0 1 2 1 { asm } -1
+A1456 G 1 1 2 1 { asm } -1
+DualBound_1457 G 0 OBJ { lin 0 } -1
+DualBound_1458 G 0 OBJ { lin 0 } -1
+ACT_L1459 G 2 1 9 1 { lin 3 12 -1 1455 -4 44 1 } -1
+ACT_L1460 G 2 1 9 1 { lin 1 1459 1 } -1
+ACT_L1461 G -1 1 12 -1 { lin 3 12 -1 1455 -4 1446 -1 } -1
+ACT_L1462 L 1 1 12 1 { lin 1 1461 -1 } -1
+ACT_L1463 G 3 1 13 1 { lin 3 7 -1 1419 4 1460 1 } -1
+ACT_L1464 G 3 1 13 1 { lin 1 1463 1 } -1
+ACT_L1465 G 3 1 10 1 { lin 3 19 -1 52 4 1460 1 } -1
+ACT_L1466 G 3 1 10 1 { lin 1 1465 1 } -1
+ACT_L1467 G 4 1 11 1 { lin 3 2 -1 82 -4 1464 1 } -1
+ACT_L1468 G 4 1 11 1 { lin 1 1467 1 } -1
+ACT_L1469 G 1 1 1 4 { lin 3 14 -1 41 -1 1468 1 } -1
+ACT_L1470 G 1/4 1 1 1 { lin 1 1469 1/4 } -1
+ACT_R1471 G 1 1 1 1 { rnd 1 1470 1 } -1
+ACT_L1472 G -3 1 10 -1 { lin 3 15 -1 1471 4 43 -1 } -1
+ACT_L1473 L 3 1 10 1 { lin 1 1472 -1 } -1
+ACT_L1474 G -3 1 6 -4 { lin 3 5 -1 1466 1 1398 -1 } -1
+ACT_L1475 L 3/4 1 6 1 { lin 1 1474 -1/4 } -1
+ACT_R1476 L 0 1 6 1 { rnd 1 1475 1 } -1
+ActivityConflict1477 G 1 0 { lin 4 4 -1 1476 -4 1473 -1 1464 1 } -1
+DualBound_1478 G 0 OBJ { lin 0 } -1
+ACT_L1479 G -1 1 9 -1 { lin 3 13 -1 1456 4 1400 -1 } -1
+ACT_L1480 L 1 1 9 1 { lin 1 1479 -1 } -1
+ACT_L1481 G 2 1 12 1 { lin 3 13 -1 1456 4 38 1 } -1
+ACT_L1482 G 2 1 12 1 { lin 1 1481 1 } -1
+ACT_L1483 G 3 1 10 1 { lin 3 10 -1 1409 -4 1482 1 } -1
+ACT_L1484 G 3 1 10 1 { lin 1 1483 1 } -1
+ACT_L1485 G 3 1 13 1 { lin 3 1 -1 67 4 1482 1 } -1
+ACT_L1486 G 3 1 13 1 { lin 1 1485 1 } -1
+ACT_L1487 G -3 1 6 -4 { lin 3 5 -1 1484 1 1398 -1 } -1
+ACT_L1488 L 3/4 1 6 1 { lin 1 1487 -1/4 } -1
+ACT_R1489 L 0 1 6 1 { rnd 1 1488 1 } -1
+ACT_L1490 G 4 1 10 1 { lin 3 4 -1 1489 -4 1486 1 } -1
+ACT_L1491 G 4 1 10 1 { lin 1 1490 1 } -1
+ACT_L1492 G 4 1 11 1 { lin 3 2 -1 82 -4 1486 1 } -1
+ACT_L1493 G 4 1 11 1 { lin 1 1492 1 } -1
+ACT_L1494 G -3 1 1 -4 { lin 3 15 -1 1491 1 43 -1 } -1
+ACT_L1495 L 3/4 1 1 1 { lin 1 1494 -1/4 } -1
+ACT_R1496 L 0 1 1 1 { rnd 1 1495 1 } -1
+ActivityConflict1497 G 1 0 { lin 4 14 -1 1496 -4 41 -1 1493 1 } -1
+UnsplitNode77_1498 G 1 0 { uns 1497 1456  1477 1455  } -1
+UnsplitNode6_1499 G 1 0 { uns 1498 1419  1443 1418  } -1
+DualBound_1500 G 0 OBJ { lin 0 } -1
+ACT_L1501 G 3 1 9 1 { lin 3 6 -1 96 -4 73 1 } -1
+ACT_L1502 G 3 1 9 1 { lin 1 1501 1 } -1
+ACT_L1503 G -2 1 13 -1 { lin 3 6 -1 96 -4 55 -1 } -1
+ACT_L1504 L 2 1 13 1 { lin 1 1503 -1 } -1
+ACT_L1505 G -1 1 11 -1 { lin 3 3 -1 83 4 1504 -1 } -1
+ACT_L1506 L 1 1 11 1 { lin 1 1505 -1 } -1
+ACT_L1507 G -1 1 12 -1 { lin 3 1 -1 67 4 1504 -1 } -1
+ACT_L1508 L 1 1 12 1 { lin 1 1507 -1 } -1
+ACT_L1509 G 4 1 10 1 { lin 3 19 -1 52 4 1502 1 } -1
+ACT_L1510 G 4 1 10 1 { lin 1 1509 1 } -1
+ACT_L1511 G -1 1 2 -4 { lin 3 13 -1 1502 1 1508 -1 } -1
+ACT_L1512 L 1/4 1 2 1 { lin 1 1511 -1/4 } -1
+ACT_R1513 L 0 1 2 1 { rnd 1 1512 1 } -1
+ACT_L1514 G -1 1 0 -4 { lin 3 17 -1 1502 1 1506 -1 } -1
+ACT_L1515 L 1/4 1 0 1 { lin 1 1514 -1/4 } -1
+ACT_R1516 L 0 1 0 1 { rnd 1 1515 1 } -1
+ACT_L1517 G -1 1 6 -4 { lin 3 5 -1 1510 1 1504 -1 } -1
+ACT_L1518 L 1/4 1 6 1 { lin 1 1517 -1/4 } -1
+ACT_R1519 L 0 1 6 1 { rnd 1 1518 1 } -1
+ACT_L1520 G 1 1 4 4 { lin 3 8 -1 1506 -1 44 1 } -1
+ACT_L1521 G 1/4 1 4 1 { lin 1 1520 1/4 } -1
+ACT_R1522 G 1 1 4 1 { rnd 1 1521 1 } -1
+ACT_L1523 G 0 1 3 -4 { lin 3 11 -1 1510 1 1508 -1 } -1
+ACT_L1524 L 0 1 3 1 { lin 1 1523 -1/4 } -1
+ACT_L1525 G 0 1 1 -4 { lin 3 15 -1 1510 1 1506 -1 } -1
+ACT_L1526 L 0 1 1 1 { lin 1 1525 -1/4 } -1
+ActivityConflict1527 G 1 0 { lin 4 9 -1 1522 4 42 1 1508 -1 } -1
+UnsplitNode7_1528 G 1 0 { uns 1393 97  1527 96  } -1
+UnsplitNode5_1529 G 1 0 { uns 1528 83  1499 82  } -1
+UnsplitNode3_1530 G 1 0 { uns 1529 67  1329 66  } -1
+UnsplitNode1_1531 G 1 0 { uns 1530 52  971 51  } -1

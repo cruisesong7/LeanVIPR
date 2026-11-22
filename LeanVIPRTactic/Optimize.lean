@@ -168,9 +168,11 @@ meta def optimizeWith (maximize : Bool) (cfg : ScipConfig) (hName : Name) (eStx 
   let n := Syntax.mkNumLit (toString zs.size)
   let thmId := mkIdent thm
   setGoals [pf.mvarId!]
+  adviseNative cfg r.cert
+  let dec ← checkTactic cfg
   evalTactic (← `(tactic|
-    have hR := $thmId (m := $mStx) (v := $cert) (by decide +kernel) (by decide +kernel)
-      (by decide +kernel) rfl rfl rfl _
+    have hR := $thmId (m := $mStx) (v := $cert) (by $dec:tactic) (by $dec:tactic)
+      (by $dec:tactic) rfl rfl rfl _
       (LeanVIPR.Mip.feasible_mixed $n (by decide) [$zs,*] rfl [$rs,*] ?_)))
   let mut boundGoal? := none
   let mut rowsGoal? := none
@@ -210,11 +212,14 @@ meta def evalOptimize (maximize trace : Bool) : Tactic := fun stx => do
   saveRecorded r file
   let f := quote file
   let c := mkIdent `cert
+  -- `+native` carries over, or the replay would fall back to the kernel
+  let opts ← if mcfg.native then `(mipTermConfig| +$(mkIdent `native):ident ($c:ident := $f))
+    else `(mipTermConfig| ($c:ident := $f))
   let sugg ← match maximize, hStx? with
-    | true, none => `(tactic| mip_maximize ($c:ident := $f) $eStx:term)
-    | true, some h => `(tactic| mip_maximize ($c:ident := $f) $h:ident : $eStx:term)
-    | false, none => `(tactic| mip_minimize ($c:ident := $f) $eStx:term)
-    | false, some h => `(tactic| mip_minimize ($c:ident := $f) $h:ident : $eStx:term)
+    | true, none => `(tactic| mip_maximize $opts:mipTermConfig $eStx:term)
+    | true, some h => `(tactic| mip_maximize $opts:mipTermConfig $h:ident : $eStx:term)
+    | false, none => `(tactic| mip_minimize $opts:mipTermConfig $eStx:term)
+    | false, some h => `(tactic| mip_minimize $opts:mipTermConfig $h:ident : $eStx:term)
   Meta.Tactic.TryThis.addSuggestion stx[0] sugg (origSpan? := stx)
 
 @[tactic mipMaximizeTac] meta def evalMipMaximize : Tactic := evalOptimize true false

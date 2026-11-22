@@ -15,8 +15,9 @@ mip (cert := "Foo-bar-12-2.vipr")   -- no solver: the certificates `mip?` saved
 ```
 
 Where a term follows the options — the objective of `mip_maximize`, the problem of
-`#mip_scip` — only the `(opt := v)` form is accepted: `-x` would otherwise be read as the
-option `x := false`, and the objective taken from whatever comes next.
+`#mip_scip` — the `-opt` form is not accepted: `-x` would otherwise be read as the option
+`x := false`, and the objective taken from whatever comes next. Write `(opt := false)`.
+`+opt` is safe there, since Lean has no unary `+`.
 
 Not `@[expose]`, unlike the other files here: `declare_config_elab` defines a private
 helper, which an exposed body could not refer to.
@@ -26,8 +27,9 @@ public section
 
 namespace LeanVIPR.Tactic
 
-/-- Options before a term: `(opt := v)` items only. See the module docstring. -/
-syntax mipTermConfig := (colGt Lean.Parser.Tactic.valConfigItem)*
+/-- Options before a term: `+opt` and `(opt := v)`, not `-opt`. See the module docstring. -/
+syntax mipTermConfig :=
+  (colGt (Lean.Parser.Tactic.posConfigItem <|> Lean.Parser.Tactic.valConfigItem))*
 
 end LeanVIPR.Tactic
 
@@ -51,6 +53,10 @@ structure MipConfig where
   finite big-M, rather than splitting it into cases: one solver call instead of two.
   `mip -encodeDisjunctions` splits every one. -/
   encodeDisjunctions : Bool := true
+  /-- Decide the certificate's checks by compiled code (`decide +native`) rather than by the
+  kernel: much faster on a large certificate, at the cost of trusting the compiler. Each
+  check adds an axiom of its own to the proof, as `native_decide` does. -/
+  native : Bool := false
 
 /-- Elaborate the options of a `mip` tactic. -/
 declare_config_elab elabMipConfig MipConfig
@@ -62,7 +68,8 @@ declare_command_config_elab elabMipCommandConfig MipConfig
 def MipConfig.toScipConfig (c : MipConfig) : ScipConfig :=
   { workDir := if c.dir.isEmpty then none else some ⟨c.dir⟩
     timeLimit := if c.timeout == 0 then none else some c.timeout
-    encodeDisjunctions := c.encodeDisjunctions }
+    encodeDisjunctions := c.encodeDisjunctions
+    native := c.native }
 
 /-- The directory of the Lean file being elaborated. -/
 def srcDirOf (fileName : String) : System.FilePath :=

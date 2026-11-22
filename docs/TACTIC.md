@@ -73,6 +73,10 @@ needed. `mip` is for what they cannot prove, each case in
 | seven reals, each outside an interval: 128 cases | cannot state it | no case splits | ✓ one solver call, seven binaries |
 | large, search outside Lean | — | — | ✓ only the certificate is checked |
 
+The `lp` results are checked by [`comparison/lp`](../comparison/README.md), a separate Lake
+project on `lp`'s own toolchain: the integer goals in `LpCompare.lean`, the indicator in
+`LpIndicator.lean`.
+
 ## The tactics
 
 | tactic | closes, or adds | options |

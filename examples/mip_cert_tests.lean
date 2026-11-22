@@ -74,8 +74,8 @@ example (x : ℤ) (h : 2 * x = 1) : False := by
 #mip_scip (cert := "mip_cert_tests-knap-39-2.vipr") knapsack
 
 -- 10. a certificate too large for the kernel (1482 derivations, over five minutes) is
--- checked by compiled code under `+native`, in seconds. Proving its 50 rows back from the
--- hypotheses takes past the default heartbeats.
+-- checked by compiled code under `+native`, in seconds. The whole proof, a 64 KB
+-- certificate term included, takes past the default heartbeats.
 set_option maxHeartbeats 1000000 in
 theorem pigeon (a b c d e : ℤ) (ha : 1 ≤ a) (ha' : a ≤ 4) (hb : 1 ≤ b) (hb' : b ≤ 4)
     (hc : 1 ≤ c) (hc' : c ≤ 4) (hd : 1 ≤ d) (hd' : d ≤ 4) (he : 1 ≤ e) (he' : e ≤ 4)

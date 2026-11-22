@@ -99,7 +99,8 @@ meta def optimizeWith (maximize : Bool) (cfg : ScipConfig) (hName : Name) (eStx 
   let some (oc, ok) := linearOf reading.atoms e
     | throwError "`{name}`: the objective is not linear in the variables in context:\
         {indentExpr e}"
-  let (atoms, m) := buildMip reading.atoms reading.rows oc maximize
+  let (atoms, m, srcs) := buildMip reading.atoms reading.rows oc maximize
+  let srcs := srcs.map (·.bind (reading.srcs[·]?))
   let r ← try runScipForGoal m cfg
     catch e => throwError "`{name}`: {e.toMessageData}\n{reading.describe}"
   -- inconsistent hypotheses: nothing to bound, so close the goal outright
@@ -183,7 +184,7 @@ meta def optimizeWith (maximize : Bool) (cfg : ScipConfig) (hName : Name) (eStx 
   let some rowsGoal := rowsGoal? | throwError "internal: no row goal"
   let some boundGoal := boundGoal? | throwError "internal: no bound goal"
   setGoals [rowsGoal]
-  rowScript
+  rowScript srcs
   setGoals [boundGoal]
   evalTactic (← `(tactic|
     simp only [LeanVIPR.Mip.objectiveReal, LeanVIPR.Semantics.System.evalReal, List.map,

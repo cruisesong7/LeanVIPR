@@ -269,6 +269,10 @@ occur in no row are dropped, so they cost the solver nothing. -/
 structure VarBounds where
   lo : Option ℚ := none
   hi : Option ℚ := none
+  /-- The read rows `lo` and `hi` came from, which their bound rows are proved from; `none`
+  for a bound a type gives, as `0 ≤ n` for `n : ℕ`. -/
+  loSrc : Option Nat := none
+  hiSrc : Option Nat := none
 
 meta def VarBounds.withLo (b : VarBounds) (l : ℚ) : VarBounds :=
   { b with lo := some (match b.lo with | none => l | some l' => max l l') }
@@ -276,27 +280,40 @@ meta def VarBounds.withLo (b : VarBounds) (l : ℚ) : VarBounds :=
 meta def VarBounds.withHi (b : VarBounds) (u : ℚ) : VarBounds :=
   { b with hi := some (match b.hi with | none => u | some u' => min u u') }
 
+/-- `withLo`, recording where a tighter bound came from. -/
+meta def VarBounds.tightenLo (b : VarBounds) (l : ℚ) (src : Option Nat) : VarBounds :=
+  match b.lo with
+  | some l' => if l' < l then { b with lo := some l, loSrc := src } else b
+  | none => { b with lo := some l, loSrc := src }
+
+/-- `withHi`, recording where a tighter bound came from. -/
+meta def VarBounds.tightenHi (b : VarBounds) (u : ℚ) (src : Option Nat) : VarBounds :=
+  match b.hi with
+  | some u' => if u < u' then { b with hi := some u, hiSrc := src } else b
+  | none => { b with hi := some u, hiSrc := src }
+
 /-- Split rows into bounds and constraint rows. -/
-meta def classify (n : Nat) (rows : Array LinRow) : Array VarBounds × Array LinRow :=
+meta def classify (n : Nat) (rows : Array LinRow) : Array VarBounds × Array (LinRow × Nat) :=
   Id.run do
   let mut bounds : Array VarBounds := .replicate n {}
-  let mut rest : Array LinRow := #[]
-  for r in rows do
+  let mut rest : Array (LinRow × Nat) := #[]
+  for (r, i) in rows.zipIdx do
+    let s := some i
     match (r.coeffs.zipIdx.filter (fun p => p.1 != 0)).toList with
     | [(c, j)] =>
       if c == 1 then
         match r.sense with
-        | 'L' => bounds := bounds.modify j (·.withHi r.rhs)
-        | 'G' => bounds := bounds.modify j (·.withLo r.rhs)
-        | _ => bounds := bounds.modify j (fun b => (b.withLo r.rhs).withHi r.rhs)
+        | 'L' => bounds := bounds.modify j (·.tightenHi r.rhs s)
+        | 'G' => bounds := bounds.modify j (·.tightenLo r.rhs s)
+        | _ => bounds := bounds.modify j (fun b => (b.tightenLo r.rhs s).tightenHi r.rhs s)
       else if c == -1 then
         match r.sense with
-        | 'L' => bounds := bounds.modify j (·.withLo (-r.rhs))
-        | 'G' => bounds := bounds.modify j (·.withHi (-r.rhs))
-        | _ => bounds := bounds.modify j (fun b => (b.withLo (-r.rhs)).withHi (-r.rhs))
+        | 'L' => bounds := bounds.modify j (·.tightenLo (-r.rhs) s)
+        | 'G' => bounds := bounds.modify j (·.tightenHi (-r.rhs) s)
+        | _ => bounds := bounds.modify j (fun b => (b.tightenLo (-r.rhs) s).tightenHi (-r.rhs) s)
       else
-        rest := rest.push r
-    | _ => rest := rest.push r
+        rest := rest.push (r, i)
+    | _ => rest := rest.push (r, i)
   return (bounds, rest)
 
 /-- An MPS-safe name for a variable: the user's own if it is a plain identifier and
@@ -311,7 +328,7 @@ meta def varNames (names : Array Name) : Array String :=
 /-- The `Mip` a list of read hypotheses stands for, over the atoms they and the objective
 use. Returns the used atoms, in order, with the problem. Infeasibility passes no objective. -/
 meta def buildMip (atoms : Array Atom) (rows : Array LinRow) (obj : Array ℚ := #[])
-    (maximize : Bool := false) : Array Atom × Mip := Id.run do
+    (maximize : Bool := false) : Array Atom × Mip × Array (Option Nat) := Id.run do
   let occurs := (List.range atoms.size).filter
     (fun j => rows.any (fun r => r.coeffs.getD j 0 != 0) || obj.getD j 0 != 0)
   -- integer variables first: the bridge theorem takes their values as a `List ℤ`
@@ -326,22 +343,29 @@ meta def buildMip (atoms : Array Atom) (rows : Array LinRow) (obj : Array ℚ :=
   let conflict := bounds.any fun b => match b.lo, b.hi with
     | some l, some u => u < l
     | _, _ => false
-  let (bounds, rest) := if conflict then (.replicate usedAtoms.size {}, rows) else (bounds, rest)
+  let (bounds, rest) := if conflict then (.replicate usedAtoms.size {}, rows.zipIdx)
+    else (bounds, rest)
   let names := varNames (usedAtoms.map (·.name))
+  let bounds := usedAtoms.zipIdx.map fun (a, j) =>
+    let b := bounds.getD j {}
+    if a.carrier.isNat then b.tightenLo 0 none else b
   let vars := usedAtoms.zipIdx.map fun (a, j) =>
     let b := bounds.getD j {}
-    let b := if a.carrier.isNat then b.withLo 0 else b
     ({ name := names[j]!, isInt := a.carrier.isInt, lo := b.lo, hi := b.hi } : Mip.Var)
+  -- the read row each row of `conSLes` comes from, in `conSLes` order: the rows, then
+  -- each variable's lower and upper bound
+  let srcs := rest.map (some ·.2) ++ (bounds.toList.map fun b =>
+    (if b.lo.isSome then [b.loSrc] else []) ++ (if b.hi.isSome then [b.hiSrc] else [])).flatten.toArray
   let objForm := (used.zipIdx.filterMap fun (j, k) =>
     let c := obj.getD j 0
     if c != 0 then some (⟨k, c⟩ : LeanVIPR.Semantics.Term) else none)
   let mip : Mip :=
     { vars, objSense := if maximize then .max else .min, obj := objForm
-      rows := rest.zipIdx.map (fun (r, i) =>
+      rows := rest.zipIdx.map (fun ((r, _), i) =>
         { name := s!"r{i}", sense := r.sense, rhs := r.rhs,
           form := (r.coeffs.zipIdx.filter (fun p => p.1 != 0)).toList.map
             (fun (c, j) => ⟨j, c⟩) }) }
-  return (usedAtoms, mip)
+  return (usedAtoms, mip, srcs)
 
 /-! ## Getting to `False`
 
@@ -422,21 +446,50 @@ meta def splitOnce? (goal : MVarId) : MetaM (Option (Array MVarId)) := goal.with
 variables cast to `ℝ`. Integer rows go back to `ℤ` for `omega`, which also knows the
 tightening of strict comparisons; the others are lifted to `ℝ` with the hypotheses and
 closed by `linarith`. -/
-meta def rowScript : TacticM Unit := do
-  evalTactic (← `(tactic|
-    intro c hc <;>
-    fin_cases hc <;>
-      simp (config := { decide := true }) only [LeanVIPR.Semantics.System.satReal,
+meta def rowCloser : TacticM (TSyntax `tactic) := do
+  `(tactic|
+    (simp (config := { decide := true }) only [LeanVIPR.Semantics.System.satReal,
         LeanVIPR.Semantics.System.evalReal, List.map, List.sum_cons, List.sum_nil,
         LeanVIPR.Mip.valuationOfReals_cons_zero, LeanVIPR.Mip.valuationOfReals_cons_succ,
         LeanVIPR.Mip.valuationOfReals_cons_one, LeanVIPR.Mip.valuationOfReals_cons_ofNat,
         List.map_cons, List.map_nil, List.cons_append, List.nil_append,
         Array.size_push, Array.size_empty, ↓reduceIte, ite_true, ite_false] <;>
       first
-        | (norm_cast; omega)
+        | (norm_cast; omega (config := { splitDisjunctions := false }))
         | (push_cast; linarith)
         | (rify at *; (try push_cast at *); linarith)
         | (norm_num at *; linarith)))
+
+/-- Prove every row of `conSLes`, each from the hypothesis it was read from (`srcs`, in
+`conSLes` order; `none` for a bound a type gives) with the rest of the context cleared, so
+no closer searches more than it needs: with the whole problem in context, `omega` and
+`linarith` would in effect be solving it again. A row that fails that way is retried with
+the whole context. -/
+meta def rowScript (srcs : Array (Option FVarId)) : TacticM Unit := do
+  evalTactic (← `(tactic| intro c hc))
+  evalTactic (← `(tactic| fin_cases hc))
+  let closer ← rowCloser
+  let goals ← getGoals
+  -- `none` when the cases are not in `conSLes` order, so the sources do not apply
+  let srcs := if goals.length == srcs.size then srcs.toList.map some
+    else goals.map fun _ => none
+  let mut left := []
+  for (g, src??) in goals.zip srcs do
+    setGoals [g]
+    try
+      let some src? := src?? | throwError "sources unknown"
+      let others ← g.withContext do
+        (← getLCtx).foldlM (init := #[]) fun acc d => do
+          if d.isImplementationDetail || some d.fvarId == src? then return acc
+          if ← isProp d.type then return acc.push d.fvarId else return acc
+      setGoals [← g.tryClearMany others]
+      Term.withoutErrToSorry <| withoutRecover <| evalTactic closer
+      unless (← getUnsolvedGoals).isEmpty do throwError "row left open"
+    catch _ =>
+      setGoals [g]
+      try evalTactic closer catch _ => pure ()
+    left := left ++ (← getUnsolvedGoals)
+  setGoals left
 
 /-! ## The tactic -/
 
@@ -504,6 +557,8 @@ structure Reading where
   rows : Array LinRow
   used : Array Name
   ignored : Array Name
+  /-- The hypothesis each row was read from, parallel to `rows`. -/
+  srcs : Array FVarId := #[]
 
 /-- Read the hypotheses into rows over the numeric variables in context. -/
 meta def readContext : TacticM Reading := withMainContext do
@@ -518,14 +573,16 @@ meta def readContext : TacticM Reading := withMainContext do
   let mut rows := #[]
   let mut used := #[]
   let mut ignored := #[]
+  let mut srcs := #[]
   for d in decls do
     if ← isProp d.type then
       match rowOf atoms (← instantiateMVars d.type) with
       | some r =>
           rows := rows.push r
           used := used.push d.userName
+          srcs := srcs.push d.fvarId
       | none => ignored := ignored.push d.userName
-  return { atoms, rows, used, ignored }
+  return { atoms, rows, used, ignored, srcs }
 
 /-- One sentence on what was read, for failure messages. -/
 meta def Reading.describe (r : Reading) : MessageData :=
@@ -543,6 +600,21 @@ and McCormick's four inequalities around `δ * x`. Those facts are added as hypo
 each proved by splitting `δ = 0 ∨ δ = 1`, and then read like any other. So an encoding is
 checked for the values at hand rather than trusted, and a fact whose proof fails is just
 not added. The product itself is already an opaque variable of the problem. -/
+
+/-- `omega` without case splits. `omega` reads every implication in context as a
+disjunction, and every `≠` over `ℕ` or `ℤ` as `<` or `>`, and splits on them whenever the
+rest is satisfiable; with the indicators an encoding adds, a call that fails that way
+explores `2^k` cases. None of the facts `mip` proves with it needs a split. -/
+meta def splitFreeOmega : TacticM (TSyntax `tactic) :=
+  `(tactic| omega (config := { splitDisjunctions := false }))
+
+/-- `δ = 0 ∨ δ = 1` from the bounds `0 ≤ δ` and `δ ≤ 1` in context, without the case splits
+`omega` would need for a disjunctive goal. -/
+meta def zeroOrOne (δ : Term) : TacticM (TSyntax `tactic) := do
+  let om ← splitFreeOmega
+  `(tactic| exact (lt_or_eq_of_le (show 0 ≤ $δ by $om:tactic)).elim
+      (fun _ => Or.inr (le_antisymm (by $om:tactic) (by $om:tactic)))
+      (fun h01 => Or.inl h01.symm))
 
 /-- Bounds on each atom from the single-variable rows, rounded inward for integers. -/
 meta def atomBounds (atoms : Array Atom) (rows : Array LinRow) : Array VarBounds := Id.run do
@@ -565,7 +637,7 @@ meta def atomBounds (atoms : Array Atom) (rows : Array LinRow) : Array VarBounds
 
 meta def isBinary (atoms : Array Atom) (bounds : Array VarBounds) (j : Nat) : Bool :=
   match atoms[j]?, bounds[j]? with
-  | some a, some { lo := some l, hi := some u } => a.carrier.isInt && 0 ≤ l && u ≤ 1
+  | some a, some { lo := some l, hi := some u, .. } => a.carrier.isInt && 0 ≤ l && u ≤ 1
   | _, _ => false
 
 /-- The largest value of `coeffs · x + k` over the bounds, if every needed bound is known. -/
@@ -599,6 +671,25 @@ meta def lePairs? (q : Expr) : Option (List (Expr × Expr)) :=
   | (``Eq, #[_, a, b]) => some [(a, b), (b, a)]
   | _ => none
 
+/-- Internal to the encodings: clear every hypothesis but the single-variable comparisons,
+which are the bounds, and `h` if given. That is all a big-M or McCormick fact needs, and
+the casts and `linarith` its proof runs then touch nothing else. -/
+syntax (name := mipKeepBounds) "mip_keep_bounds" (ppSpace term)? : tactic
+
+@[tactic mipKeepBounds] meta def evalMipKeepBounds : Tactic := fun stx => withMainContext do
+  let keep : Option FVarId ← if stx[1].isNone then pure none
+    else pure (← instantiateMVars (← Term.elabTerm stx[1][0] none)).fvarId?
+  let reading ← readContext
+  let bounds := (reading.rows.zip reading.srcs).filterMap fun (r, s) =>
+    if (r.coeffs.filter (· != 0)).size == 1 then some s else none
+  let g ← getMainGoal
+  let others ← g.withContext do
+    (← getLCtx).foldlM (init := #[]) fun acc d => do
+      if d.isImplementationDetail || bounds.contains d.fvarId || keep == some d.fvarId then
+        return acc
+      if ← isProp d.type then return acc.push d.fvarId else return acc
+  replaceMainGoal [← g.tryClearMany others]
+
 /-- Add the linear facts the indicators and binary products in context imply. `extra`
 are terms outside the hypotheses — an objective — whose products should count too. -/
 meta def addEncodings (extra : Array Expr := #[]) : TacticM Unit := withMainContext do
@@ -617,6 +708,8 @@ meta def addEncodings (extra : Array Expr := #[]) : TacticM Unit := withMainCont
     let some pairs := lePairs? q | continue
     let some δ := atoms[i]? | continue
     let δStx ← Term.exprToSyntax δ.expr
+    let zeroOne ← zeroOrOne δStx
+    let om ← splitFreeOmega
     let h ← Term.exprToSyntax (.fvar d.fvarId)
     for (a, b) in pairs do
       let some (ca, ka) := linearOf atoms a | continue
@@ -625,15 +718,18 @@ meta def addEncodings (extra : Array Expr := #[]) : TacticM Unit := withMainCont
       if big ≤ 0 then continue
       let aStx ← Term.exprToSyntax a
       let bStx ← Term.exprToSyntax b
+      -- over ℝ even for integer sides: an integer fact would be read by every later
+      -- `omega`, which then in effect solves the whole problem
       let m ← typedLit big real
       let ty ← if one then `((($aStx : ℝ)) - (($bStx : ℝ)) ≤ $m * (1 - (($δStx : ℝ))))
         else `((($aStx : ℝ)) - (($bStx : ℝ)) ≤ $m * (($δStx : ℝ)))
       let pf ← `(tactic|
-        rcases (show $δStx = 0 ∨ $δStx = 1 by omega) with hδ | hδ <;>
+        (mip_keep_bounds $h;
+         rcases (show $δStx = 0 ∨ $δStx = 1 by $zeroOne:tactic) with hδ | hδ <;>
           first
-            | (have hq := $h (by omega); rw [hδ]; push_cast; (try rify at *);
+            | (have hq := $h (by $om:tactic); rw [hδ]; push_cast; (try rify at *);
                 (try push_cast at *); linarith)
-            | (rw [hδ]; push_cast; (try rify at *); (try push_cast at *); linarith))
+            | (rw [hδ]; push_cast; (try rify at *); (try push_cast at *); linarith)))
       facts := facts.push (ty, pf)
   -- products with a binary: McCormick around `δ * x`
   for w in atoms do
@@ -647,9 +743,10 @@ meta def addEncodings (extra : Array Expr := #[]) : TacticM Unit := withMainCont
       | none, none => none
     let some (i, x) := pick | continue
     let some xi := atomOf? atoms x | continue
-    let some { lo := some l, hi := some u } := bounds[xi]? | continue
+    let some { lo := some l, hi := some u, .. } := bounds[xi]? | continue
     let some δ := atoms[i]? | continue
     let δStx ← Term.exprToSyntax δ.expr
+    let zeroOne ← zeroOrOne δStx
     let pStx ← Term.exprToSyntax w.expr
     let xStx ← Term.exprToSyntax x
     let lS ← typedLit l real
@@ -661,15 +758,19 @@ meta def addEncodings (extra : Array Expr := #[]) : TacticM Unit := withMainCont
       `((($xStx : ℝ)) - $uS * (1 - (($δStx : ℝ))) ≤ (($pStx : ℝ)))].mapM id
     for ty in tys do
       let pf ← `(tactic|
-        rcases (show $δStx = 0 ∨ $δStx = 1 by omega) with hδ | hδ <;>
+        (mip_keep_bounds;
+         rcases (show $δStx = 0 ∨ $δStx = 1 by $zeroOne:tactic) with hδ | hδ <;>
           (rw [hδ]; push_cast; (try rify at *); (try push_cast at *);
-            first | linarith | simp | (simp; linarith)))
+            first | linarith | simp | (simp; linarith))))
       facts := facts.push (ty, pf)
   -- add each fact whose proof goes through
   for (ty, pf) in facts do
     let n := mkIdent (← mkFreshUserName `hmip_enc)
     let seq ← `(Lean.Parser.Tactic.tacticSeq| $pf:tactic)
-    try evalTactic (← `(tactic| have $n : $ty := by $seq))
+    -- without error recovery, so a proof that fails throws, and the fact is skipped,
+    -- rather than logged as an error and admitted with `sorry`
+    try Term.withoutErrToSorry <| withoutRecover <|
+      evalTactic (← `(tactic| have $n : $ty := by $seq))
     catch _ => pure ()
 
 /-! ## Disjunctions as binaries
@@ -715,10 +816,10 @@ meta def indSide? (atoms : Array Atom) (hside : Ident) (p : Expr) :
     | .le => pure ⟨pS, same, [minus (ca, ka) (cb, kb)]⟩
     | .ge => pure ⟨pS, same, [minus (cb, kb) (ca, ka)]⟩
     | .eq => pure ⟨pS, same, [minus (ca, ka) (cb, kb), minus (cb, kb) (ca, ka)]⟩
-    | .lt => if c.isInt then do pure ⟨← `($aS + 1 ≤ $bS), ← `(tactic| omega),
+    | .lt => if c.isInt then do pure ⟨← `($aS + 1 ≤ $bS), ← splitFreeOmega,
                                         [minus (ca, ka + 1) (cb, kb)]⟩
              else do pure ⟨← `($aS ≤ $bS), relax, [minus (ca, ka) (cb, kb)]⟩
-    | .gt => if c.isInt then do pure ⟨← `($bS + 1 ≤ $aS), ← `(tactic| omega),
+    | .gt => if c.isInt then do pure ⟨← `($bS + 1 ≤ $aS), ← splitFreeOmega,
                                         [minus (cb, kb + 1) (ca, ka)]⟩
              else do pure ⟨← `($bS ≤ $aS), relax, [minus (cb, kb) (ca, ka)]⟩
 
@@ -748,7 +849,7 @@ meta def encodeDisjunctions : TacticM Unit := withMainContext do
     unless finite sp && finite sq do continue
     let δ := mkIdent (← mkFreshUserName `δ)
     try
-      evalTactic (← `(tactic|
+      Term.withoutErrToSorry <| withoutRecover <| evalTactic (← `(tactic|
         obtain ⟨$δ, _, _, _, _⟩ : ∃ δ : ℤ, 0 ≤ δ ∧ δ ≤ 1 ∧ (δ = 0 → $(sp.stmt)) ∧
             (δ = 1 → $(sq.stmt)) := by
           rcases $orStx:term with $hside:ident | $hside:ident
@@ -767,7 +868,8 @@ meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := do
   if reading.rows.isEmpty then
     throwError "`mip` could not read any hypothesis as a linear comparison. \
       {reading.describe}"
-  let (atoms, m) := buildMip reading.atoms reading.rows
+  let (atoms, m, srcs) := buildMip reading.atoms reading.rows
+  let srcs := srcs.map (·.bind (reading.srcs[·]?))
   let mStx ← mipSyntax m
   let zs ← (atoms.filter (·.carrier.isInt)).mapM fun a => do
     let x ← Term.exprToSyntax a.expr
@@ -803,7 +905,7 @@ meta def solveLeaf (cfg : ScipConfig) : TacticM Unit := do
   catch e => throwError "{e.toMessageData}\n{reading.describe}"
   -- the arithmetic half, against the user's own hypotheses
   setGoals [rowsGoal]
-  rowScript
+  rowScript srcs
   unless (← getUnsolvedGoals).isEmpty do
     throwError "the problem was certified infeasible, but its rows could not be matched \
       back to your hypotheses — an unsupported hypothesis shape, or a reflection bug. \

@@ -1,0 +1,19 @@
+VER 1.0 
+VAR 2 
+z
+x
+INT 1
+0 
+OBJ min
+ 1   1 -1
+CON 6 4
+C0 G 1 1 0 1
+C1 L 5 2 1 1 0 4
+B2 G 1 1 0 1
+B3 L 1 1 0 1
+B4 G 1 1 1 1
+B5 L 1 1 1 1
+RTP range -inf -1
+SOL 1
+best 2 0 1 1 1
+DER 0

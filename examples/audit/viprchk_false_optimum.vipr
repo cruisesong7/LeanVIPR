@@ -1,0 +1,11 @@
+VER 1.0
+VAR 1 x
+INT 0
+OBJ min 1 0 1
+CON 1 0
+c1 G 1/2 1 0 1
+RTP range 1 1
+SOL 1
+s1 1 0 1
+DER 1
+d1 G 1 OBJ { rnd 1 0 1 } -1

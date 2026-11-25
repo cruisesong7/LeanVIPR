@@ -1,0 +1,36 @@
+diff --git a/code/viprchk.cpp b/code/viprchk.cpp
+index d4057cb..e8e3db0 100644
+--- a/code/viprchk.cpp
++++ b/code/viprchk.cpp
+@@ -1650,6 +1650,13 @@ bool Constraint::round()
+             goto TERMINATE;
+          }
+       }
++      else if( a != 0 )
++      {   // a continuous variable must not appear in a rounded constraint
++         cerr << "Coefficient of continuous variable with index "
++              << j << " is nonzero" << endl;
++         returnStatement = false;
++         goto TERMINATE;
++      }
+    }
+ 
+    if( getSense() < 0 ) // round down
+diff --git a/code/viprchk_parallel.cpp b/code/viprchk_parallel.cpp
+index 79e6c47..0dfd0a5 100644
+--- a/code/viprchk_parallel.cpp
++++ b/code/viprchk_parallel.cpp
+@@ -1698,6 +1698,13 @@ bool Constraint::round()
+             goto TERMINATE;
+          }
+       }
++      else if( a != 0 )
++      {   // a continuous variable must not appear in a rounded constraint
++         cerr << "Coefficient of continuous variable with index "
++              << j << " is nonzero" << endl;
++         returnStatement = false;
++         goto TERMINATE;
++      }
+    }
+ 
+    if( getSense() < 0 ) // round down

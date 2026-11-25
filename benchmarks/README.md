@@ -269,3 +269,21 @@ the 18 GiB RSS limit during replay, because no row is ever freed. Rows that
 `viprchk` passes and LeanVIPR reports as `memout` or `timeout` are that
 limitation, and the count depends on the limits you pass.
 
+
+## Differential testing (`difftest/`)
+
+`difftest/difftest.py` mutates known-valid certificates and compares the verdicts of
+several checkers. A meaning-preserving mutation (respelled numbers, reordered terms,
+comments) must keep the seed's verdict; an invalidating one (multipliers, senses,
+indices, claims) is triaged, and for small problems an exact solver decides whether the
+mutated claim is true, so accepting a false claim is reported as a soundness failure.
+The findings are in [`examples/audit/`](../examples/audit/README.md).
+
+```bash
+python3 benchmarks/difftest/difftest.py \
+  --checker lean='.lake/build/bin/viprcheck {}' --checker viprchk='/path/to/viprchk {}' \
+  --seeds examples/*.vipr --cases 200 --out /tmp/difftest
+```
+
+A checker whose name starts with `lean` has its exit code read as `viprcheck`'s
+(0 accept, 1 parse error, 2 reject); any other as `viprchk`'s (0 accept, else reject).

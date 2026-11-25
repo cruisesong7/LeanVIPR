@@ -1,0 +1,58 @@
+diff --git a/code/viprchk_parallel.cpp b/code/viprchk_parallel.cpp
+index 79e6c47..efc2456 100644
+--- a/code/viprchk_parallel.cpp
++++ b/code/viprchk_parallel.cpp
+@@ -867,9 +867,9 @@ bool processSOL()
+ 
+             for( int j = 0; j < numberOfConstraints; ++j )
+             {
+-               if( !satisfies(constraint[i], solutionSpecified) )
++               if( !satisfies(constraint[j], solutionSpecified) )
+                {
+-                  cerr << "Constraint " << i << " not satisfied." << endl;
++                  cerr << "Constraint " << j << " not satisfied." << endl;
+                   goto TERMINATE;
+                }
+             }
+@@ -913,6 +913,11 @@ bool processSOL()
+             goto TERMINATE;
+          }
+       }
++      else if( relationToProveType == RelationToProveType::RANGE && ((isMin && checkUpper) || (!isMin && checkLower)) )
++      {
++         cerr << "No solutions to prove primal bound." << endl;
++         goto TERMINATE;
++      }
+ 
+       returnStatement = true;
+    }
+@@ -1202,7 +1207,10 @@ bool parCheck_Der()
+          returnStatement = true;
+       }
+       else
++      {
+          cout << "Failed to verify infeasibility." << endl;
++         returnStatement = false;
++      }
+    }
+    else if( (isMin && checkLower) || (!isMin && checkUpper) )
+    {
+@@ -1221,6 +1229,7 @@ bool parCheck_Der()
+          constraint.back().print();
+          cout << "Instead of: " << endl;
+          relationToProve.print();
++         returnStatement = false;
+    }
+       else
+       {
+@@ -1552,9 +1561,7 @@ bool canUnsplit(  Constraint &toDer, const int con1, const int a1,
+ #endif
+ 
+       for( auto it = asm2.begin(); it != asm2.end(); ++it ) {
+-         if( assumptionList.find(it->first) != assumptionList.end() ) {
+-            assumptionList[it->first] = true;
+-         }
++         assumptionList[it->first] = true;
+       }
+ 
+       if( branchAsm1.isTrashed() )

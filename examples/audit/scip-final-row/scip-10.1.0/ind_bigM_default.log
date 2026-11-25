@@ -1,0 +1,49 @@
+SCIP version 10.1.0 [precision: 8 byte] [memory: block] [mode: optimized] [LP solver: SoPlex 8.1.0] [GitHash: c8e5737a84]
+Copyright (c) 2002-2026 Zuse Institute Berlin (ZIB)
+
+External libraries: 
+  SoPlex 8.1.0         Linear programming solver developed at Zuse Institute Berlin (soplex.zib.de) [GitHash: a0061053]
+  CppAD 20180000.0     Algorithmic Differentiation of C++ algorithms developed by B. Bell (github.com/coin-or/CppAD)
+  ZLIB 1.2.12          General purpose compression library by J. Gailly and M. Adler (zlib.net)
+  MPFR 4.2.2           GNU Multiple Precision Floating-Point Reliable Library (mpfr.org)
+  Boost 1.92.0         Boost C++ Libraries (boost.org)
+  TinyCThread 1.2      small portable implementation of the C11 threads API (tinycthread.github.io)
+  GMP 6.3.0            GNU Multiple Precision Arithmetic Library developed by T. Granlund (gmplib.org)
+  ZIMPL 3.8.0          Zuse Institute Mathematical Programming Language developed by T. Koch (zimpl.zib.de)
+  AMPL/MP 4.0.4        AMPL .nl file reader library (github.com/ampl/mp)
+  PaPILO 3.0.2         parallel presolve for integer and linear optimization (github.com/scipopt/papilo) (built with TBB) [GitHash: 3f1ba692]
+  Nauty 2.8.8          Computing Graph Automorphism Groups by Brendan D. McKay (users.cecs.anu.edu.au/~bdm/nauty)
+  sassy 2.1            Symmetry preprocessor by Markus Anders (github.com/markusa4/sassy)
+  Ipopt 3.14.20        Interior Point Optimizer developed by A. Waechter et.al. (github.com/coin-or/Ipopt)
+
+user parameter file <scip.set> not found - using default parameters
+
+exact/enable = TRUE
+certificate/filename = /tmp/scip-10.1.0/run/ind_bigM_default.vipr
+
+read problem </tmp/scip-nl/ind_bigM.lp>
+============
+
+original problem has 2 variables (1 bin, 0 int, 1 cont) and 2 constraints
+
+presolving (in exact solving mode):
+   (0.0s) running MILP presolver
+   (0.0s) MILP presolver (0 rounds): 0 aggregations, 2 fixings, 0 bound changes
+presolving (1 rounds: 1 fast, 1 medium, 1 exhaustive):
+ 2 deleted vars, 2 deleted constraints, 0 added constraints, 0 tightened bounds, 0 added holes, 0 changed sides, 0 changed coefficients
+ 0 implications, 0 cliques, 0 implied integral variables (0 bin, 0 int, 0 cont)
+storing certificate information in file </tmp/scip-10.1.0/run/ind_bigM_default.vipr>
+presolving solved problem
+Presolving Time: 0.00
+
+SCIP Status        : problem is solved [optimal solution found]
+Solving Time (sec) : 0.01
+Solving Nodes      : 0
+Primal Bound       : -1.00000000000000e+00 (2 solutions)
+Dual Bound         : -1.00000000000000e+00
+Gap                : 0.00 %
+Exact Primal Bound : -1
+Exact Dual Bound   : -1
+
+
+closing certificate file (wrote approx. 0.0 MB)

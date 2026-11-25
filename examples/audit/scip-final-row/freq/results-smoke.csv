@@ -1,0 +1,121 @@
+source,name,mode,scip_status,cert,rtp,rows,dualbound_rows,last_row,lean,upstream,lean_diag,trailing_drop,class,ori_rtp
+control,ind_bigM,default,problem is solved [optimal solution found],yes,RTP range -1 -1,6,0,GlobalBound,reject,reject-bound,final,2,lean:reject/final | upstream:reject-bound,RTP range -inf -1
+control,ind_bigM,presolve-off,problem is solved [optimal solution found],yes,RTP range -1 -1,6,0,GlobalBound,reject,reject-bound,final,2,lean:reject/final | upstream:reject-bound,RTP range -inf -1
+scip-mipex,egout.cip.exact-default,default,problem is solved [optimal solution found],yes,RTP range 5681007/10000 5681007/10000,2700,143,UnsplitNode1,reject,comp-fail,step-lin-weak,,lean:reject/step-lin-weak | upstream:comp-fail,RTP range -inf 5681007/10000
+scip-mipex,egout.cip.exact-default,presolve-off,problem is solved [optimal solution found],yes,RTP range 5681007/10000 5681007/10000,2700,143,UnsplitNode1,reject,comp-fail,step-lin-weak,,lean:reject/step-lin-weak | upstream:comp-fail,RTP range -inf 5681007/10000
+scip-mipex,egout.cip.exact-exactlp,default,problem is solved [optimal solution found],yes,RTP range 5681007/10000 5681007/10000,2604,162,UnsplitNode1,reject,comp-fail,step-lin-weak,,lean:reject/step-lin-weak | upstream:comp-fail,RTP range -inf 5681007/10000
+scip-mipex,egout.cip.exact-exactlp,presolve-off,problem is solved [optimal solution found],yes,RTP range 5681007/10000 5681007/10000,2604,162,UnsplitNode1,reject,comp-fail,step-lin-weak,,lean:reject/step-lin-weak | upstream:comp-fail,RTP range -inf 5681007/10000
+scip-mipex,egout.cip.exact-projshift,default,problem is solved [optimal solution found],yes,RTP range 5681007/10000 5681007/10000,2700,143,UnsplitNode1,reject,comp-fail,step-lin-weak,,lean:reject/step-lin-weak | upstream:comp-fail,RTP range -inf 5681007/10000
+scip-mipex,egout.cip.exact-projshift,presolve-off,problem is solved [optimal solution found],yes,RTP range 5681007/10000 5681007/10000,2700,143,UnsplitNode1,reject,comp-fail,step-lin-weak,,lean:reject/step-lin-weak | upstream:comp-fail,RTP range -inf 5681007/10000
+scip-mipex,flugpl_rational.mps.exact-default,default,problem is solved [optimal solution found],yes,RTP range 1201500 1201500,7601,374,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1201500
+scip-mipex,flugpl_rational.mps.exact-default,presolve-off,problem is solved [optimal solution found],yes,RTP range 1201500 1201500,7601,374,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1201500
+scip-mipex,flugpl_rational.mps.exact-exactlp,default,problem is solved [optimal solution found],yes,RTP range 1201500 1201500,7467,386,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1201500
+scip-mipex,flugpl_rational.mps.exact-exactlp,presolve-off,problem is solved [optimal solution found],yes,RTP range 1201500 1201500,7467,386,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1201500
+scip-mipex,flugpl_rational.mps.exact-projshift,default,problem is solved [optimal solution found],yes,RTP range 1201500 1201500,7601,374,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1201500
+scip-mipex,flugpl_rational.mps.exact-projshift,presolve-off,problem is solved [optimal solution found],yes,RTP range 1201500 1201500,7601,374,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1201500
+scip-mipex,Side-coef.cip.exact-default,default,problem is solved [optimal solution found],yes,RTP range 2 2,38,8,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coef.cip.exact-default,presolve-off,problem is solved [optimal solution found],yes,RTP range 2 2,38,8,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coef.cip.exact-exactlp,default,problem is solved [optimal solution found],yes,RTP range 2 2,36,7,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coef.cip.exact-exactlp,presolve-off,problem is solved [optimal solution found],yes,RTP range 2 2,36,7,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coef.cip.exact-projshift,default,problem is solved [optimal solution found],yes,RTP range 2 2,38,8,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coef.cip.exact-projshift,presolve-off,problem is solved [optimal solution found],yes,RTP range 2 2,38,8,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coeftest.lp.exact-default,default,problem is solved [optimal solution found],yes,RTP range 2 2,19,4,DualBound,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coeftest.lp.exact-default,presolve-off,problem is solved [optimal solution found],yes,RTP range 2 2,19,4,DualBound,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coeftest.lp.exact-exactlp,default,problem is solved [optimal solution found],yes,RTP range 2 2,18,4,DualBound,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coeftest.lp.exact-exactlp,presolve-off,problem is solved [optimal solution found],yes,RTP range 2 2,18,4,DualBound,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coeftest.lp.exact-projshift,default,problem is solved [optimal solution found],yes,RTP range 2 2,19,4,DualBound,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,Side-coeftest.lp.exact-projshift,presolve-off,problem is solved [optimal solution found],yes,RTP range 2 2,19,4,DualBound,accept,comp+accept,,,both-accept,RTP range -inf 2
+scip-mipex,misc03p1.zpl.exact-default,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,misc03p1.zpl.exact-default,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,misc03p1.zpl.exact-exactlp,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,misc03p1.zpl.exact-exactlp,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,misc03p1.zpl.exact-projshift,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,misc03p1.zpl.exact-projshift,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,rgn.zpl.exact-default,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,rgn.zpl.exact-default,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,rgn.zpl.exact-exactlp,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,rgn.zpl.exact-exactlp,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,rgn.zpl.exact-projshift,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,rgn.zpl.exact-projshift,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,stein27.zpl.exact-default,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,stein27.zpl.exact-default,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,stein27.zpl.exact-exactlp,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,stein27.zpl.exact-exactlp,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,stein27.zpl.exact-projshift,default,no-status,no,,,,,,,,,solver-no-status,
+scip-mipex,stein27.zpl.exact-projshift,presolve-off,no-status,no,,,,,,,,,solver-no-status,
+bench-infeas,alu4_1,default,problem is solved [infeasible],yes,RTP infeas,129517,1952,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_1,presolve-off,problem is solved [infeasible],yes,RTP infeas,129517,1952,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_2,default,problem is solved [infeasible],yes,RTP infeas,10778,46,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_2,presolve-off,problem is solved [infeasible],yes,RTP infeas,10778,46,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_3,default,problem is solved [infeasible],yes,RTP infeas,9049,24,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_3,presolve-off,problem is solved [infeasible],yes,RTP infeas,9049,24,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_4,default,problem is solved [infeasible],yes,RTP infeas,9802,31,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_4,presolve-off,problem is solved [infeasible],yes,RTP infeas,9802,31,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_5,default,problem is solved [infeasible],yes,RTP infeas,12665,60,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_5,presolve-off,problem is solved [infeasible],yes,RTP infeas,12665,60,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_6,default,problem is solved [infeasible],yes,RTP infeas,14811,121,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu4_6,presolve-off,problem is solved [infeasible],yes,RTP infeas,14811,121,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_2,default,problem is solved [infeasible],yes,RTP infeas,11219,57,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_2,presolve-off,problem is solved [infeasible],yes,RTP infeas,11219,57,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_3,default,problem is solved [infeasible],yes,RTP infeas,8977,21,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_3,presolve-off,problem is solved [infeasible],yes,RTP infeas,8977,21,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_4,default,problem is solved [infeasible],yes,RTP infeas,9792,58,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_4,presolve-off,problem is solved [infeasible],yes,RTP infeas,9792,58,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_5,default,problem is solved [infeasible],yes,RTP infeas,16243,52,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_5,presolve-off,problem is solved [infeasible],yes,RTP infeas,16243,52,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_6,default,problem is solved [infeasible],yes,RTP infeas,11974,63,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu5_6,presolve-off,problem is solved [infeasible],yes,RTP infeas,11974,63,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_1,default,problem is solved [infeasible],yes,RTP infeas,30662,518,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_1,presolve-off,problem is solved [infeasible],yes,RTP infeas,30662,518,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_2,default,problem is solved [infeasible],yes,RTP infeas,9336,31,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_2,presolve-off,problem is solved [infeasible],yes,RTP infeas,9336,31,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_3,default,problem is solved [infeasible],yes,RTP infeas,7380,25,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_3,presolve-off,problem is solved [infeasible],yes,RTP infeas,7380,25,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_4,default,problem is solved [infeasible],yes,RTP infeas,8358,40,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_4,presolve-off,problem is solved [infeasible],yes,RTP infeas,8358,40,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_5,default,problem is solved [infeasible],yes,RTP infeas,12130,61,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu6_5,presolve-off,problem is solved [infeasible],yes,RTP infeas,12130,61,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_2,default,problem is solved [infeasible],yes,RTP infeas,1319,13,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_2,presolve-off,problem is solved [infeasible],yes,RTP infeas,1319,13,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_4,default,problem is solved [infeasible],yes,RTP infeas,2516,28,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_4,presolve-off,problem is solved [infeasible],yes,RTP infeas,2516,28,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_5,default,problem is solved [infeasible],yes,RTP infeas,4423,74,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_5,presolve-off,problem is solved [infeasible],yes,RTP infeas,4423,74,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_6,default,problem is solved [infeasible],yes,RTP infeas,2185,39,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-infeas,alu7_6,presolve-off,problem is solved [infeasible],yes,RTP infeas,2185,39,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf inf
+bench-range,alu4_9,default,problem is solved [optimal solution found],yes,RTP range 1224 1224,129303,2305,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1224
+bench-range,alu4_9,presolve-off,problem is solved [optimal solution found],yes,RTP range 1224 1224,129303,2305,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 1224
+bench-range,egout,default,problem is solved [optimal solution found],yes,RTP range 6006663/25000 6006663/25000,887,94,UnsplitNode1,accept,accept,,,both-accept,RTP range -inf 6006663/25000
+bench-range,egout,presolve-off,problem is solved [optimal solution found],yes,RTP range 6006663/25000 6006663/25000,887,94,UnsplitNode1,accept,accept,,,both-accept,RTP range -inf 6006663/25000
+bench-range,enigma,default,problem is solved [optimal solution found],yes,RTP range 0 0,62565,11526,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 0
+bench-range,enigma,presolve-off,problem is solved [optimal solution found],yes,RTP range 0 0,62565,11526,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 0
+bench-range,flugpl,default,problem is solved [optimal solution found],yes,RTP range 533700 533700,9770,481,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 533700
+bench-range,flugpl,presolve-off,problem is solved [optimal solution found],yes,RTP range 533700 533700,9770,481,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 533700
+bench-range,gt2,default,problem is solved [optimal solution found],yes,RTP range 21166 21166,4167,121,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 21166
+bench-range,gt2,presolve-off,problem is solved [optimal solution found],yes,RTP range 21166 21166,4167,121,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 21166
+bench-range,vpm1,default,problem is solved [optimal solution found],yes,RTP range 20 20,10095,1104,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 20
+bench-range,vpm1,presolve-off,problem is solved [optimal solution found],yes,RTP range 20 20,10095,1104,UnsplitNode1,accept,comp+accept,,,both-accept,RTP range -inf 20
+rand,rand-0000,default,problem is solved [optimal solution found],yes,RTP range -26 -26,1,1,DualBound,accept,accept,,,both-accept,RTP range -inf 26
+rand,rand-0000,presolve-off,problem is solved [optimal solution found],yes,RTP range -26 -26,1,1,DualBound,accept,accept,,,both-accept,RTP range -inf 26
+rand,rand-0001,default,problem is solved [optimal solution found],yes,RTP range -9 -9,29,2,DualBound,accept,accept,,,both-accept,RTP range -inf 9
+rand,rand-0001,presolve-off,problem is solved [optimal solution found],yes,RTP range -9 -9,29,2,DualBound,accept,accept,,,both-accept,RTP range -inf 9
+rand,rand-0002,default,problem is solved [optimal solution found],yes,RTP range -47/4 -47/4,29,1,DualBound,accept,accept,,,both-accept,RTP range -inf -47/4
+rand,rand-0002,presolve-off,problem is solved [optimal solution found],yes,RTP range -47/4 -47/4,29,1,DualBound,accept,accept,,,both-accept,RTP range -inf -47/4
+rand-any,rand-any-0000,default,problem is solved [infeasible],yes,RTP infeas,16,0,ActivityConflict23,accept,accept,,,both-accept,RTP range -inf inf
+rand-any,rand-any-0000,presolve-off,problem is solved [infeasible],yes,RTP infeas,16,0,ActivityConflict23,accept,accept,,,both-accept,RTP range -inf inf
+rand-any,rand-any-0001,default,problem is solved [optimal solution found],yes,RTP range -98/5 -98/5,5,2,DualBound,reject,accept,final,1,lean:reject/final | upstream:accept,RTP range -inf -98/5
+rand-any,rand-any-0001,presolve-off,problem is solved [optimal solution found],yes,RTP range -98/5 -98/5,5,2,DualBound,reject,accept,final,1,lean:reject/final | upstream:accept,RTP range -inf -98/5
+rand-any,rand-any-0002,default,problem is solved [optimal solution found],yes,RTP range -288/35 -288/35,8,2,DualBound,accept,accept,,,both-accept,RTP range -inf 288/35
+rand-any,rand-any-0002,presolve-off,problem is solved [optimal solution found],yes,RTP range -288/35 -288/35,8,2,DualBound,accept,accept,,,both-accept,RTP range -inf 288/35
+bigm,bigm-0000,default,problem is solved [optimal solution found],yes,RTP range -16 -16,21,3,DualBound,accept,comp+accept,,,both-accept,RTP range -inf -16
+bigm,bigm-0000,presolve-off,problem is solved [optimal solution found],yes,RTP range -16 -16,21,3,DualBound,accept,comp+accept,,,both-accept,RTP range -inf -16
+bigm,bigm-0001,default,problem is solved [optimal solution found],yes,RTP range -39 -39,6,0,GlobalBound,reject,reject-bound,final,0,lean:reject/final | upstream:reject-bound,RTP range -inf -39
+bigm,bigm-0001,presolve-off,problem is solved [optimal solution found],yes,RTP range -39 -39,6,0,GlobalBound,reject,reject-bound,final,0,lean:reject/final | upstream:reject-bound,RTP range -inf -39
+bigm,bigm-0002,default,problem is solved [optimal solution found],yes,RTP range -41 -41,1,1,DualBound,accept,accept,,,both-accept,RTP range -inf -41
+bigm,bigm-0002,presolve-off,problem is solved [optimal solution found],yes,RTP range -41 -41,1,1,DualBound,accept,accept,,,both-accept,RTP range -inf -41
+knap,knap-0000,default,problem is solved [optimal solution found],yes,RTP range -19 -19,73,16,UnsplitNode1,reject,comp+accept,step-sol,,lean:reject/step-sol | upstream:comp+accept,RTP range -inf 19
+knap,knap-0000,presolve-off,problem is solved [optimal solution found],yes,RTP range -19 -19,73,16,UnsplitNode1,reject,comp+accept,step-sol,,lean:reject/step-sol | upstream:comp+accept,RTP range -inf 19
+knap,knap-0001,default,problem is solved [optimal solution found],yes,RTP range -1 -1,8,0,GlobalBound,reject,reject-bound,final,0,lean:reject/final | upstream:reject-bound,RTP range -inf 1
+knap,knap-0001,presolve-off,problem is solved [optimal solution found],yes,RTP range -1 -1,8,0,GlobalBound,reject,reject-bound,final,0,lean:reject/final | upstream:reject-bound,RTP range -inf 1
+knap,knap-0002,default,problem is solved [optimal solution found],yes,RTP range -32 -32,24,7,UnsplitNode1,reject,comp+accept,step-sol,,lean:reject/step-sol | upstream:comp+accept,RTP range -inf 32
+knap,knap-0002,presolve-off,problem is solved [optimal solution found],yes,RTP range -32 -32,24,7,UnsplitNode1,reject,comp+accept,step-sol,,lean:reject/step-sol | upstream:comp+accept,RTP range -inf 32

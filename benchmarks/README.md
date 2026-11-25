@@ -174,8 +174,15 @@ Per-certificate numbers are in [`results/kernel.csv`](results/kernel.csv).
 The 26 certificates above are checked in under `benchmarks/infeas/` and
 `benchmarks/range/`, so they need no download.
 
+**The committed `new_*.csv` results are stale.** They were measured on
+2026-11-02, before the normalization, tokenizer and parallel-replay work and
+before `manipulated1` and the `dfn6*` family were handled correctly, so every
+timing and four of the outcomes are out of date. Re-run before citing them.
+
 A larger corpus of 112 published VIPR v1.0 certificates (about 18 GB gzipped) is
-not stored in git. It contains:
+not stored in git. Budget roughly 28 GB of disk: the runner decompresses one
+certificate at a time into `--workdir` and deletes it afterwards, but the
+largest plain file (`ilp_sh5`) is 9.4 GB on its own. It contains:
 
 - the 56 numerically easy and 50 numerically difficult MIPs from the
   [scipopt/vipr experiments](https://github.com/scipopt/vipr/tree/master/experiments)
@@ -226,4 +233,39 @@ The runner writes one CSV per method to `benchmarks/results/`: `new_cpp.csv`,
 `--slice-all`, slice mode runs only on `RTP infeas` certificates; for the other
 certificates `viprcheck` falls back to complete replay anyway. The defaults are
 a 1-hour timeout and an 18 GiB RSS / 32 GiB memory-footprint limit per check.
+Pass `--tools lean` to skip the C++ side, which also skips needing `viprchk`
+built.
+
+### Running on Linux
+
+`run_new.py` supports macOS and Linux, but Linux needs GNU `/usr/bin/time`,
+which is a separate package from the shell builtin (`apt install time`,
+`dnf install time`). The runner checks for it before the first certificate.
+
+The two platforms write the same columns and cannot fill all of them. GNU time
+has no format specifier for peak footprint, instructions retired or cycles
+elapsed, so `peak_footprint_bytes`, `instructions` and `cycles` stay empty on
+Linux. The memory watchdog also measures something slightly different:
+`phys_footprint` on macOS (resident + compressed + swapped) against
+`VmRSS + VmSwap` on Linux, which has no compressed-memory accounting and so
+undercounts a process whose pages the kernel has compressed. Wall time, CPU
+time, max RSS and the verdict are directly comparable; treat a cross-platform
+memory comparison as approximate.
+
+### Expected non-passing rows
+
+Some certificates are meant not to pass, and two groups differ from `viprchk`
+on purpose. Check a new run against this list before reading it as a regression:
+
+| instance | LeanVIPR | viprchk | why |
+|---|---|---|---|
+| `forged1` | reject | **pass** | upstream false acceptance, reported in [arXiv:2312.10420](https://arxiv.org/abs/2312.10420) |
+| `forged2` | reject | reject | forged certificate |
+| `manipulated1` | reject | reject | the derivation is mathematically valid, but `C8` understates its final-use index as 11 while `C10` at index 13 consumes it |
+| `redprob_5`, `redprob_6`, `redprob_7` | reject (parse error) | pass | the published files carry a truncated partial line after their declared `DER` count; `viprchk` ignores trailing bytes, LeanVIPR does not |
+
+The remaining gap is memory, not correctness: the largest certificates exhaust
+the 18 GiB RSS limit during replay, because no row is ever freed. Rows that
+`viprchk` passes and LeanVIPR reports as `memout` or `timeout` are that
+limitation, and the count depends on the limits you pass.
 

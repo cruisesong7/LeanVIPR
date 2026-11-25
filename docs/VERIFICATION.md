@@ -100,6 +100,18 @@ into the generated proof is the parse of the exact source bytes. The compiled CL
 AST printer, and the OS/file plumbing sit outside this result and are not included in
 the benchmark below.
 
+Bytes-to-string decoding is part of that trusted plumbing, and one case of it is worth
+naming. `parseVipr` takes a `String`, so something has to decode the file first. VIPR
+does not fix an encoding, and published certificates exist that are not UTF-8: the
+`dfn6*` family carries ISO-8859-1 variable names such as `München`. `readCertificate`
+in [`LeanVIPRMain.lean`](../LeanVIPRMain.lean) therefore tries UTF-8 and falls back to
+ISO-8859-1 for the whole file, warning on stderr when it does. The fallback is
+injective, so distinct names stay distinct and duplicate detection is unaffected, but
+it does not preserve bytes: printing such a certificate back out re-encodes those names
+as UTF-8. No theorem is weakened — `toString_roundtrip_of_parse` relates `parseVipr`
+and `toString` on whatever string it is given — but the claim proved is about the
+decoded string, not about the file on disk.
+
 ## Optional: a smaller trusted base with con-leche
 
 Two ways to shrink what is trusted, both borrowed from
